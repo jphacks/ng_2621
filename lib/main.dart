@@ -10,8 +10,8 @@ class ZooStudyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      title: 'ZooっとStudy',
-      home: Scaffold(body: Center(child: Text('ZooっとStudy'))),
+      title: 'ZooっとStudy!',
+      home: Scaffold(body: Center(child: Text('ZooっとStudy!'))),
     );
   }
 }
