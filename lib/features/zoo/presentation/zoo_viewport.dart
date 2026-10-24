@@ -154,9 +154,7 @@ class ZooViewportState extends State<ZooViewport> {
                   left: 16,
                   bottom: 16,
                   right: 76,
-                  child: Card(
-                    elevation: 0,
-                    color: zooPaper,
+                  child: SpritePanel(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -178,10 +176,7 @@ class ZooViewportState extends State<ZooViewport> {
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
                             onPressed: widget.onShop,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: zooGreen,
-                              side: const BorderSide(color: zooGreen),
-                            ),
+
                             icon: const ZooArtSprite(
                               part: ZooArtPart.shop,
                               scale: 1,
@@ -220,19 +215,20 @@ class ZooViewportState extends State<ZooViewport> {
                   children: [
                     ValueListenableBuilder<Matrix4>(
                       valueListenable: _camera,
-                      builder: (context, matrix, child) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: zooPaper,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${matrix.getMaxScaleOnAxis().toStringAsFixed(1)}×',
-                          key: const ValueKey('zoo-zoom-level'),
-                          style: const TextStyle(fontSize: 11, color: zooGreen),
+                      builder: (context, matrix, child) => SpritePanel(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            '${matrix.getMaxScaleOnAxis().toStringAsFixed(1)}×',
+                            key: const ValueKey('zoo-zoom-level'),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: zooGreen,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -249,7 +245,7 @@ class ZooViewportState extends State<ZooViewport> {
                     _MapButton(
                       label: '全体を表示',
                       onPressed: resetView,
-                      icon: Icons.center_focus_strong_rounded,
+                      extraPart: ZooExtraPart.magnifyingGlass,
                     ),
                   ],
                 ),
@@ -267,25 +263,24 @@ class _MapButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.part,
-    this.icon,
+    this.extraPart,
   });
 
   final String label;
   final VoidCallback onPressed;
   final ZooUiPart? part;
-  final IconData? icon;
+  final ZooExtraPart? extraPart;
 
   @override
   Widget build(BuildContext context) => Material(
-    color: zooPaper,
-    borderRadius: BorderRadius.circular(12),
+    color: Colors.transparent,
     child: IconButton(
       tooltip: label,
       onPressed: onPressed,
-      style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+      style: PixelUiTheme.buttonStyle(SpritePanelStyle.roundGray),
       icon: part != null
           ? ZooUiSprite(part: part!, scale: 2)
-          : Icon(icon, size: 22, color: zooGreen),
+          : ZooExtraSprite(part: extraPart!, scale: 1.5),
     ),
   );
 }

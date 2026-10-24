@@ -37,68 +37,68 @@ class ZooHeader extends StatelessWidget {
               flex: 3,
               child: Tooltip(
                 message: 'プロフィール',
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onProfile,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            padding: const EdgeInsets.symmetric(vertical: 5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE9EEDC),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ZooUiSprite(part: ZooUiPart.smile, scale: 2),
-                                SizedBox(height: 3),
-                                Text(
-                                  'Lv.1',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: zooGreen,
+                child: SpritePanel(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onProfile,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              child: const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ZooUiSprite(part: ZooUiPart.smile, scale: 2),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    'Lv.1',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: zooGreen,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'ゲスト',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: zooInk,
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'ゲスト',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: zooInk,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 3),
-                                Text(
-                                  'ZooっとStudy',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: zooGreen,
+                                  SizedBox(height: 3),
+                                  Text(
+                                    'ZooっとStudy',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: zooGreen,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -110,53 +110,56 @@ class ZooHeader extends StatelessWidget {
               flex: 2,
               child: Tooltip(
                 message: '所持金の詳細',
-                child: Material(
-                  color: const Color(0xFFF3EBCF),
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    onTap: onWallet,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        children: [
-                          const ZooArtSprite(part: ZooArtPart.coins, scale: 2),
-                          SizedBox(width: 6),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'コイン${connectionLabel.isEmpty ? '' : '・$connectionLabel'}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Color(0xFF75613C),
-                                  ),
-                                ),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    coins == null
-                                        ? '—'
-                                        : coins.toString().replaceAllMapped(
-                                            RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-                                            (match) => '${match[1]},',
-                                          ),
+                child: SpritePanel(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onWallet,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            const ZooArtSprite(
+                              part: ZooArtPart.coins,
+                              scale: 2,
+                            ),
+                            SizedBox(width: 6),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'コイン${connectionLabel.isEmpty ? '' : '・$connectionLabel'}',
                                     style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: zooInk,
+                                      fontSize: 10,
+                                      color: Color(0xFF75613C),
                                     ),
                                   ),
-                                ),
-                              ],
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      coins == null
+                                          ? '—'
+                                          : coins.toString().replaceAllMapped(
+                                              RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+                                              (match) => '${match[1]},',
+                                            ),
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: zooInk,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -199,10 +202,12 @@ class ZooBottomBar extends StatelessWidget {
                   child: Semantics(
                     selected: true,
                     child: TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: zooGreen,
-                        minimumSize: const Size(48, 56),
-                      ),
+                      style: PixelUiTheme.buttonStyle(SpritePanelStyle.lime)
+                          .copyWith(
+                            minimumSize: const WidgetStatePropertyAll(
+                              Size(48, 56),
+                            ),
+                          ),
                       onPressed: onHome,
                       child: const Column(
                         mainAxisSize: MainAxisSize.min,
@@ -243,7 +248,7 @@ class ZooBottomBar extends StatelessWidget {
                     child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.more_horiz_rounded, size: 25),
+                        ZooUiSprite(part: ZooUiPart.encyclopediaBlue, scale: 3),
                         SizedBox(height: 3),
                         Text('その他'),
                       ],
@@ -269,57 +274,65 @@ Future<void> showZooSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    showDragHandle: true,
-    backgroundColor: zooPaper,
+    showDragHandle: false,
+    shape: const RoundedRectangleBorder(),
+    backgroundColor: Colors.transparent,
     constraints: BoxConstraints(
       maxHeight: MediaQuery.sizeOf(context).height * 0.8,
     ),
-    builder: (context) => SafeArea(
-      top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: WoodPanel(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 2,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: zooInk,
+    builder: (context) => PixelUiTheme(
+      child: SpritePanel(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: WoodPanel(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: zooInk,
+                            ),
+                          ),
                         ),
-                      ),
+                        IconButton(
+                          tooltip: '閉じる',
+                          onPressed: () => Navigator.pop(context),
+                          icon: const ZooUiSprite(
+                            part: ZooUiPart.cross,
+                            scale: 2,
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      tooltip: '閉じる',
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: zooInk),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children,
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: children,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     ),
   );

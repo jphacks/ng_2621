@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/zoo_ui.dart';
+
 import '../domain/game_notice.dart';
 import 'game_session.dart';
 
@@ -22,59 +24,58 @@ class GameNoticeBanner extends StatelessWidget {
       if (notice == null) return const SizedBox.shrink();
       return Semantics(
         liveRegion: true,
-        child: Material(
-          color: const Color(0xFFEDF4E5),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-            child: Row(
-              children: [
-                Icon(
+        child: SpritePanel(
+          style: SpritePanelStyle.lime,
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              child: Row(
+                children: [
                   notice.kind == GameNoticeKind.reward
-                      ? Icons.paid_outlined
-                      : Icons.refresh,
-                  color: const Color(0xFF386A43),
-                  size: 22,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: InkWell(
-                    onTap: onDetails,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            notice.message,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF263D2D),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            notice.detail,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          if (session.pendingNotices.length > 1)
+                      ? const ZooArtSprite(part: ZooArtPart.coins, scale: 2)
+                      : const ZooUiSprite(part: ZooUiPart.dot, scale: 3),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      onTap: onDetails,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              'ほか${session.pendingNotices.length - 1}件',
-                              style: const TextStyle(fontSize: 11),
+                              notice.message,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF263D2D),
+                              ),
                             ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              notice.detail,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            if (session.pendingNotices.length > 1)
+                              Text(
+                                'ほか${session.pendingNotices.length - 1}件',
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: '通知を閉じる',
-                  onPressed: () => session.dismissNotice(notice.id),
-                  icon: const Icon(Icons.close, size: 20),
-                ),
-              ],
+                  IconButton(
+                    tooltip: '通知を閉じる',
+                    onPressed: () => session.dismissNotice(notice.id),
+                    icon: const ZooUiSprite(part: ZooUiPart.cross, scale: 2),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

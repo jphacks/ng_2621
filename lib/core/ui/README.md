@@ -33,7 +33,7 @@ const ZooUiSprite(
 - 4段目: `lock`, `back`, `arrowLeft`, `arrowRight`, `encyclopediaRed`, `encyclopediaBlue`。
 - 最下段: `cylinder`, `cylinderGauge`, `plus`, `minus`, `sliderLeft`, `sliderMiddle`, `sliderRight`, `sliderThumb`, `speechBubble`。
 
-木製ボタンは `WoodPanel`（装飾枠）と `WoodButton`（押下操作）で連結して利用できます。上下の縁を保ち中央を繰り返し描画します。`WoodButton` は48論理ピクセル以上の操作領域を確保し、アニメーション無効設定では押下アニメーションを停止します。スライダーやゲージの操作部品は未実装です。
+木製ボタンは `WoodPanel`（装飾枠）と `WoodButton`（押下操作）で連結して利用できます。追加シートの木製パーツを使い、四隅を保ち中央と辺を繰り返し描画します。`WoodButton` は48論理ピクセル以上の操作領域を確保し、アニメーション無効設定では押下アニメーションを停止します。スライダーやゲージの操作部品は未実装です。
 元シートを差し替える際はサイズ・配置が変わらないか確認し、変わる場合は `sourceRect` と `sheetSize` を更新してください。
 
 
@@ -82,5 +82,23 @@ const ZooExtraSprite(part: ZooExtraPart.fenceBottomLeft, mirrorX: true)
 const ZooExtraSprite(part: ZooExtraPart.grassWaterQuarter, quarterTurns: 1)
 ```
 
-追加シートは利用準備までで、マップや既存の木製部品の配置は変更していません。
+追加シートのボタン・枠はゲームUIで利用しています。マップの地形・柵配置は維持しています。
 新しい木製パーツは16×16、従来の木製パーツは別サイズなので同じ座標として扱わないでください。
+
+## スプライトの枠・ボタン
+
+`SpritePanel` は `wood` / `cream` / `gray` / `lime` / `roundGray` の枠を提供します。
+四角い枠は四隅を2倍で維持し、辺と内部を繰り返し描画します。`roundGray` は正方形のアイコンボタンに使います。
+描画は補間・アンチエイリアスなしです。枠は描画だけなので、本文には6pxの縁以上の余白を確保してください。
+
+`PixelUiTheme` 内の標準 `FilledButton` / `TextButton` / `OutlinedButton` / `ElevatedButton` / `IconButton` はスプライト枠を使います。
+無効状態では灰色、主要操作は黄緑、補助操作はクリーム色です。標準ボタンのキーボード操作・無効化・セマンティクスは維持します。
+`SpriteTile` は一覧の枠、`SpriteAlertDialog` はスクロール可能な確認枠です。
+テーマはゲーム画面とそのシート・購入ダイアログだけに適用し、課題管理・認証画面のテーマは変更しません。
+
+```dart
+const SpritePanel(
+  style: SpritePanelStyle.cream,
+  child: Padding(padding: EdgeInsets.all(12), child: Text('動物の情報')),
+)
+```

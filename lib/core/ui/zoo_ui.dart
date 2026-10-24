@@ -17,3 +17,4 @@ export 'widgets/wood_panel.dart';
 
 export 'sprites/zoo_extra_part.dart';
 export 'sprites/zoo_extra_sprite.dart';
+export 'widgets/sprite_panel.dart';

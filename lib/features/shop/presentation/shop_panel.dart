@@ -81,42 +81,39 @@ class _ShopPanelState extends State<ShopPanel> {
     final coins = widget.session.snapshot?.coins;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        title: Text('${item.name}を購入しますか？'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${item.price} コインを使います。'),
-            if (coins != null) ...[
+      builder: (context) => PixelUiTheme(
+        child: SpriteAlertDialog(
+          title: Text('${item.name}を購入しますか？'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${item.price} コインを使います。'),
+              if (coins != null) ...[
+                const SizedBox(height: 12),
+                Text('現在 $coins コイン'),
+                Text('購入後 ${coins - item.price} コイン（見込み）'),
+              ],
               const SizedBox(height: 12),
-              Text('現在 $coins コイン'),
-              Text('購入後 ${coins - item.price} コイン（見込み）'),
+              Text(
+                item.kind == ShopItemKind.animal
+                    ? '購入後、動物園に自動で配置されます。'
+                    : '購入後、動物園の決まった場所に追加されます。',
+              ),
             ],
-            const SizedBox(height: 12),
-            Text(
-              item.kind == ShopItemKind.animal
-                  ? '購入後、動物園に自動で配置されます。'
-                  : '購入後、動物園の決まった場所に追加されます。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('やめる'),
+            ),
+            FilledButton(
+              key: const ValueKey('confirm-purchase'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('購入を確定'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('やめる'),
-          ),
-          FilledButton(
-            key: const ValueKey('confirm-purchase'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF386A43),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('購入を確定'),
-          ),
-        ],
       ),
     );
     if (!mounted) return;
@@ -138,9 +135,8 @@ class _ShopPanelState extends State<ShopPanel> {
     final success = _purchases.status == PurchaseStatus.success;
     return Semantics(
       liveRegion: true,
-      child: Card(
-        color: success ? const Color(0xFFE5F0DC) : const Color(0xFFFFF2DC),
-        elevation: 0,
+      child: SpritePanel(
+        style: success ? SpritePanelStyle.lime : SpritePanelStyle.cream,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -171,7 +167,7 @@ class _ShopPanelState extends State<ShopPanel> {
                         ),
                       )
                     else
-                      const Icon(Icons.info_outline),
+                      const ZooUiSprite(part: ZooUiPart.exclamation, scale: 2),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -208,11 +204,7 @@ class _ShopPanelState extends State<ShopPanel> {
                     widget.onViewZoo != null)
                   FilledButton.icon(
                     onPressed: widget.onViewZoo,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF386A43),
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.pets),
+                    icon: const ZooArtSprite(part: ZooArtPart.home, scale: 1),
                     label: const Text('動物園を見る'),
                   ),
               ],
@@ -291,26 +283,25 @@ class _ShopPanelState extends State<ShopPanel> {
                   ('動物', ShopItemKind.animal),
                   ('施設', ShopItemKind.facility),
                 ])
-                  ChoiceChip(
-                    label: Text(entry.$1),
+                  Semantics(
                     selected: _filter == entry.$2,
-                    showCheckmark: false,
-                    selectedColor: const Color(0xFFE0EBD2),
-                    backgroundColor: const Color(0xFFFAF9F0),
-                    side: BorderSide(
-                      color: _filter == entry.$2
-                          ? const Color(0xFF386A43)
-                          : const Color(0xFFD8E1CF),
+                    child: OutlinedButton(
+                      key: ValueKey('shop-filter-${entry.$1}'),
+                      style: PixelUiTheme.buttonStyle(
+                        _filter == entry.$2
+                            ? SpritePanelStyle.lime
+                            : SpritePanelStyle.cream,
+                      ),
+                      onPressed: () => setState(() => _filter = entry.$2),
+                      child: Text(
+                        entry.$1,
+                        style: TextStyle(
+                          fontWeight: _filter == entry.$2
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
                     ),
-                    labelStyle: TextStyle(
-                      color: const Color(0xFF263D2D),
-                      fontWeight: _filter == entry.$2
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                    onSelected: (selected) {
-                      if (selected) setState(() => _filter = entry.$2);
-                    },
                   ),
               ],
             ),
@@ -336,98 +327,90 @@ class _ShopPanelState extends State<ShopPanel> {
                   if (item.minimumAnimalSpecies > 0)
                     '動物${item.minimumAnimalSpecies}種類を解放',
                 ];
-                return Card(
-                  color: const Color(0xFFE9EEDC),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0xFFD8E1CF)),
-                  ),
-                  elevation: 0,
-                  margin: const EdgeInsets.only(top: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.name,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            if (item.kind == ShopItemKind.animal)
-                              AnimalArt(animalId: item.targetId)
-                            else if (item.targetId == 'pond' ||
-                                item.targetId == 'forest')
-                              SizedBox.square(
-                                dimension: 32,
-                                child: Center(
-                                  child: ZooArtSprite(
-                                    part: item.targetId == 'pond'
-                                        ? ZooArtPart.pond
-                                        : ZooArtPart.tree,
-                                    scale: 2,
+                return Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: SpritePanel(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              )
-                            else
-                              const Icon(Icons.park_outlined),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            const ZooArtSprite(
-                              part: ZooArtPart.coins,
-                              scale: 1,
+                              ),
+                              if (item.kind == ShopItemKind.animal)
+                                AnimalArt(animalId: item.targetId)
+                              else if (item.targetId == 'pond' ||
+                                  item.targetId == 'forest')
+                                SizedBox.square(
+                                  dimension: 32,
+                                  child: Center(
+                                    child: ZooArtSprite(
+                                      part: item.targetId == 'pond'
+                                          ? ZooArtPart.pond
+                                          : ZooArtPart.tree,
+                                      scale: 2,
+                                    ),
+                                  ),
+                                )
+                              else
+                                const Icon(Icons.park_outlined),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const ZooArtSprite(
+                                part: ZooArtPart.coins,
+                                scale: 1,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(child: Text('${item.price} コイン')),
+                            ],
+                          ),
+                          Text(
+                            requirements.isEmpty
+                                ? '初期から購入可'
+                                : requirements.join('・'),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 8),
+                          FilledButton(
+                            key: ValueKey('buy-${item.id}'),
+                            onPressed:
+                                available &&
+                                    !owned &&
+                                    unlocked &&
+                                    enough &&
+                                    !_purchases.busy &&
+                                    !_purchases.uncertain &&
+                                    !_purchases.awaitingSnapshot &&
+                                    !_confirming
+                                ? () => _confirmAndBuy(item)
+                                : null,
+                            child: Text(
+                              _purchases.busy && _purchases.item?.id == item.id
+                                  ? '購入を確認中…'
+                                  : owned
+                                  ? '購入済み'
+                                  : !available
+                                  ? '未接続'
+                                  : !unlocked
+                                  ? '未解放'
+                                  : !enough
+                                  ? 'コイン不足'
+                                  : '購入する',
                             ),
-                            const SizedBox(width: 6),
-                            Flexible(child: Text('${item.price} コイン')),
-                          ],
-                        ),
-                        Text(
-                          requirements.isEmpty
-                              ? '初期から購入可'
-                              : requirements.join('・'),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        FilledButton(
-                          key: ValueKey('buy-${item.id}'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF386A43),
-                            foregroundColor: Colors.white,
                           ),
-                          onPressed:
-                              available &&
-                                  !owned &&
-                                  unlocked &&
-                                  enough &&
-                                  !_purchases.busy &&
-                                  !_purchases.uncertain &&
-                                  !_purchases.awaitingSnapshot &&
-                                  !_confirming
-                              ? () => _confirmAndBuy(item)
-                              : null,
-                          child: Text(
-                            _purchases.busy && _purchases.item?.id == item.id
-                                ? '購入を確認中…'
-                                : owned
-                                ? '購入済み'
-                                : !available
-                                ? '未接続'
-                                : !unlocked
-                                ? '未解放'
-                                : !enough
-                                ? 'コイン不足'
-                                : '購入する',
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );

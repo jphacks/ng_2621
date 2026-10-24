@@ -146,8 +146,7 @@ class _ZooScreenState extends State<ZooScreen>
       context,
       title: 'プロフィール',
       children: const [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
+        SpriteTile(
           leading: ZooUiSprite(part: ZooUiPart.smile, scale: 3),
           title: Text('ゲスト'),
           subtitle: Text('レベル 1'),
@@ -209,17 +208,24 @@ class _ZooScreenState extends State<ZooScreen>
               const Text('いま動物園にいる仲間たち', style: TextStyle(color: zooGreen)),
               const SizedBox(height: 8),
               for (final animal in controller.animals)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: Color(animal.definition.placeholderColor),
-                    child: AnimalArt(animalId: animal.definition.id, size: 28),
+                SpriteTile(
+                  leading: SpritePanel(
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: AnimalArt(
+                        animalId: animal.definition.id,
+                        size: 28,
+                      ),
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(context);
                     _showAnimal(animal.definition);
                   },
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const ZooUiSprite(
+                    part: ZooUiPart.arrowRight,
+                    scale: 2,
+                  ),
                   title: Text(animal.definition.name),
                   subtitle: const Text('動物園で暮らしています'),
                 ),
@@ -240,8 +246,7 @@ class _ZooScreenState extends State<ZooScreen>
       context,
       title: animal.name,
       children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
+        SpriteTile(
           leading: AnimalArt(animalId: animal.id, size: 40),
           title: const Text('動物園で暮らしています'),
           subtitle: const Text('解放済み'),
@@ -249,8 +254,7 @@ class _ZooScreenState extends State<ZooScreen>
         if (animal.evolutionIds.isNotEmpty) ...[
           const Text('進化先', style: TextStyle(fontWeight: FontWeight.bold)),
           for (final id in animal.evolutionIds)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
+            SpriteTile(
               title: Text(
                 world?.animals.where((a) => a.id == id).firstOrNull?.name ?? id,
               ),
@@ -348,8 +352,7 @@ class _ZooScreenState extends State<ZooScreen>
         if (kDebugMode &&
             _game.repository is MockGameRepository &&
             _game.snapshot != null)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
+          SpriteTile(
             leading: const Icon(Icons.science_outlined, color: zooGreen),
             title: const Text('連携デモ'),
             subtitle: const Text('外部の確定結果を模擬受信'),
@@ -358,31 +361,29 @@ class _ZooScreenState extends State<ZooScreen>
               _showDemoResults();
             },
           ),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
+        SpriteTile(
           leading: const ZooUiSprite(part: ZooUiPart.encyclopediaRed, scale: 3),
           title: const Text('動物一覧'),
           subtitle: const Text('動物園にいる仲間を見る'),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
           enabled: _controller != null,
           onTap: () {
             Navigator.pop(context);
             _showAnimals();
           },
         ),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
+        SpriteTile(
           leading: const ZooArtSprite(part: ZooArtPart.shop, scale: 2),
           title: const Text('ショップ'),
           subtitle: const Text('動物や施設を迎える'),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
           onTap: () {
             Navigator.pop(context);
             _showShop();
           },
         ),
         if (widget.assignmentStore != null && Navigator.of(context).canPop())
-          ListTile(
+          SpriteTile(
             leading: const Icon(Icons.switch_account_outlined),
             title: const Text('先生・生徒を選び直す'),
             subtitle: Text(widget.isTeacher ? '現在：先生（デモ）' : '現在：生徒（デモ）'),
@@ -398,57 +399,59 @@ class _ZooScreenState extends State<ZooScreen>
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    return Scaffold(
-      backgroundColor: zooPaper,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            ZooHeader(
-              onProfile: _showProfile,
-              onWallet: _showWallet,
-              coins: _game.snapshot?.coins,
-              connectionLabel: _game.failed
-                  ? '更新停止'
-                  : switch (_game.repository.connection) {
-                      GameConnection.demo => 'デモ',
-                      GameConnection.connected => '',
-                      GameConnection.disconnected => '未接続',
-                    },
-            ),
-            GameNoticeBanner(session: _game, onDetails: _showWallet),
-            Expanded(
-              child: _failed
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('動物園データを読み込めませんでした'),
-                          TextButton(
-                            onPressed: _load,
-                            child: const Text('再読み込み'),
-                          ),
-                        ],
+    return PixelUiTheme(
+      child: Scaffold(
+        backgroundColor: zooPaper,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              ZooHeader(
+                onProfile: _showProfile,
+                onWallet: _showWallet,
+                coins: _game.snapshot?.coins,
+                connectionLabel: _game.failed
+                    ? '更新停止'
+                    : switch (_game.repository.connection) {
+                        GameConnection.demo => 'デモ',
+                        GameConnection.connected => '',
+                        GameConnection.disconnected => '未接続',
+                      },
+              ),
+              GameNoticeBanner(session: _game, onDetails: _showWallet),
+              Expanded(
+                child: _failed
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('動物園データを読み込めませんでした'),
+                            TextButton(
+                              onPressed: _load,
+                              child: const Text('再読み込み'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : controller == null
+                    ? const Center(
+                        child: CircularProgressIndicator(color: zooGreen),
+                      )
+                    : ZooViewport(
+                        key: _viewportKey,
+                        controller: controller,
+                        onAnimals: _showAnimals,
+                        onShop: _showShop,
+                        onAnimalSelected: _showAnimal,
                       ),
-                    )
-                  : controller == null
-                  ? const Center(
-                      child: CircularProgressIndicator(color: zooGreen),
-                    )
-                  : ZooViewport(
-                      key: _viewportKey,
-                      controller: controller,
-                      onAnimals: _showAnimals,
-                      onShop: _showShop,
-                      onAnimalSelected: _showAnimal,
-                    ),
-            ),
-            ZooBottomBar(
-              onHome: () => _viewportKey.currentState?.resetView(),
-              onStudy: _showStudy,
-              onMore: _showMore,
-            ),
-          ],
+              ),
+              ZooBottomBar(
+                onHome: () => _viewportKey.currentState?.resetView(),
+                onStudy: _showStudy,
+                onMore: _showMore,
+              ),
+            ],
+          ),
         ),
       ),
     );

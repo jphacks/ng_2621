@@ -29,3 +29,26 @@
 390×844の描画で空の動物園・所持動物あり・ショップ・購入結果を目視確認した。
 目視確認用の残高と所持データは一時テスト内だけで生成し、アプリの初期データには反映していない。
 Android実機・エミュレーターでの起動確認はこの環境では未実施。
+
+## 追加シートによるドット絵UI統一
+
+`20261024_3.png` の木製・クリーム・灰色・黄緑・灰色丸ボタンを枠として使用する。
+元PNGやパーツ座標は変更せず、ゲーム内のヘッダー、下部ナビ、倍率表示、案内、商品カード、購入結果、詳細一覧、通知、確認ダイアログを統一した。
+閉じる・一覧移動には既存のドット絵アイコン、全体表示には新シートの虫眼鏡を使う。意味に合う素材がない一部の補助アイコンは従来表示を残す。
+
+- `lib/core/ui/widgets/sprite_panel.dart`: 枠の描画、ゲーム内ボタンテーマ、一覧・確認ダイアログ部品（追加）。
+- `lib/core/ui/widgets/wood_panel.dart`: 既存APIを維持し、新シートの共通枠へ描画を委譲。
+- `lib/core/ui/zoo_ui.dart`: 部品を公開。
+- `lib/features/zoo/presentation/zoo_chrome.dart`: ヘッダー、ナビ、シート枠。
+- `lib/features/zoo/presentation/zoo_viewport.dart`: 案内枠、倍率、丸型操作ボタン。
+- `lib/features/zoo/presentation/zoo_screen.dart`: ゲーム画面内のテーマ適用と詳細一覧の枠。
+- `lib/features/shop/presentation/shop_panel.dart`: 商品枠・フィルター・購入結果・確認ダイアログ。
+- `lib/features/game/presentation/game_notice_banner.dart`: 通知の枠とドット絵アイコン。通知処理は維持。
+- `test/core/ui/sprite_panel_test.dart`: 横長・縦長の枠の四隅が元画像のピクセル・透明度を保つ検証（追加）。
+- `test/features/zoo/game_ui_polish_test.dart`: カテゴリ操作の対象を新しいボタンのキーに更新。
+- `lib/core/ui/README.md`, 本書: 利用方法と変更記録。
+
+今回の検証は `flutter analyze` 指摘なし、`flutter test` 全86件成功。
+390×844の描画を目視確認。既存の小画面・大きな文字・購入キャンセル・購入結果再確認・課題連携テストも成功。
+認証・課題管理、コイン計算、価格、所持データ、マップ配置は変更していない。追加パッケージなし。
+Android実機での起動確認は未実施。

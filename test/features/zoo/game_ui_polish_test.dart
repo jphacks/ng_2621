@@ -74,15 +74,15 @@ void main() {
       await tester.tap(find.text('ショップへ'));
       await frames(tester);
       final before = repository.currentSnapshot.toJson();
-      await tester.tap(find.widgetWithText(ChoiceChip, '施設'));
+      await tester.tap(find.byKey(const ValueKey('shop-filter-施設')));
       await tester.pump();
       expect(find.byKey(const ValueKey('buy-rabbit')), findsNothing);
       expect(find.byKey(const ValueKey('buy-pond')), findsOneWidget);
-      await tester.tap(find.widgetWithText(ChoiceChip, '動物'));
+      await tester.tap(find.byKey(const ValueKey('shop-filter-動物')));
       await tester.pump();
       expect(find.byKey(const ValueKey('buy-rabbit')), findsOneWidget);
       expect(find.byKey(const ValueKey('buy-pond')), findsNothing);
-      await tester.tap(find.widgetWithText(ChoiceChip, 'すべて'));
+      await tester.tap(find.byKey(const ValueKey('shop-filter-すべて')));
       await tester.pump();
       expect(find.byKey(const ValueKey('buy-pond')), findsOneWidget);
       expect(repository.currentSnapshot.toJson(), before);
