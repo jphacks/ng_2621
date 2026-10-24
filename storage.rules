@@ -1,0 +1,30 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function member(orgId, classId) {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/classMemberships/$(classId + '_' + request.auth.uid))
+        && firestore.get(/databases/(default)/documents/classMemberships/$(classId + '_' + request.auth.uid)).data.organizationId == orgId;
+    }
+    function teacher(orgId, classId) {
+      return member(orgId, classId)
+        && firestore.get(/databases/(default)/documents/classMemberships/$(classId + '_' + request.auth.uid)).data.role == 'teacher';
+    }
+    match /submissionFiles/{orgId}/{classId}/{assignmentId}/{studentId}/{fileName} {
+      allow read: if member(orgId, classId) && (request.auth.uid == studentId || teacher(orgId, classId));
+      // Immutable objects: accepted answers can never be replaced or deleted by a client.
+      allow create: if member(orgId, classId) && request.auth.uid == studentId
+        && firestore.get(/databases/(default)/documents/classMemberships/$(classId + '_' + studentId)).data.role == 'student'
+        && firestore.get(/databases/(default)/documents/assignments/$(assignmentId)).data.organizationId == orgId
+        && firestore.get(/databases/(default)/documents/assignments/$(assignmentId)).data.classId == classId
+        && firestore.get(/databases/(default)/documents/assignments/$(assignmentId)).data.status == 'published'
+        && (!firestore.exists(/databases/(default)/documents/submissions/$(assignmentId + '_' + studentId))
+          || firestore.get(/databases/(default)/documents/submissions/$(assignmentId + '_' + studentId)).data.status == 'needs_revision')
+        && fileName.matches('^[a-f0-9]{64}\\.(pdf|png|jpg)$')
+        && request.resource.size > 0 && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('^(application/pdf|image/jpeg|image/png)$');
+      allow update, delete: if false;
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

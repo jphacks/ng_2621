@@ -1,3 +1,6 @@
+import 'attachments/study_attachment.dart';
+export 'attachments/study_attachment.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -29,7 +32,19 @@ abstract class StudyRepository extends ChangeNotifier
     DemoAssignment assignment, {
     DemoStudyRole role = DemoStudyRole.teacher,
   });
-  FutureOr<int> submit(String id, String answer, {required DemoStudyRole role});
+  FutureOr<int> submit(
+    String id,
+    String answer, {
+    required DemoStudyRole role,
+    List<StudyAttachment> attachments = const [],
+  });
+  Future<StudyAttachment> addAttachment(
+    String assignmentId,
+    String name,
+    Uint8List bytes,
+  ) async => throw const StudyFailure('ファイル提出には未対応です');
+  Future<Uint8List> readAttachment(StudyAttachment file) async =>
+      throw const StudyFailure('添付ファイルを開けません');
   FutureOr<int> review(
     String id, {
     required DemoStudyRole role,

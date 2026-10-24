@@ -1,3 +1,5 @@
+import 'core/storage/attachments/platform_attachment_vault.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,7 +29,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
       if (const bool.fromEnvironment('ZOOSTUDY_RESET_ROLE')) {
         await storage.remove(SavedRoleGate.storageKey);
       }
-      final repository = await DemoAssignmentStore.open(storage);
+      final repository = await DemoAssignmentStore.open(
+        storage,
+        attachmentVault: await openAttachmentVault(),
+      );
       return ZooStudyApp(studyRepository: repository, roleStorage: storage);
     }
     if (!['firebase', 'emulator'].contains(studyStorageMode)) {

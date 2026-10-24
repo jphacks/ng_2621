@@ -3,6 +3,7 @@ const {createHash} = require('node:crypto');
 const {getFirestore, FieldValue, Timestamp} = require('firebase-admin/firestore');
 const {HttpsError} = require('firebase-functions/v2/https');
 const catalog = require('./catalog.json').items;
+const {verifyAttachments} = require('./attachments');
 const subjects = new Set(['japanese', 'mathematics', 'english', 'science', 'socialStudies', 'other']);
 const fail = (code, message) => { throw new HttpsError(code, message); };
 const id = (value, name) => {
@@ -101,10 +102,13 @@ function createService(db = getFirestore()) {
 
     async submitAssignment(request) {
       const uid = uidOf(request), data = request.data || {};
-      const assignmentId = id(data.assignmentId, '課題'), answerText = text(data.answerText, 5000, '回答');
+      const assignmentId = id(data.assignmentId, '課題'), answerText = text(data.answerText ?? '', 5000, '回答', true);
+      const initialContext = await db.runTransaction(tx => session(tx, db, uid, 'student'));
+      const attachments = await verifyAttachments(initialContext, assignmentId, data.attachments ?? []);
+      if (!answerText && attachments.length === 0) fail('invalid-argument', '回答を入力するか画像・PDFを添付してください');
       return db.runTransaction(async tx => {
         const context = await session(tx, db, uid, 'student');
-        const op = await operation(tx, db, uid, data.requestId, {type: 'submit', assignmentId, answerText});
+        const op = await operation(tx, db, uid, data.requestId, {type: 'submit', assignmentId, answerText, attachments});
         if (op.result) return op.result;
         const submissionRef = ref(db, 'submissions', `${assignmentId}_${uid}`);
         const rewardRef = ref(db, 'rewardTransactions', `${assignmentId}_${uid}_submit`);
@@ -114,12 +118,12 @@ function createService(db = getFirestore()) {
         const previous = submission.data();
         if (previous?.status === 'approved') fail('failed-precondition', '承認済みの課題は変更できません');
         if (previous?.status === 'pending_review') {
-          if (previous.answerText !== answerText) fail('failed-precondition', '先生の確認待ちです');
+          if (previous.answerText !== answerText || JSON.stringify(previous.attachments || []) !== JSON.stringify(attachments)) fail('failed-precondition', '先生の確認待ちです');
           return complete(tx, op, {rewardAmount: 0});
         }
         const current = wallet(zoo.data(), context), amount = reward.exists ? 0 : 30;
         tx.set(submissionRef, {...contextFields(context), assignmentId, studentId: uid, studentName: context.displayName,
-          answerText, status: 'pending_review', submittedAt: stamp(), updatedAt: stamp(), reviewedAt: null,
+          answerText, attachments, status: 'pending_review', submittedAt: stamp(), updatedAt: stamp(), reviewedAt: null,
           reviewedBy: null, feedback: previous?.feedback || '', revisionCount: previous ? previous.revisionCount + 1 : 0,
           version: (previous?.version || 0) + 1});
         if (amount) tx.create(rewardRef, {...contextFields(context), assignmentId, studentId: uid,

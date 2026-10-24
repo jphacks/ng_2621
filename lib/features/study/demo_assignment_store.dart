@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+import 'dart:convert';
+
+import '../../core/storage/attachments/attachment_vault.dart';
 import '../../core/storage/draft_storage.dart';
 
 import '../game/data/mock_game_repository.dart';
@@ -13,8 +17,12 @@ export 'study_models.dart';
 /// Synchronous mutations commit state and unique reward receipts together.
 class DemoAssignmentStore extends StudyRepository
     implements GameRepository, ShopRepository {
-  DemoAssignmentStore({DateTime Function()? clock, this.storage})
-    : _clock = clock ?? DateTime.now {
+  DemoAssignmentStore({
+    DateTime Function()? clock,
+    this.storage,
+    AttachmentVault? attachmentVault,
+  }) : _clock = clock ?? DateTime.now,
+       _attachmentVault = attachmentVault ?? MemoryAttachmentVault() {
     _game.receiveConfirmedSnapshot(
       GameSnapshot(
         organizationId: 'demo_org',
@@ -27,6 +35,8 @@ class DemoAssignmentStore extends StudyRepository
     );
   }
   final DraftStorage? storage;
+  final AttachmentVault _attachmentVault;
+  final _knownAttachments = <String, StudyAttachment>{};
   Future<void> _saveQueue = Future.value();
   String? _saveError;
   bool _saving = false;
@@ -49,8 +59,14 @@ class DemoAssignmentStore extends StudyRepository
   @override
   String? get storageError => _saveError;
 
-  static Future<DemoAssignmentStore> open(DraftStorage storage) async {
-    final store = DemoAssignmentStore(storage: storage);
+  static Future<DemoAssignmentStore> open(
+    DraftStorage storage, {
+    AttachmentVault? attachmentVault,
+  }) async {
+    final store = DemoAssignmentStore(
+      storage: storage,
+      attachmentVault: attachmentVault,
+    );
     try {
       final saved = await storage.read('study-state');
       if (saved != null) store._restore(saved);
@@ -64,6 +80,9 @@ class DemoAssignmentStore extends StudyRepository
   Map<String, dynamic> _serialize() => {
     'schemaVersion': 1,
     'sequence': _sequence,
+    'knownAttachments': _knownAttachments.values
+        .map((f) => f.toJson())
+        .toList(),
     'snapshot': snapshot.toJson(),
     'assignments': [
       for (final a in _assignments)
@@ -87,6 +106,7 @@ class DemoAssignmentStore extends StudyRepository
           'feedback': s.feedback,
           'revisionCount': s.revisionCount,
           'version': s.version,
+          'attachments': s.attachments.map((f) => f.toJson()).toList(),
         },
     ],
     'purchases': [
@@ -112,6 +132,12 @@ class DemoAssignmentStore extends StudyRepository
       throw const FormatException('Invalid demo identity');
     }
     _sequence = saved['sequence'] as int;
+    for (final raw in saved['knownAttachments'] as List? ?? []) {
+      final file = StudyAttachment.fromJson(
+        Map<String, dynamic>.from(raw as Map),
+      );
+      _knownAttachments[file.storagePath] = file;
+    }
     for (final raw in saved['assignments'] as List) {
       final a = Map<String, dynamic>.from(raw as Map);
       _assignments.add(
@@ -144,6 +170,12 @@ class DemoAssignmentStore extends StudyRepository
         feedback: s['feedback'] as String,
         revisionCount: s['revisionCount'] as int,
         version: s['version'] as int? ?? 0,
+        attachments: (s['attachments'] as List? ?? [])
+            .map(
+              (f) =>
+                  StudyAttachment.fromJson(Map<String, dynamic>.from(f as Map)),
+            )
+            .toList(),
       );
     }
     for (final raw in saved['purchases'] as List) {
@@ -270,25 +302,90 @@ class DemoAssignmentStore extends StudyRepository
   );
 
   @override
-  int submit(String id, String answer, {required DemoStudyRole role}) {
+  Future<StudyAttachment> addAttachment(
+    String assignmentId,
+    String name,
+    Uint8List bytes,
+  ) async {
+    assignmentFor(assignmentId);
+    final type = validateStudyFile(name, bytes);
+    final id = studyFileId(bytes);
+    final file = StudyAttachment(
+      id: id,
+      name: name,
+      size: bytes.length,
+      contentType: type,
+      storagePath: '$assignmentId/$id',
+    );
+    await _attachmentVault.put(id, bytes);
+    validateLoadedAttachment(file, await _attachmentVault.get(id));
+    _knownAttachments[file.storagePath] = file;
+    _persist();
+    await flush();
+    return file;
+  }
+
+  @override
+  Future<Uint8List> readAttachment(StudyAttachment file) async {
+    try {
+      final bytes = await _attachmentVault.get(file.id);
+      validateLoadedAttachment(file, bytes);
+      _knownAttachments[file.storagePath] = file;
+      return bytes;
+    } on StudyFailure {
+      rethrow;
+    } catch (_) {
+      throw const StudyFailure('添付ファイルを読み込めませんでした');
+    }
+  }
+
+  @override
+  int submit(
+    String id,
+    String answer, {
+    required DemoStudyRole role,
+    List<StudyAttachment> attachments = const [],
+  }) {
     _requireRole(role, DemoStudyRole.student);
     assignmentFor(id);
     final text = answer.trim();
-    if (text.isEmpty || answer.length > 5000) {
-      throw const StudyFailure('回答を1〜5000文字で入力してください');
+    validateAttachmentList(attachments);
+    if ((text.isEmpty && attachments.isEmpty) || answer.length > 5000) {
+      throw const StudyFailure('回答を入力するか画像・PDFを添付してください（回答は5000文字以内）');
+    }
+    for (final file in attachments) {
+      if (file.storagePath != '$id/${file.id}') {
+        throw const StudyFailure('この課題に添付したファイルを選択してください');
+      }
+      final known = _knownAttachments[file.storagePath];
+      final previouslySubmitted =
+          _submissions[id]?.attachments.any(
+            (f) => jsonEncode(f.toJson()) == jsonEncode(file.toJson()),
+          ) ??
+          false;
+      if (!previouslySubmitted &&
+          (known == null ||
+              jsonEncode(known.toJson()) != jsonEncode(file.toJson()))) {
+        throw const StudyFailure('添付ファイルを選び直してください');
+      }
     }
     final previous = _submissions[id];
     if (previous?.status == AssignmentState.approved) {
       throw const StudyFailure('承認済みの課題は変更できません');
     }
     if (previous?.status == AssignmentState.pendingReview) {
-      if (previous!.answerText == text) return 0;
+      if (previous!.answerText == text &&
+          jsonEncode(previous.attachments.map((f) => f.toJson()).toList()) ==
+              jsonEncode(attachments.map((f) => f.toJson()).toList())) {
+        return 0;
+      }
       throw const StudyFailure('先生の確認待ちです。回答は変更できません');
     }
     final now = _clock();
     _submissions[id] = DemoSubmission(
       assignmentId: id,
       answerText: text,
+      attachments: List.unmodifiable(attachments),
       status: AssignmentState.pendingReview,
       submittedAt: now,
       updatedAt: now,
@@ -331,6 +428,7 @@ class DemoAssignmentStore extends StudyRepository
     _submissions[id] = DemoSubmission(
       assignmentId: id,
       answerText: previous.answerText,
+      attachments: previous.attachments,
       status: approve
           ? AssignmentState.approved
           : AssignmentState.needsRevision,

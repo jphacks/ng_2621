@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+
+import 'package:firebase_storage/firebase_storage.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -23,6 +27,7 @@ class FirebaseStudyRepository extends StudyRepository {
   );
   final FirebaseFirestore _db;
   final FirebaseFunctions _functions;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
   final Map<String, dynamic> identity;
   final DraftStorage _drafts;
   final bool emulator;
@@ -207,6 +212,13 @@ class FirebaseStudyRepository extends StudyRepository {
             feedback: s['feedback'] as String? ?? '',
             revisionCount: s['revisionCount'] as int,
             version: s['version'] as int,
+            attachments: (s['attachments'] as List? ?? [])
+                .map(
+                  (f) => StudyAttachment.fromJson(
+                    Map<String, dynamic>.from(f as Map),
+                  ),
+                )
+                .toList(),
           );
         }),
       );
@@ -323,15 +335,88 @@ class FirebaseStudyRepository extends StudyRepository {
     String id,
     String answer, {
     required DemoStudyRole role,
+    List<StudyAttachment> attachments = const [],
   }) async {
     if (isTeacher || role != DemoStudyRole.student) {
       throw const StudyFailure('生徒としてログインしてください');
     }
+    validateAttachmentList(attachments);
+    if ((answer.trim().isEmpty && attachments.isEmpty) ||
+        answer.length > 5000) {
+      throw const StudyFailure('回答を入力するか画像・PDFを添付してください');
+    }
     return (await _call('submitAssignment', {
           'assignmentId': id,
           'answerText': answer,
+          'attachments': attachments.map((f) => f.toJson()).toList(),
         }))['rewardAmount']
         as int;
+  }
+
+  @override
+  Future<StudyAttachment> addAttachment(
+    String assignmentId,
+    String name,
+    Uint8List bytes,
+  ) async {
+    if (isTeacher) throw const StudyFailure('ファイルを提出できるのは生徒だけです');
+    assignmentFor(assignmentId);
+    final type = validateStudyFile(name, bytes);
+    final hash = studyFileId(bytes);
+    final extension = switch (type) {
+      'application/pdf' => 'pdf',
+      'image/png' => 'png',
+      _ => 'jpg',
+    };
+    final path =
+        'submissionFiles/$organizationId/$classId/$assignmentId/$uid/$hash.$extension';
+    final reference = _storage.ref(path);
+    try {
+      FullMetadata? metadata;
+      try {
+        metadata = await reference.getMetadata();
+      } on FirebaseException catch (error) {
+        if (error.code != 'object-not-found') rethrow;
+      }
+      metadata ??= (await reference.putData(
+        bytes,
+        SettableMetadata(contentType: type, customMetadata: {'sha256': hash}),
+      )).metadata;
+      if (metadata?.size != bytes.length || metadata?.contentType != type) {
+        throw const StudyFailure('アップロードしたファイルを確認できませんでした');
+      }
+      return StudyAttachment(
+        id: hash,
+        name: name,
+        size: bytes.length,
+        contentType: type,
+        storagePath: path,
+        generation: metadata?.generation,
+      );
+    } on FirebaseException catch (error) {
+      throw StudyFailure(
+        'ファイルのアップロードに失敗しました。通信やStorage設定を確認してください（${error.code}）',
+      );
+    }
+  }
+
+  @override
+  Future<Uint8List> readAttachment(StudyAttachment file) async {
+    if (!file.storagePath.startsWith(
+      'submissionFiles/$organizationId/$classId/',
+    )) {
+      throw const StudyFailure('このクラスのファイルではありません');
+    }
+    try {
+      final bytes = await _storage
+          .ref(file.storagePath)
+          .getData(maxStudyFileBytes);
+      if (bytes == null) throw const StudyFailure('ファイルが見つかりません');
+      validateLoadedAttachment(file, bytes);
+      return bytes;
+    } on FirebaseException catch (error) {
+      throw StudyFailure('ファイルを読み込めませんでした（${error.code}）');
+    }
   }
 
   @override

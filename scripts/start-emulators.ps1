@@ -9,7 +9,7 @@ $env:FIREBASE_EMULATORS_PATH = Join-Path $repoPath 'build/firebase-emulators'
 $env:CI = 'true'
 $exportPath = Join-Path $repoPath '.firebase/demo-export'
 $firebaseArgs = @('functions/node_modules/firebase-tools/lib/bin/firebase.js', 'emulators:start', '--project', 'demo-zoostudy', '--export-on-exit', $exportPath)
-if ($NoUi) { $firebaseArgs += @('--only', 'auth,firestore,functions') }
+if ($NoUi) { $firebaseArgs += @('--only', 'auth,firestore,functions,storage') }
 if (Test-Path -LiteralPath $exportPath) { $firebaseArgs += @('--import', $exportPath) }
 & node @firebaseArgs
 exit $LASTEXITCODE

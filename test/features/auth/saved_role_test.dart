@@ -6,15 +6,36 @@ import 'package:zoo_study/features/auth/presentation/saved_role_gate.dart';
 
 import '../study/memory_storage.dart';
 
-Widget app(DraftStorage storage) => MaterialApp(
+Widget app(DraftStorage storage, {bool rememberRole = true}) => MaterialApp(
   home: SavedRoleGate(
     storage: storage,
+    rememberRole: rememberRole,
     teacherPageBuilder: (_) => const Scaffold(body: Text('先生のホーム')),
     studentPageBuilder: (_) => const Scaffold(body: Text('生徒のホーム')),
   ),
 );
 
 void main() {
+  testWidgets(
+    'default startup ignores saved teacher role and allows student testing',
+    (tester) async {
+      final storage = MemoryStorage();
+      await storage.write(SavedRoleGate.storageKey, {'role': 'teacher'});
+      await tester.pumpWidget(app(storage, rememberRole: false));
+      await tester.pumpAndSettle();
+      expect(find.text('先生はこちら'), findsOneWidget);
+      await tester.tap(find.text('生徒はこちら'));
+      await tester.pump();
+      await tester.tap(find.text('確定'));
+      await tester.pumpAndSettle();
+      expect(find.text('生徒のホーム'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(app(storage, rememberRole: false));
+      await tester.pumpAndSettle();
+      expect(find.text('先生はこちら'), findsOneWidget);
+      expect(find.text('生徒はこちら'), findsOneWidget);
+    },
+  );
   for (final role in ['先生', '生徒']) {
     testWidgets('$role resumes after closing the app without asking again', (
       tester,
