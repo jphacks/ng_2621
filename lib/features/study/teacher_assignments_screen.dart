@@ -26,6 +26,7 @@ class DemoAssignmentList extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Chip(label: Text(assignment.subject.label)),
                   Text(
                     assignment.title,
                     style: Theme.of(context).textTheme.titleMedium,
@@ -89,6 +90,7 @@ class _AssignmentFormState extends State<_AssignmentForm> {
   final _description = TextEditingController();
   DateTime _dueAt = DateTime.now().add(const Duration(days: 7));
   bool _published = false;
+  AssignmentSubject? _subject;
 
   @override
   void dispose() {
@@ -108,11 +110,30 @@ class _AssignmentFormState extends State<_AssignmentForm> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
+              DropdownButtonFormField<AssignmentSubject>(
+                decoration: const InputDecoration(
+                  labelText: '科目名',
+                  hintText: '科目を選択してください',
+                  border: OutlineInputBorder(),
+                ),
+                items: AssignmentSubject.values
+                    .map(
+                      (subject) => DropdownMenuItem(
+                        value: subject,
+                        child: Text(subject.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (subject) => setState(() => _subject = subject),
+                validator: (subject) => subject == null ? '科目を選択してください' : null,
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _title,
                 maxLength: 100,
                 decoration: const InputDecoration(
                   labelText: '課題のタイトル',
+                  hintText: '例：教科書 第3章の復習',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) => value == null || value.trim().isEmpty
@@ -127,6 +148,7 @@ class _AssignmentFormState extends State<_AssignmentForm> {
                 maxLines: 8,
                 decoration: const InputDecoration(
                   labelText: '説明・取り組み方',
+                  hintText: '例：教科書の20〜22ページを解き、途中式も書いてください。',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) => value == null || value.trim().isEmpty
@@ -157,6 +179,7 @@ class _AssignmentFormState extends State<_AssignmentForm> {
                   _published = true;
                   widget.store.publish(
                     DemoAssignment(
+                      subject: _subject!,
                       title: _title.text.trim(),
                       description: _description.text.trim(),
                       dueAt: DateTime(
