@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../data/zoo_repository.dart';
+import '../../game/data/mock_game_repository.dart';
+import '../../game/domain/game_repository.dart';
+import '../../game/presentation/game_session.dart';
+import '../../game/presentation/game_status.dart';
 import 'zoo_controller.dart';
 import '../../../core/ui/zoo_ui.dart';
 import 'zoo_chrome.dart';
 import 'zoo_viewport.dart';
 
 class ZooScreen extends StatefulWidget {
-  const ZooScreen({super.key});
+  const ZooScreen({super.key, this.gameRepository});
+
+  final GameRepository? gameRepository;
 
   @override
   State<ZooScreen> createState() => _ZooScreenState();
@@ -17,6 +24,8 @@ class ZooScreen extends StatefulWidget {
 class _ZooScreenState extends State<ZooScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   ZooController? _controller;
+  late final GameSession _game;
+  MockGameRepository? _ownedMock;
   late final Ticker _ticker;
   Duration? _lastFrame;
   bool _failed = false;
@@ -25,9 +34,27 @@ class _ZooScreenState extends State<ZooScreen>
   @override
   void initState() {
     super.initState();
+    _game = GameSession(widget.gameRepository ?? _defaultGameRepository())
+      ..addListener(_onGameChanged);
     WidgetsBinding.instance.addObserver(this);
     _ticker = createTicker(_tick);
     _load();
+  }
+
+  GameRepository _defaultGameRepository() {
+    if (!kDebugMode || !const bool.fromEnvironment('ZOOSTUDY_DEMO')) {
+      return const DisconnectedGameRepository();
+    }
+    const name = String.fromEnvironment(
+      'ZOOSTUDY_DEMO_SCENARIO',
+      defaultValue: 'assigned',
+    );
+    _ownedMock = MockGameRepository(scenario: DemoScenario.values.byName(name));
+    return _ownedMock!;
+  }
+
+  void _onGameChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -68,6 +95,9 @@ class _ZooScreenState extends State<ZooScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
+    _game.removeListener(_onGameChanged);
+    _game.dispose();
+    _ownedMock?.dispose();
     _controller?.dispose();
     super.dispose();
   }
@@ -92,39 +122,15 @@ class _ZooScreenState extends State<ZooScreen>
     showZooSheet(
       context,
       title: '所持金',
-      children: const [
-        Text(
-          '1,000 コイン',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: zooGreen,
-          ),
-        ),
-        SizedBox(height: 12),
-        Text('現在は仮の所持金です。購入や学習による増減はまだ行いません。'),
-      ],
+      children: [GameStatus(session: _game, walletOnly: true)],
     );
   }
 
   void _showStudy() {
     showZooSheet(
       context,
-      title: '勉強',
-      children: const [
-        Icon(Icons.menu_book_rounded, size: 40, color: zooGreen),
-        SizedBox(height: 16),
-        Text(
-          '勉強機能は準備中です',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 12),
-        Text(
-          'ここから勉強を始められるようになります。現在は学習の検出・記録を開始しません。',
-          textAlign: TextAlign.center,
-        ),
-      ],
+      title: '課題',
+      children: [GameStatus(session: _game)],
     );
   }
 
@@ -202,7 +208,18 @@ class _ZooScreenState extends State<ZooScreen>
         bottom: false,
         child: Column(
           children: [
-            ZooHeader(onProfile: _showProfile, onWallet: _showWallet),
+            ZooHeader(
+              onProfile: _showProfile,
+              onWallet: _showWallet,
+              coins: _game.snapshot?.coins,
+              connectionLabel: _game.failed
+                  ? '更新停止'
+                  : switch (_game.repository.connection) {
+                      GameConnection.demo => 'デモ',
+                      GameConnection.connected => '',
+                      GameConnection.disconnected => '未接続',
+                    },
+            ),
             Expanded(
               child: _failed
                   ? Center(

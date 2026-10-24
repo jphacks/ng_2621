@@ -9,10 +9,18 @@ const zooLine = Color(0xFFD8E1CF);
 
 /// Only compact, always-needed information stays on the home screen.
 class ZooHeader extends StatelessWidget {
-  const ZooHeader({super.key, required this.onProfile, required this.onWallet});
+  const ZooHeader({
+    super.key,
+    required this.onProfile,
+    required this.onWallet,
+    this.coins,
+    this.connectionLabel = '未接続',
+  });
 
   final VoidCallback onProfile;
   final VoidCallback onWallet;
+  final int? coins;
+  final String connectionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +116,7 @@ class ZooHeader extends StatelessWidget {
                   child: InkWell(
                     onTap: onWallet,
                     borderRadius: BorderRadius.circular(12),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 10,
@@ -127,7 +135,7 @@ class ZooHeader extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'コイン',
+                                  'コイン${connectionLabel.isEmpty ? '' : '・$connectionLabel'}',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Color(0xFF75613C),
@@ -136,7 +144,12 @@ class ZooHeader extends StatelessWidget {
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
-                                    '1,000',
+                                    coins == null
+                                        ? '—'
+                                        : coins.toString().replaceAllMapped(
+                                            RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+                                            (match) => '${match[1]},',
+                                          ),
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
@@ -227,7 +240,7 @@ class ZooBottomBar extends StatelessWidget {
                     children: [
                       Icon(Icons.menu_book_rounded, size: 25),
                       SizedBox(height: 3),
-                      Text('勉強', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('課題', style: TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),

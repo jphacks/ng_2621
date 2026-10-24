@@ -4,15 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zoo_study/core/ui/zoo_ui.dart';
 import 'package:zoo_study/features/zoo/presentation/zoo_map.dart';
 import 'package:zoo_study/main.dart';
+import 'package:zoo_study/features/game/data/mock_game_repository.dart';
 
 Future<void> loadZoo(WidgetTester tester, {double textScale = 1}) async {
+  final repository = MockGameRepository(scenario: DemoScenario.approved);
+  addTearDown(repository.dispose);
   await tester.runAsync(() async {
     await rootBundle.loadString('assets/zoo/world.json');
     await tester.pumpWidget(
       MediaQuery(
         data: MediaQueryData.fromView(tester.view)
             .copyWith(textScaler: TextScaler.linear(textScale)),
-        child: const ZooStudyApp(),
+        child: ZooStudyApp(gameRepository: repository),
       ),
     );
     await precacheImage(
@@ -38,14 +41,14 @@ void main() {
       expect(find.text('ZooっとStudy'), findsOneWidget);
       expect(find.text('ゲスト'), findsOneWidget);
       expect(find.text('Lv.1'), findsOneWidget);
-      expect(find.text('1,000'), findsOneWidget);
+      expect(find.text('100'), findsOneWidget);
       expect(find.byType(ZooMap), findsOneWidget);
       for (final id in ['rabbit-1', 'fox-1', 'panda-1']) {
         expect(find.byKey(ValueKey(id)), findsOneWidget);
       }
       final viewport = tester.getRect(find.byType(InteractiveViewer));
       expect(tester.getBottomLeft(find.text('ゲスト')).dy, lessThan(viewport.top));
-      for (final label in ['ホーム', '勉強', 'その他']) {
+      for (final label in ['ホーム', '課題', 'その他']) {
         expect(
           tester.getTopLeft(find.text(label)).dy,
           greaterThan(viewport.bottom),
@@ -77,13 +80,14 @@ void main() {
     await tester.tap(find.byTooltip('所持金の詳細'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('1,000 コイン'), findsOneWidget);
+    expect(find.text('100 コイン'), findsOneWidget);
     await closeSheet(tester);
 
-    await tester.tap(find.text('勉強'));
+    await tester.tap(find.text('課題'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('勉強機能は準備中です'), findsOneWidget);
+    expect(find.text('数学プリント No.3'), findsOneWidget);
+    expect(find.text('承認済み'), findsOneWidget);
     await closeSheet(tester);
 
     await tester.tap(find.text('その他'));
