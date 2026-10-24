@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'features/auth/role_selection_screen.dart';
+
 void main() {
   runApp(const ZooStudyApp());
 }
@@ -9,9 +11,14 @@ class ZooStudyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'ZooっとStudy!',
-      home: Scaffold(body: Center(child: Text('ZooっとStudy!'))),
+    return MaterialApp(
+      title: 'ZooっとStudy',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF39785A)),
+        scaffoldBackgroundColor: const Color(0xFFF7F9F3),
+      ),
+      home: const RoleSelectionScreen(),
     );
   }
 }
