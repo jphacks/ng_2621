@@ -1,3 +1,6 @@
+import 'package:flutter/services.dart';
+import 'package:zoo_study/features/zoo/presentation/zoo_map.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -75,11 +78,25 @@ void main() {
   testWidgets(
     'dragging preserves the grab offset and saves only after confirmation',
     (tester) async {
+      final feedback = <String>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'HapticFeedback.vibrate' ||
+            call.method == 'SystemSound.play') {
+          feedback.add(call.method);
+        }
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
       final saves = <FacilityPlacement>[];
       final controller = await openEditor(
         tester,
         save: (p) async => saves.add(p),
       );
+      feedback.clear();
       final terrain = tester.renderObject<RenderBox>(
         find.byKey(const ValueKey('zoo-terrain')),
       );
@@ -87,6 +104,8 @@ void main() {
       final gesture = await tester.startGesture(start);
       await gesture.moveTo(terrain.localToGlobal(const Offset(88, 24)));
       await tester.pump();
+      expect(tester.widget<ZooMap>(find.byType(ZooMap)).previewOpacity, .6);
+      expect(feedback, isEmpty);
       expect(find.text('位置：列 6 ／ 行 2'), findsOneWidget);
       await gesture.moveTo(terrain.localToGlobal(const Offset(88, 40)));
       await tester.pump();
@@ -99,6 +118,10 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('confirm-placement')));
       await frames(tester);
+      expect(
+        feedback,
+        containsAll(['HapticFeedback.vibrate', 'SystemSound.play']),
+      );
       expect(saves.single.left, 5);
       expect(saves.single.top, 2);
       expect(

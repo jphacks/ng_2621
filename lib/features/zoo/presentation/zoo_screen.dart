@@ -1,3 +1,9 @@
+import '../../game/experience/game_experience.dart';
+import '../../game/experience/experience_widgets.dart';
+import '../../shop/domain/shop_catalog.dart';
+import '../../shop/domain/shop_repository.dart';
+import '../../shop/data/shop_catalog_loader.dart';
+import '../../shop/presentation/shop_panel.dart';
 import '../../animals/presentation/animal_encyclopedia.dart';
 import '../../study/student_assignments_screen.dart';
 import '../../study/student_learning_menu.dart';
@@ -61,6 +67,13 @@ class _ZooScreenState extends State<ZooScreen>
   late final LayoutTransactions _layoutTransactions;
   late final ShopPurchaseController _purchases;
   MockGameRepository? _ownedMock;
+  late final GameExperience _experience;
+  ShopCatalog? _experienceCatalog;
+  bool _studyHistoryStarted = false;
+  Future<void> _studyQueue = Future.value();
+  String? _experienceError;
+  String? _welcomedReward;
+  int _reactionRevision = 0;
   late final Ticker _ticker;
   Duration? _lastFrame;
   bool _failed = false;
@@ -69,10 +82,13 @@ class _ZooScreenState extends State<ZooScreen>
   @override
   void initState() {
     super.initState();
+    _experience = GameExperience(storage: widget.assignmentStore?.drafts)
+      ..addListener(_experienceChanged);
     _game = GameSession(widget.gameRepository ?? _defaultGameRepository())
       ..addListener(_onGameChanged);
     _purchases = ShopPurchaseController(_game);
     _layoutTransactions = LayoutTransactions(_game);
+    _loadExperienceCatalog();
     WidgetsBinding.instance.addObserver(this);
     _ticker = createTicker(_tick);
     _load();
@@ -101,6 +117,14 @@ class _ZooScreenState extends State<ZooScreen>
     if (!mounted) return;
     final snapshot = _game.snapshot;
     if (snapshot != null) {
+      _experience
+          .receive(snapshot)
+          .then((_) {
+            if (!mounted || _studyHistoryStarted || !_experience.ready) return;
+            _studyHistoryStarted = true;
+            _refreshStudyRewards();
+          })
+          .catchError((Object _) {});
       _controller?.synchronizeLayout(
         snapshot.layout,
         preserveFacilityPlacements: widget.placementRepository != null,
@@ -162,11 +186,218 @@ class _ZooScreenState extends State<ZooScreen>
     _ticker.dispose();
     _purchases.dispose();
     _layoutTransactions.dispose();
+    _experience.removeListener(_experienceChanged);
+    _experience.dispose();
     _game.removeListener(_onGameChanged);
     _game.dispose();
     _ownedMock?.dispose();
     _controller?.dispose();
     super.dispose();
+  }
+
+  void _experienceChanged() {
+    if (!mounted) return;
+    final id = _experience.reward?.transactionId;
+    if (id != null && id != _welcomedReward) {
+      _welcomedReward = id;
+      _reactionRevision++;
+    }
+    setState(() {});
+  }
+
+  Future<void> _loadExperienceCatalog() async {
+    try {
+      final repository = _game.repository;
+      final catalog = await (repository is ShopRepository
+          ? (repository as ShopRepository).loadCatalog()
+          : loadShopCatalog());
+      if (mounted) setState(() => _experienceCatalog = catalog);
+    } catch (_) {
+      if (mounted) setState(() => _experienceError = '商品を読み込めませんでした');
+    }
+  }
+
+  Future<void> _refreshStudyRewards() {
+    _studyQueue = _studyQueue.then((_) async {
+      final store = widget.assignmentStore;
+      final snapshot = _game.snapshot;
+      if (store == null || snapshot == null || widget.isTeacher || !mounted) {
+        return;
+      }
+      try {
+        final records = await store.loadStudyRecords();
+        if (!mounted) return;
+        await _experience.receiveStudyHistory([
+          for (final record in records)
+            if (record.rewardCoins > 0 &&
+                record.studentId == snapshot.studentId)
+              ConfirmedGameReward(
+                organizationId: snapshot.organizationId,
+                studentId: record.studentId,
+                transactionId: 'study:${record.id}',
+                amount: record.rewardCoins,
+                source: '自習',
+              ),
+        ]);
+        if (mounted) setState(() => _experienceError = null);
+      } catch (_) {
+        if (mounted) {
+          setState(() => _experienceError = 'ごほうび履歴を確認できませんでした。次回再確認します');
+        }
+      }
+    });
+    return _studyQueue;
+  }
+
+  Future<void> _showGoalPicker() async {
+    if (!_experience.ready && _game.snapshot != null) {
+      await _experience.receive(_game.snapshot!);
+    }
+    if (!mounted) return;
+    final catalog = _experienceCatalog;
+    final state = _game.snapshot;
+    showZooSheet(
+      context,
+      title: '目標の動物',
+      children: [
+        if (_experienceError != null) Text(_experienceError!),
+        if (_experience.persistenceError != null)
+          Text(_experience.persistenceError!),
+        if (catalog == null)
+          OutlinedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _loadExperienceCatalog().then((_) {
+                if (mounted) _showGoalPicker();
+              });
+            },
+            child: const Text('商品を再読み込み'),
+          ),
+        if (state == null) const Text('ゲームデータへの接続を確認してください'),
+        if (state != null && !_experience.ready)
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showGoalPicker();
+            },
+            child: const Text('ゲーム設定を再読み込み'),
+          ),
+        if (catalog != null && state != null && _experience.ready) ...[
+          const Text('図鑑の目標を選びましょう。選択だけではコインを消費しません。'),
+          for (final item in catalog.items.where(
+            (i) => i.kind == ShopItemKind.animal,
+          ))
+            SpriteTile(
+              leading: AnimalArt(animalId: item.targetId),
+              title: Text(item.name),
+              subtitle: Text(
+                '${item.priceLabel}・${unlockDescription(item, catalog, state)}',
+              ),
+              trailing: _experience.goalId == item.targetId
+                  ? const ZooUiSprite(part: ZooUiPart.check, scale: 2)
+                  : null,
+              enabled: !item.isOwned(state),
+              onTap: item.isOwned(state)
+                  ? null
+                  : () async {
+                      await _experience.setGoal(item.targetId);
+                      if (mounted) Navigator.pop(context);
+                    },
+            ),
+          TextButton(
+            onPressed: () async {
+              await _experience.setGoal(null);
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('目標を解除'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _showResearch() {
+    final catalog = _experienceCatalog;
+    final controller = _controller;
+    if (catalog == null || controller == null) {
+      _showGoalPicker();
+      return;
+    }
+    final targets = controller.world.animals
+        .expand((animal) => animal.evolutionIds)
+        .toSet();
+    showZooSheet(
+      context,
+      title: '研究所',
+      children: [
+        const Text('進化しても元の動物は残ります。解放条件と価格を確認できます。'),
+        ListenableBuilder(
+          listenable: _game,
+          builder: (context, _) {
+            final state = _game.snapshot;
+            if (state == null) return const Text('ゲームデータに接続してください');
+            if (!state.ownedFacilityIds.contains('laboratory')) {
+              return Column(
+                children: [
+                  const Text('研究所を購入・配置すると利用できます'),
+                  OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showShop(query: '研究所');
+                    },
+                    child: const Text('研究所をショップで見る'),
+                  ),
+                ],
+              );
+            }
+            if (!state.layout.facilities.containsKey('laboratory')) {
+              return OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _startPlacement('laboratory');
+                },
+                child: const Text('研究所を配置する'),
+              );
+            }
+            return Column(
+              children: [
+                for (final item in catalog.items.where(
+                  (i) => targets.contains(i.targetId),
+                ))
+                  SpriteTile(
+                    leading: AnimalArt(animalId: item.targetId),
+                    title: Text(item.name),
+                    subtitle: Text(
+                      '${item.priceLabel}・${unlockDescription(item, catalog, state)}${item.isOwned(state) ? '・解放済み' : ''}',
+                    ),
+                    enabled: !item.isOwned(state),
+                    onTap: item.isOwned(state)
+                        ? null
+                        : () {
+                            Navigator.pop(context);
+                            showZooSheet(
+                              this.context,
+                              title: item.name,
+                              children: [
+                                ShopPanel(
+                                  session: _game,
+                                  purchases: _purchases,
+                                  item: item,
+                                  catalog: catalog,
+                                  onViewZoo: () => Navigator.pop(this.context),
+                                ),
+                              ],
+                            );
+                          },
+                  ),
+                if (!catalog.items.any((i) => targets.contains(i.targetId)))
+                  const Text('研究対象はまだ登録されていません'),
+              ],
+            );
+          },
+        ),
+      ],
+    );
   }
 
   void _showProfile() {
@@ -213,7 +444,7 @@ class _ZooScreenState extends State<ZooScreen>
     );
   }
 
-  void _openLearningFeature(bool mode) {
+  Future<void> _openLearningFeature(bool mode) async {
     Navigator.pop(context);
     final store = widget.assignmentStore;
     if (store == null) {
@@ -221,7 +452,8 @@ class _ZooScreenState extends State<ZooScreen>
           .showSnackBar(const SnackBar(content: Text('学習データに接続してください')));
       return;
     }
-    Navigator.push(
+    // History is read in the background; cosmetic effects must not delay study.
+    await Navigator.push(
       context,
       MaterialPageRoute<void>(
         builder: (_) => mode
@@ -229,6 +461,7 @@ class _ZooScreenState extends State<ZooScreen>
             : StudyRecordsScreen(store: store),
       ),
     );
+    if (mounted) await _refreshStudyRewards();
   }
 
   void _showAssignments() {
@@ -267,6 +500,10 @@ class _ZooScreenState extends State<ZooScreen>
       builder: (_) => AnimalEncyclopedia(
         animals: controller.world.animals,
         ownedIds: controller.ownedAnimals,
+        onChooseGoal: () {
+          Navigator.pop(context);
+          _showGoalPicker();
+        },
         onSelect: (animal) {
           Navigator.pop(context);
           _showAnimal(animal);
@@ -304,6 +541,7 @@ class _ZooScreenState extends State<ZooScreen>
 
   void _showAnimal(AnimalDefinition animal) {
     if (_controller?.ownedAnimals.contains(animal.id) != true) return;
+    setState(() => _reactionRevision++);
     final world = _controller?.world;
     showZooSheet(
       context,
@@ -353,10 +591,11 @@ class _ZooScreenState extends State<ZooScreen>
     );
   }
 
-  void _showShop() {
+  void _showShop({String query = ''}) {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => ShopScreen(
+          initialQuery: query,
           session: _game,
           purchases: _purchases,
           onPlaceFacility: _startPlacement,
@@ -543,6 +782,25 @@ class _ZooScreenState extends State<ZooScreen>
           },
         ),
         SpriteTile(
+          title: const Text('目標の動物'),
+          leading: const ZooUiSprite(part: ZooUiPart.check, scale: 2),
+          onTap: () {
+            Navigator.pop(context);
+            _showGoalPicker();
+          },
+        ),
+        SpriteTile(
+          title: const Text('研究所'),
+          leading: const ZooBuildingSprite(
+            part: ZooBuildingPart.laboratory,
+            scale: 1,
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            _showResearch();
+          },
+        ),
+        SpriteTile(
           leading: const Icon(Icons.badge_outlined),
           title: Text(widget.isTeacher ? '先生として利用中' : '生徒として利用中'),
         ),
@@ -565,57 +823,97 @@ class _ZooScreenState extends State<ZooScreen>
     return PixelUiTheme(
       child: Scaffold(
         backgroundColor: zooPaper,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              ZooHeader(
-                onProfile: _showProfile,
-                onWallet: _showWallet,
-                coins: _game.snapshot?.coins,
-                connectionLabel: _game.failed
-                    ? '更新停止'
-                    : switch (_game.repository.connection) {
-                        GameConnection.demo => 'デモ',
-                        GameConnection.connected => '',
-                        GameConnection.disconnected => '未接続',
-                      },
-              ),
-              GameNoticeBanner(session: _game, onDetails: _showWallet),
-              Expanded(
-                child: _failed
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('動物園データを読み込めませんでした'),
-                            TextButton(
-                              onPressed: _load,
-                              child: const Text('再読み込み'),
-                            ),
-                          ],
+        body: Stack(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  ZooHeader(
+                    onProfile: _showProfile,
+                    onWallet: _showWallet,
+                    coins: _game.snapshot?.coins,
+                    connectionLabel: _game.failed
+                        ? '更新停止'
+                        : switch (_game.repository.connection) {
+                            GameConnection.demo => 'デモ',
+                            GameConnection.connected => '',
+                            GameConnection.disconnected => '未接続',
+                          },
+                  ),
+                  GameNoticeBanner(session: _game, onDetails: _showWallet),
+                  if (_experienceCatalog != null &&
+                      _game.snapshot != null &&
+                      _experience.goalId != null)
+                    ..._experienceCatalog!.items
+                        .where(
+                          (item) =>
+                              item.kind == ShopItemKind.animal &&
+                              item.targetId == _experience.goalId,
+                        )
+                        .map(
+                          (item) => GoalBanner(
+                            item: item,
+                            catalog: _experienceCatalog!,
+                            state: _game.snapshot!,
+                            onChange: _showGoalPicker,
+                            onShop: () => _showShop(query: item.name),
+                          ),
                         ),
-                      )
-                    : controller == null
-                    ? const Center(
-                        child: CircularProgressIndicator(color: zooGreen),
-                      )
-                    : ZooViewport(
-                        key: _viewportKey,
-                        controller: controller,
-                        onAnimals: _showAnimals,
-                        onShop: _showShop,
-                        onAnimalSelected: _showAnimal,
-                      ),
+                  Expanded(
+                    child: _failed
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('動物園データを読み込めませんでした'),
+                                TextButton(
+                                  onPressed: _load,
+                                  child: const Text('再読み込み'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : controller == null
+                        ? const Center(
+                            child: CircularProgressIndicator(color: zooGreen),
+                          )
+                        : ZooViewport(
+                            key: _viewportKey,
+                            controller: controller,
+                            onAnimals: _showAnimals,
+                            onShop: _showShop,
+                            reactionRevision: _reactionRevision,
+                            onAnimalSelected: _showAnimal,
+                          ),
+                  ),
+                  ZooBottomBar(
+                    onHome: () => _viewportKey.currentState?.resetView(),
+                    onStudy: _showStudy,
+                    studyLabel: widget.isTeacher ? '課題' : '学習',
+                    onMore: _showMore,
+                  ),
+                ],
               ),
-              ZooBottomBar(
-                onHome: () => _viewportKey.currentState?.resetView(),
-                onStudy: _showStudy,
-                studyLabel: widget.isTeacher ? '課題' : '学習',
-                onMore: _showMore,
+            ),
+            if (!widget.isTeacher &&
+                _experience.reward != null &&
+                ModalRoute.of(context)?.isCurrent != false)
+              Positioned.fill(
+                child: RewardCelebration(
+                  reward: _experience.reward!,
+                  onClose: () => _experience.dismissReward(
+                    _experience.reward!.transactionId,
+                  ),
+                  onShop: () {
+                    _experience.dismissReward(
+                      _experience.reward!.transactionId,
+                    );
+                    _showShop();
+                  },
+                ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

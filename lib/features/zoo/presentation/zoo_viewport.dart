@@ -13,8 +13,10 @@ class ZooViewport extends StatefulWidget {
     required this.onAnimals,
     this.onAnimalSelected,
     this.onShop,
+    this.reactionRevision = 0,
   });
 
+  final int reactionRevision;
   final ZooController controller;
   final VoidCallback onAnimals;
   final VoidCallback? onShop;
@@ -77,6 +79,7 @@ class ZooViewportState extends State<ZooViewport> {
                     child: SizedBox.expand(
                       child: ZooMap(
                         controller: widget.controller,
+                        reactionRevision: widget.reactionRevision,
                         onAnimalSelected: widget.onAnimalSelected,
                       ),
                     ),

@@ -20,7 +20,9 @@ class ShopScreen extends StatefulWidget {
     this.purchases,
     this.onPlaceFacility,
     this.onCreateEnclosure,
+    this.initialQuery = '',
   });
+  final String initialQuery;
   final GameSession session;
   final ShopPurchaseController? purchases;
   final ValueChanged<String>? onPlaceFacility;
@@ -33,7 +35,7 @@ class ShopScreen extends StatefulWidget {
 class _ShopScreenState extends State<ShopScreen> {
   late final _purchases =
       widget.purchases ?? ShopPurchaseController(widget.session);
-  final _search = TextEditingController();
+  late final _search = TextEditingController(text: widget.initialQuery);
   final _scroll = {
     for (final kind in ShopItemKind.values) kind: ScrollController(),
   };

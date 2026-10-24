@@ -13,7 +13,9 @@ class AnimalEncyclopedia extends StatefulWidget {
     required this.animals,
     required this.ownedIds,
     required this.onSelect,
+    this.onChooseGoal,
   });
+  final VoidCallback? onChooseGoal;
   final List<AnimalDefinition> animals;
   final Set<String> ownedIds;
   final ValueChanged<AnimalDefinition> onSelect;
@@ -49,6 +51,15 @@ class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    if (widget.onChooseGoal != null)
+                      IconButton(
+                        tooltip: '目標の動物を選ぶ',
+                        onPressed: widget.onChooseGoal,
+                        icon: const ZooUiSprite(
+                          part: ZooUiPart.check,
+                          scale: 2,
+                        ),
+                      ),
                     IconButton(
                       tooltip: '閉じる',
                       onPressed: () => Navigator.pop(context),

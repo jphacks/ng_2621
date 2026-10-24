@@ -1,3 +1,5 @@
+import '../../game/experience/game_feedback.dart';
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -169,7 +171,7 @@ class _EnclosureEditorState extends State<EnclosureEditor> {
   late int _left = widget.previous?.left ?? 0, _top = widget.previous?.top ?? 0;
   late int _width = widget.previous?.width ?? 4,
       _height = widget.previous?.height ?? 4;
-  bool _confirming = false;
+  bool _confirming = false, _dragging = false;
   Enclosure get _draft => Enclosure(
     id: _id,
     left: _left,
@@ -240,7 +242,10 @@ class _EnclosureEditorState extends State<EnclosureEditor> {
         height: _height,
       ),
     );
-    if (mounted && ok) Navigator.pop(context);
+    if (mounted && ok) {
+      GameFeedback.placementAccepted();
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -315,6 +320,10 @@ class _EnclosureEditorState extends State<EnclosureEditor> {
                           child: ZooMap(
                             controller: widget.controller,
                             enclosurePreview: _draft,
+                            previewOpacity: _dragging ? .6 : 1,
+                            onDraggingChanged: (value) {
+                              if (mounted) setState(() => _dragging = value);
+                            },
                             draggableTileArea: Rect.fromLTWH(
                               _left.toDouble(),
                               _top.toDouble(),

@@ -1,3 +1,5 @@
+import '../../game/experience/experience_widgets.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -24,6 +26,10 @@ class ZooMap extends StatelessWidget {
     this.overlay,
     this.enclosurePreview,
     this.previewValid = true,
+    this.reactionRevision = 0,
+    this.previewOpacity = 1,
+    this.previewFacilityId,
+    this.onDraggingChanged,
   });
 
   final ZooController controller;
@@ -34,6 +40,10 @@ class ZooMap extends StatelessWidget {
   final Widget? overlay;
   final Enclosure? enclosurePreview;
   final bool previewValid;
+  final int reactionRevision;
+  final double previewOpacity;
+  final String? previewFacilityId;
+  final ValueChanged<bool>? onDraggingChanged;
   Map<String, Enclosure> get _drawnEnclosures {
     final result = {...controller.layout.enclosures};
     final preview = enclosurePreview;
@@ -142,6 +152,10 @@ class ZooMap extends StatelessWidget {
                                           controller.ownedFacilities,
                                           image,
                                           extraImage: extraImage,
+                                          previewOpacity: previewOpacity,
+                                          previewFacilityId: previewFacilityId,
+                                          previewEnclosureId:
+                                              enclosurePreview?.id,
                                           enclosures: _drawnEnclosures,
                                           placements:
                                               placementsOverride ??
@@ -187,15 +201,22 @@ class ZooMap extends StatelessWidget {
                                                       facility.spriteId,
                                                     ) !=
                                                     null
-                                                ? FittedBox(
-                                                    child: ZooBuildingSprite(
-                                                      part:
-                                                          ZooBuildingPart.forId(
-                                                            facility.spriteId,
-                                                          )!,
-                                                      scale: 1,
-                                                      semanticLabel:
-                                                          facility.displayName,
+                                                ? Opacity(
+                                                    opacity:
+                                                        facility.id ==
+                                                            previewFacilityId
+                                                        ? previewOpacity
+                                                        : 1,
+                                                    child: FittedBox(
+                                                      child: ZooBuildingSprite(
+                                                        part:
+                                                            ZooBuildingPart.forId(
+                                                              facility.spriteId,
+                                                            )!,
+                                                        scale: 1,
+                                                        semanticLabel: facility
+                                                            .displayName,
+                                                      ),
                                                     ),
                                                   )
                                                 : const SizedBox.shrink(),
@@ -228,8 +249,11 @@ class ZooMap extends StatelessWidget {
                                       : () => onAnimalSelected!(
                                           animal.definition,
                                         ),
-                                  child: _AnimalSprite(
-                                    definition: animal.definition,
+                                  child: AnimalReaction(
+                                    revision: reactionRevision,
+                                    child: _AnimalSprite(
+                                      definition: animal.definition,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -245,6 +269,7 @@ class ZooMap extends StatelessWidget {
                                             as RenderBox)
                                         .globalToLocal(global),
                                 onMove: onTileDragged!,
+                                onDraggingChanged: onDraggingChanged,
                               ),
                             if (enclosurePreview != null)
                               Positioned.fill(
@@ -374,12 +399,14 @@ class _MapDragTarget extends StatefulWidget {
     required this.rows,
     required this.toMap,
     required this.onMove,
+    this.onDraggingChanged,
   });
   final Rect area;
   final double tile;
   final int columns, rows;
   final Offset Function(Offset) toMap;
   final void Function(int, int) onMove;
+  final ValueChanged<bool>? onDraggingChanged;
   @override
   State<_MapDragTarget> createState() => _MapDragTargetState();
 }
@@ -398,12 +425,15 @@ class _MapDragTargetState extends State<_MapDragTarget> {
         key: const ValueKey('map-placement-drag'),
         dragStartBehavior: DragStartBehavior.down,
         behavior: HitTestBehavior.opaque,
-        onPanStart: (details) => _grabOffset =
-            widget.toMap(details.globalPosition) -
-            Offset(
-              widget.area.left * widget.tile,
-              widget.area.top * widget.tile,
-            ),
+        onPanStart: (details) {
+          _grabOffset =
+              widget.toMap(details.globalPosition) -
+              Offset(
+                widget.area.left * widget.tile,
+                widget.area.top * widget.tile,
+              );
+          widget.onDraggingChanged?.call(true);
+        },
         onPanUpdate: (details) {
           final grab = _grabOffset;
           if (grab == null) return;
@@ -420,8 +450,14 @@ class _MapDragTargetState extends State<_MapDragTarget> {
             ),
           );
         },
-        onPanEnd: (_) => _grabOffset = null,
-        onPanCancel: () => _grabOffset = null,
+        onPanEnd: (_) {
+          _grabOffset = null;
+          widget.onDraggingChanged?.call(false);
+        },
+        onPanCancel: () {
+          _grabOffset = null;
+          widget.onDraggingChanged?.call(false);
+        },
       ),
     ),
   );

@@ -1,3 +1,5 @@
+import '../../game/experience/game_feedback.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_ui.dart';
@@ -29,7 +31,7 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
   late FacilityPlacement _draft = widget.controller.positionOf(
     widget.definition,
   );
-  bool _saving = false;
+  bool _saving = false, _dragging = false;
   String? _error;
 
   void _select(int x, int y) {
@@ -52,6 +54,7 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
     });
     try {
       await widget.onSave(_draft);
+      GameFeedback.placementAccepted();
       if (mounted) {
         setState(() => _saving = false);
         Navigator.pop(context);
@@ -132,6 +135,13 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
                               boundaryMargin: const EdgeInsets.all(80),
                               child: ZooMap(
                                 controller: widget.controller,
+                                previewFacilityId: widget.definition.id,
+                                previewOpacity: _dragging ? .6 : 1,
+                                onDraggingChanged: (value) {
+                                  if (mounted) {
+                                    setState(() => _dragging = value);
+                                  }
+                                },
                                 onTileSelected: _saving ? null : _select,
                                 draggableTileArea: Rect.fromLTWH(
                                   _draft.left.toDouble(),
