@@ -14,6 +14,8 @@ import '../../../core/ui/zoo_ui.dart';
 import 'zoo_chrome.dart';
 import 'zoo_viewport.dart';
 import '../../shop/presentation/shop_panel.dart';
+import '../../shop/presentation/shop_purchase_controller.dart';
+import '../domain/zoo_world.dart';
 
 class ZooScreen extends StatefulWidget {
   const ZooScreen({super.key, this.gameRepository});
@@ -28,6 +30,7 @@ class _ZooScreenState extends State<ZooScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   ZooController? _controller;
   late final GameSession _game;
+  late final ShopPurchaseController _purchases;
   MockGameRepository? _ownedMock;
   late final Ticker _ticker;
   Duration? _lastFrame;
@@ -39,6 +42,7 @@ class _ZooScreenState extends State<ZooScreen>
     super.initState();
     _game = GameSession(widget.gameRepository ?? _defaultGameRepository())
       ..addListener(_onGameChanged);
+    _purchases = ShopPurchaseController(_game);
     WidgetsBinding.instance.addObserver(this);
     _ticker = createTicker(_tick);
     _load();
@@ -110,6 +114,7 @@ class _ZooScreenState extends State<ZooScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
+    _purchases.dispose();
     _game.removeListener(_onGameChanged);
     _game.dispose();
     _ownedMock?.dispose();
@@ -156,22 +161,91 @@ class _ZooScreenState extends State<ZooScreen>
       context,
       title: '動物一覧',
       children: [
-        const Text('いま動物園にいる仲間たち', style: TextStyle(color: zooGreen)),
-        const SizedBox(height: 8),
-        for (final animal in controller.animals)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: Color(animal.definition.placeholderColor),
-              child: const Icon(Icons.pets, color: zooInk),
-            ),
-            title: Text(animal.definition.name),
-            subtitle: const Text('動物園で暮らしています'),
+        AnimatedBuilder(
+          animation: _game,
+          builder: (context, child) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('いま動物園にいる仲間たち', style: TextStyle(color: zooGreen)),
+              const SizedBox(height: 8),
+              for (final animal in controller.animals)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Color(animal.definition.placeholderColor),
+                    child: const Icon(Icons.pets, color: zooInk),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAnimal(animal.definition);
+                  },
+                  trailing: const Icon(Icons.chevron_right),
+                  title: Text(animal.definition.name),
+                  subtitle: const Text('動物園で暮らしています'),
+                ),
+              const SizedBox(height: 8),
+              if (controller.animals.isEmpty)
+                const Text('まだ動物はいません。ショップから仲間を迎えましょう。'),
+              const Text('動物の見た目は仮素材です。', style: TextStyle(fontSize: 12)),
+            ],
           ),
-        const SizedBox(height: 8),
-        if (controller.animals.isEmpty)
-          const Text('まだ動物はいません。ショップから仲間を迎えましょう。'),
-        const Text('動物の見た目は仮素材です。', style: TextStyle(fontSize: 12)),
+        ),
+      ],
+    );
+  }
+
+  void _showAnimal(AnimalDefinition animal) {
+    final world = _controller?.world;
+    showZooSheet(
+      context,
+      title: animal.name,
+      children: [
+        const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.pets),
+          title: Text('動物園で暮らしています'),
+          subtitle: Text('解放済み'),
+        ),
+        if (animal.evolutionIds.isNotEmpty) ...[
+          const Text('進化先', style: TextStyle(fontWeight: FontWeight.bold)),
+          for (final id in animal.evolutionIds)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                world?.animals.where((a) => a.id == id).firstOrNull?.name ?? id,
+              ),
+              subtitle: Text(
+                _game.snapshot?.ownedAnimalIds.contains(id) == true
+                    ? '解放済み'
+                    : '未解放',
+              ),
+            ),
+          const Text('進化しても元の動物は残ります。'),
+        ],
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.pop(context);
+            _showShop();
+          },
+          icon: const Icon(Icons.storefront_outlined),
+          label: const Text('ショップを見る'),
+        ),
+      ],
+    );
+  }
+
+  void _showShop() {
+    showZooSheet(
+      context,
+      title: 'ショップ',
+      children: [
+        ShopPanel(
+          session: _game,
+          purchases: _purchases,
+          onViewZoo: () => Navigator.pop(context),
+        ),
       ],
     );
   }
@@ -265,11 +339,7 @@ class _ZooScreenState extends State<ZooScreen>
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             Navigator.pop(context);
-            showZooSheet(
-              context,
-              title: 'ショップ',
-              children: [ShopPanel(session: _game)],
-            );
+            _showShop();
           },
         ),
       ],
@@ -320,6 +390,7 @@ class _ZooScreenState extends State<ZooScreen>
                       key: _viewportKey,
                       controller: controller,
                       onAnimals: _showAnimals,
+                      onAnimalSelected: _showAnimal,
                     ),
             ),
             ZooBottomBar(

@@ -6,9 +6,10 @@ import '../domain/zoo_world.dart';
 import 'zoo_controller.dart';
 
 class ZooMap extends StatelessWidget {
-  const ZooMap({super.key, required this.controller});
+  const ZooMap({super.key, required this.controller, this.onAnimalSelected});
 
   final ZooController controller;
+  final ValueChanged<AnimalDefinition>? onAnimalSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -33,47 +34,82 @@ class ZooMap extends StatelessWidget {
               child: SizedBox(
                 width: width,
                 height: height,
-                child: ClipRect(
-                  child: AnimatedBuilder(
-                    animation: controller,
-                    child: ValueListenableBuilder<int>(
-                      valueListenable: controller.sceneryRevision,
-                      builder: (context, revision, child) => RepaintBoundary(
-                        key: const ValueKey('zoo-terrain'),
-                        child: CustomPaint(
-                          size: Size(width, height),
-                          painter: _TilePainter(
-                            world,
-                            controller.animals
-                                .map((a) => a.definition)
-                                .toList(),
-                            controller.ownedFacilities,
-                          ),
+                child: Builder(
+                  builder: (mapContext) => GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: onAnimalSelected == null
+                        ? null
+                        : (details) {
+                            final box =
+                                mapContext.findRenderObject()! as RenderBox;
+                            AnimalDefinition? nearest;
+                            var distance = 24.0;
+                            for (final animal in controller.animals) {
+                              final center = box.localToGlobal(
+                                Offset(
+                                  animal.position.x * world.tileSize,
+                                  animal.position.y * world.tileSize,
+                                ),
+                              );
+                              final candidate =
+                                  (center - details.globalPosition).distance;
+                              if (candidate <= distance) {
+                                distance = candidate;
+                                nearest = animal.definition;
+                              }
+                            }
+                            if (nearest != null) onAnimalSelected!(nearest);
+                          },
+                    child: ClipRect(
+                      child: AnimatedBuilder(
+                        animation: controller,
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: controller.sceneryRevision,
+                          builder: (context, revision, child) =>
+                              RepaintBoundary(
+                                key: const ValueKey('zoo-terrain'),
+                                child: CustomPaint(
+                                  size: Size(width, height),
+                                  painter: _TilePainter(
+                                    world,
+                                    controller.animals
+                                        .map((a) => a.definition)
+                                        .toList(),
+                                    controller.ownedFacilities,
+                                  ),
+                                ),
+                              ),
+                        ),
+                        builder: (context, background) => Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            background!,
+                            for (final animal in controller.animals)
+                              Positioned(
+                                key: ValueKey(animal.instanceId),
+                                left: (animal.position.x * world.tileSize - 8)
+                                    .roundToDouble(),
+                                top: (animal.position.y * world.tileSize - 8)
+                                    .roundToDouble(),
+                                width: 16,
+                                height: 16,
+                                child: Semantics(
+                                  label: animal.definition.name,
+                                  image: true,
+                                  button: onAnimalSelected != null,
+                                  onTap: onAnimalSelected == null
+                                      ? null
+                                      : () => onAnimalSelected!(
+                                          animal.definition,
+                                        ),
+                                  child: _AnimalSprite(
+                                    definition: animal.definition,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                    ),
-                    builder: (context, background) => Stack(
-                      clipBehavior: Clip.hardEdge,
-                      children: [
-                        background!,
-                        for (final animal in controller.animals)
-                          Positioned(
-                            key: ValueKey(animal.instanceId),
-                            left: (animal.position.x * world.tileSize - 8)
-                                .roundToDouble(),
-                            top: (animal.position.y * world.tileSize - 8)
-                                .roundToDouble(),
-                            width: 16,
-                            height: 16,
-                            child: Semantics(
-                              label: animal.definition.name,
-                              image: true,
-                              child: _AnimalSprite(
-                                definition: animal.definition,
-                              ),
-                            ),
-                          ),
-                      ],
                     ),
                   ),
                 ),

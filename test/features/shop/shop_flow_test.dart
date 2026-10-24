@@ -21,6 +21,7 @@ ShopCatalog fixture() => ShopCatalog.fromJson(
 Future<void> transition(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 Future<void> menu(WidgetTester tester, String name) async {
@@ -72,7 +73,9 @@ void main() {
       await tester.pump();
       await menu(tester, 'ショップ');
       await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
-      await tester.pump();
+      await transition(tester);
+      await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
+      await transition(tester);
       expect(find.text('ウサギを購入しました'), findsOneWidget);
       expect(find.text('0 コイン'), findsOneWidget);
       expect(
@@ -81,11 +84,18 @@ void main() {
             .onPressed,
         isNull,
       );
-      await tester.tap(find.byTooltip('閉じる'));
+      await tester.tap(find.text('動物園を見る'));
       await transition(tester);
       expect(find.byKey(const ValueKey('rabbit-1')), findsOneWidget);
       expect(find.byKey(const ValueKey('fox-1')), findsNothing);
       expect(find.text('1匹'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('rabbit-1')));
+      await transition(tester);
+      expect(find.text('うさぎ'), findsOneWidget);
+      expect(find.text('動物園で暮らしています'), findsOneWidget);
+      expect(find.text('解放済み'), findsOneWidget);
+      await tester.tap(find.byTooltip('閉じる'));
+      await transition(tester);
       await tester.pump(const Duration(seconds: 2));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -107,10 +117,12 @@ void main() {
     );
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
-    await tester.pump();
-    expect(find.textContaining('再試行'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
-    await tester.pump();
+    await transition(tester);
+    await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
+    await transition(tester);
+    expect(find.byKey(const ValueKey('retry-purchase')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('retry-purchase')));
+    await transition(tester);
     expect(repository.ids, hasLength(2));
     expect(repository.ids.first, repository.ids.last);
     expect(find.text('ウサギを購入しました'), findsOneWidget);

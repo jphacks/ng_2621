@@ -4,16 +4,19 @@ import '../../../core/ui/zoo_ui.dart';
 import 'zoo_chrome.dart';
 import 'zoo_controller.dart';
 import 'zoo_map.dart';
+import '../domain/zoo_world.dart';
 
 class ZooViewport extends StatefulWidget {
   const ZooViewport({
     super.key,
     required this.controller,
     required this.onAnimals,
+    this.onAnimalSelected,
   });
 
   final ZooController controller;
   final VoidCallback onAnimals;
+  final ValueChanged<AnimalDefinition>? onAnimalSelected;
 
   @override
   State<ZooViewport> createState() => ZooViewportState();
@@ -70,7 +73,10 @@ class ZooViewportState extends State<ZooViewport> {
                       }
                     },
                     child: SizedBox.expand(
-                      child: ZooMap(controller: widget.controller),
+                      child: ZooMap(
+                        controller: widget.controller,
+                        onAnimalSelected: widget.onAnimalSelected,
+                      ),
                     ),
                   ),
                 ),

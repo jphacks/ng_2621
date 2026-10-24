@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 import '../../game/domain/game_repository.dart';
@@ -7,10 +5,18 @@ import '../../game/presentation/game_session.dart';
 import '../data/shop_catalog_loader.dart';
 import '../domain/shop_catalog.dart';
 import '../domain/shop_repository.dart';
+import 'shop_purchase_controller.dart';
 
 class ShopPanel extends StatefulWidget {
-  const ShopPanel({super.key, required this.session});
+  const ShopPanel({
+    super.key,
+    required this.session,
+    this.purchases,
+    this.onViewZoo,
+  });
   final GameSession session;
+  final ShopPurchaseController? purchases;
+  final VoidCallback? onViewZoo;
   @override
   State<ShopPanel> createState() => _ShopPanelState();
 }
@@ -18,14 +24,38 @@ class ShopPanel extends StatefulWidget {
 class _ShopPanelState extends State<ShopPanel> {
   ShopCatalog? _catalog;
   bool _loadFailed = false;
-  String? _buying;
-  String? _message;
-  final _requests = <String, String>{};
+  late final ShopPurchaseController _purchases;
+  bool _confirming = false;
+  final _feedbackAnchor = GlobalKey();
+  PurchaseStatus? _presentedStatus;
+  bool _revealScheduled = false;
 
   @override
   void initState() {
     super.initState();
+    _purchases = widget.purchases ?? ShopPurchaseController(widget.session);
+    _purchases.addListener(_revealFeedback);
     _load();
+  }
+
+  void _revealFeedback() {
+    if (_presentedStatus == _purchases.status) return;
+    _presentedStatus = _purchases.status;
+    if (_revealScheduled || _purchases.status == PurchaseStatus.idle) return;
+    _revealScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _revealScheduled = false;
+      if (!mounted) return;
+      final target = _feedbackAnchor.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
+        );
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -41,50 +71,132 @@ class _ShopPanelState extends State<ShopPanel> {
     }
   }
 
-  Future<void> _buy(ShopItem item) async {
-    final repository = widget.session.repository;
-    final snapshot = widget.session.snapshot;
-    if (_buying != null ||
-        repository is! ShopRepository ||
-        snapshot == null ||
-        widget.session.failed ||
-        widget.session.loading ||
-        item.isOwned(snapshot)) {
+  Future<void> _confirmAndBuy(ShopItem item) async {
+    if (_confirming ||
+        _purchases.busy ||
+        _purchases.uncertain ||
+        _purchases.awaitingSnapshot) {
       return;
     }
-    final id = _requests.putIfAbsent(item.id, () {
-      final random = Random.secure();
-      return List.generate(
-        16,
-        (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
-      ).join();
-    });
-    setState(() {
-      _buying = item.id;
-      _message = null;
-    });
-    try {
-      await (repository as ShopRepository).purchase(
-        PurchaseRequest(requestId: id, itemId: item.id),
-      );
-      _requests.remove(item.id);
-      if (mounted) setState(() => _message = '${item.name}を購入しました');
-    } on PurchaseFailure catch (error) {
-      _requests.remove(
-        item.id,
-      ); // A definitive rejection may be retried as a new request.
-      if (mounted) setState(() => _message = error.message);
-    } catch (_) {
-      // Unknown outcome: preserve the idempotency key for an explicit retry.
-      if (mounted) setState(() => _message = '購入結果を確認できませんでした。同じ商品で再試行できます。');
-    } finally {
-      if (mounted) setState(() => _buying = null);
+    setState(() => _confirming = true);
+    final coins = widget.session.snapshot?.coins;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        title: Text('${item.name}を購入しますか？'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${item.price} コインを使います。'),
+            if (coins != null) ...[
+              const SizedBox(height: 12),
+              Text('現在 $coins コイン'),
+              Text('購入後 ${coins - item.price} コイン（見込み）'),
+            ],
+            const SizedBox(height: 12),
+            Text(
+              item.kind == ShopItemKind.animal
+                  ? '購入後、動物園に自動で配置されます。'
+                  : '購入後、動物園の決まった場所に追加されます。',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('やめる'),
+          ),
+          FilledButton(
+            key: const ValueKey('confirm-purchase'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('購入を確定'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _confirming = false);
+    if (confirmed == true) await _purchases.buy(item);
+  }
+
+  @override
+  void dispose() {
+    _purchases.removeListener(_revealFeedback);
+    if (widget.purchases == null) _purchases.dispose();
+    super.dispose();
+  }
+
+  Widget _feedback() {
+    if (_purchases.status == PurchaseStatus.idle) {
+      return const SizedBox.shrink();
     }
+    final success = _purchases.status == PurchaseStatus.success;
+    return Semantics(
+      liveRegion: true,
+      child: Card(
+        color: success ? const Color(0xFFE5F0DC) : const Color(0xFFFFF2DC),
+        elevation: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_purchases.busy) ...[
+                const LinearProgressIndicator(),
+                const SizedBox(height: 8),
+                const Text('購入結果を確認しています…'),
+              ] else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      success ? Icons.check_circle_outline : Icons.info_outline,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _purchases.message ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_purchases.uncertain)
+                  TextButton(
+                    key: const ValueKey('retry-purchase'),
+                    onPressed: _purchases.retry,
+                    child: const Text('購入結果を確認する'),
+                  ),
+                if (_purchases.awaitingSnapshot) ...[
+                  const SizedBox(height: 8),
+                  const Text('確定データの反映を待っています。'),
+                  TextButton(
+                    onPressed: widget.session.refresh,
+                    child: const Text('残高・所持情報を再読み込み'),
+                  ),
+                ],
+                if (success &&
+                    !_purchases.awaitingSnapshot &&
+                    widget.onViewZoo != null)
+                  FilledButton.icon(
+                    onPressed: widget.onViewZoo,
+                    icon: const Icon(Icons.pets),
+                    label: const Text('動物園を見る'),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: widget.session,
+    animation: Listenable.merge([widget.session, _purchases]),
     builder: (context, child) {
       final catalog = _catalog;
       if (_loadFailed) {
@@ -111,6 +223,7 @@ class _ShopPanelState extends State<ShopPanel> {
         children: [
           Text(
             '${snapshot?.coins ?? '—'} コイン',
+            key: const ValueKey('shop-balance'),
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           if (widget.session.repository.connection == GameConnection.demo)
@@ -118,17 +231,30 @@ class _ShopPanelState extends State<ShopPanel> {
               'デモショップ・再起動で購入状態はリセットされます',
               style: TextStyle(fontSize: 12),
             ),
-          if (!available) const Text('購入先に未接続、または更新停止中です'),
-          if (_message != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(
-                  _message!,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+          if (!available) ...[
+            const Text('購入先に未接続、または更新停止中です'),
+            if (widget.session.failed)
+              TextButton(
+                onPressed: widget.session.refresh,
+                child: const Text('残高を再読み込み'),
               ),
+          ],
+          Container(
+            key: _feedbackAnchor,
+            child: AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 160),
+              child: KeyedSubtree(
+                key: ValueKey(_purchases.status),
+                child: _feedback(),
+              ),
+            ),
+          ),
+          if (catalog.items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('購入できる商品はまだありません'),
             ),
           for (final item in catalog.items)
             Builder(
@@ -187,11 +313,14 @@ class _ShopPanelState extends State<ShopPanel> {
                                   !owned &&
                                   unlocked &&
                                   enough &&
-                                  _buying == null
-                              ? () => _buy(item)
+                                  !_purchases.busy &&
+                                  !_purchases.uncertain &&
+                                  !_purchases.awaitingSnapshot &&
+                                  !_confirming
+                              ? () => _confirmAndBuy(item)
                               : null,
                           child: Text(
-                            _buying == item.id
+                            _purchases.busy && _purchases.item?.id == item.id
                                 ? '購入を確認中…'
                                 : owned
                                 ? '購入済み'
