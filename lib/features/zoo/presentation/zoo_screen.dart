@@ -266,20 +266,32 @@ class _ZooScreenState extends State<ZooScreen>
       title: '動物一覧',
       children: [
         for (final animal in controller.world.animals)
-          if (controller.ownedAnimals.contains(animal.id))
-            SpriteTile(
-              leading: AnimalArt(animalId: animal.id),
-              title: Text(animal.name),
-              subtitle: Text(
-                controller.layout.animalEnclosures.containsKey(animal.id)
-                    ? '囲いに配置済み'
-                    : '未配置',
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showAnimal(animal);
-              },
+          SpriteTile(
+            key: ValueKey('encyclopedia-${animal.id}'),
+            leading: AnimalArt(animalId: animal.id),
+            title: Text(animal.name),
+            subtitle: Text(
+              !controller.ownedAnimals.contains(animal.id)
+                  ? '未所持・ロック中'
+                  : controller.layout.animalEnclosures.containsKey(animal.id)
+                  ? '囲いに配置済み'
+                  : '未配置',
             ),
+            trailing: !controller.ownedAnimals.contains(animal.id)
+                ? const ZooUiSprite(
+                    part: ZooUiPart.lock,
+                    scale: 3,
+                    semanticLabel: '未所持・ロック中',
+                  )
+                : const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
+            enabled: controller.ownedAnimals.contains(animal.id),
+            onTap: controller.ownedAnimals.contains(animal.id)
+                ? () {
+                    Navigator.pop(context);
+                    _showAnimal(animal);
+                  }
+                : null,
+          ),
         if (controller.ownedAnimals.isEmpty)
           const Text('まだ動物はいません。ショップから仲間を迎えましょう。'),
         OutlinedButton(
@@ -321,6 +333,7 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showAnimal(AnimalDefinition animal) {
+    if (_controller?.ownedAnimals.contains(animal.id) != true) return;
     final world = _controller?.world;
     showZooSheet(
       context,

@@ -1,3 +1,4 @@
+import 'package:zoo_study/features/game/domain/game_snapshot.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -203,6 +204,55 @@ void main() {
       expect(find.text('ショップ').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
       await closeSheet(tester);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets(
+    'encyclopedia lists locked animals but only owned entries open details',
+    (tester) async {
+      await loadZoo(tester);
+      final repository =
+          tester.widget<ZooStudyApp>(find.byType(ZooStudyApp)).gameRepository!
+              as MockGameRepository;
+      await tester.tap(find.byTooltip('動物一覧'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final fox = find.byKey(const ValueKey('encyclopedia-fox'));
+      final rabbit = find.byKey(const ValueKey('encyclopedia-rabbit'));
+      expect(fox, findsOneWidget);
+      expect(rabbit, findsOneWidget);
+      expect(tester.widget<SpriteTile>(fox).enabled, isFalse);
+      expect(tester.widget<SpriteTile>(fox).onTap, isNull);
+      expect(
+        find.descendant(
+          of: fox,
+          matching: find.byWidgetPredicate(
+            (w) => w is ZooUiSprite && w.part == ZooUiPart.lock,
+          ),
+        ),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(fox);
+      await tester.tap(fox);
+      await tester.pump();
+      expect(find.text('動物一覧'), findsOneWidget);
+      expect(find.text('解放済み'), findsNothing);
+      await closeSheet(tester);
+      final snapshot = repository.currentSnapshot.toJson();
+      snapshot['ownedAnimalIds'] = ['rabbit'];
+      snapshot['revision'] = repository.currentSnapshot.revision + 1;
+      repository.receiveConfirmedSnapshot(GameSnapshot.fromJson(snapshot));
+      await tester.pump();
+      await tester.tap(find.byTooltip('動物一覧'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(tester.widget<SpriteTile>(rabbit).enabled, isTrue);
+      expect(tester.widget<SpriteTile>(fox).enabled, isFalse);
+      await tester.tap(rabbit);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('解放済み'), findsOneWidget);
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
