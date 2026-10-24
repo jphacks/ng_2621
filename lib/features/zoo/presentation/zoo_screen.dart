@@ -1,3 +1,6 @@
+import '../../study/demo_assignment_store.dart';
+import '../../study/teacher_assignments_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -18,9 +21,16 @@ import '../../shop/presentation/shop_purchase_controller.dart';
 import '../domain/zoo_world.dart';
 
 class ZooScreen extends StatefulWidget {
-  const ZooScreen({super.key, this.gameRepository});
+  const ZooScreen({
+    super.key,
+    this.gameRepository,
+    this.isTeacher = false,
+    this.assignmentStore,
+  });
 
   final GameRepository? gameRepository;
+  final bool isTeacher;
+  final DemoAssignmentStore? assignmentStore;
 
   @override
   State<ZooScreen> createState() => _ZooScreenState();
@@ -147,10 +157,22 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showStudy() {
+    final store = widget.assignmentStore;
+    if (widget.isTeacher && store != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TeacherAssignmentsScreen(store: store),
+        ),
+      );
+      return;
+    }
     showZooSheet(
       context,
       title: '課題',
-      children: [GameStatus(session: _game)],
+      children: [
+        GameStatus(session: _game),
+        if (store != null) DemoAssignmentList(store: store),
+      ],
     );
   }
 

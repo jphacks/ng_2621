@@ -33,6 +33,13 @@ void main() {
     await tester.runAsync(() async {
       await rootBundle.loadString('assets/zoo/world.json');
       await tester.pumpWidget(ZooStudyApp(gameRepository: repository));
+      await tester.ensureVisible(find.text('生徒はこちら'));
+      await tester.tap(find.text('生徒はこちら'));
+      await tester.pump();
+      await tester.ensureVisible(find.text('確定'));
+      await tester.tap(find.text('確定'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await precacheImage(
         const AssetImage(ZooUiSprite.assetPath),
         tester.element(find.byType(ZooStudyApp)),
@@ -82,6 +89,13 @@ void main() {
           child: ZooStudyApp(gameRepository: repository),
         ),
       );
+      await tester.ensureVisible(find.text('生徒はこちら'));
+      await tester.tap(find.text('生徒はこちら'));
+      await tester.pump();
+      await tester.ensureVisible(find.text('確定'));
+      await tester.tap(find.text('確定'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await precacheImage(
         const AssetImage(ZooUiSprite.assetPath),
         tester.element(find.byType(ZooStudyApp)),
@@ -109,6 +123,13 @@ void main() {
     await tester.runAsync(() async {
       await rootBundle.loadString('assets/zoo/world.json');
       await tester.pumpWidget(ZooStudyApp(gameRepository: repository));
+      await tester.ensureVisible(find.text('生徒はこちら'));
+      await tester.tap(find.text('生徒はこちら'));
+      await tester.pump();
+      await tester.ensureVisible(find.text('確定'));
+      await tester.tap(find.text('確定'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await precacheImage(
         const AssetImage(ZooUiSprite.assetPath),
         tester.element(find.byType(ZooStudyApp)),
