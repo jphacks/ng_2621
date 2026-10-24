@@ -1,3 +1,7 @@
+import '../../study/student_assignments_screen.dart';
+import '../../study/demo_assignment_store.dart';
+import '../../study/teacher_assignments_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -19,9 +23,16 @@ import '../domain/zoo_world.dart';
 import '../../animals/presentation/animal_art.dart';
 
 class ZooScreen extends StatefulWidget {
-  const ZooScreen({super.key, this.gameRepository});
+  const ZooScreen({
+    super.key,
+    this.gameRepository,
+    this.isTeacher = false,
+    this.assignmentStore,
+  });
 
   final GameRepository? gameRepository;
+  final bool isTeacher;
+  final DemoAssignmentStore? assignmentStore;
 
   @override
   State<ZooScreen> createState() => _ZooScreenState();
@@ -155,10 +166,30 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showStudy() {
+    final store = widget.assignmentStore;
+    if (widget.isTeacher && store != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TeacherAssignmentsScreen(store: store),
+        ),
+      );
+      return;
+    }
+    if (store != null && widget.gameRepository is DemoAssignmentStore) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => StudentAssignmentsScreen(store: store),
+        ),
+      );
+      return;
+    }
     showZooSheet(
       context,
       title: '課題',
-      children: [GameStatus(session: _game)],
+      children: [
+        GameStatus(session: _game),
+        if (store != null) DemoAssignmentList(store: store),
+      ],
     );
   }
 
@@ -350,6 +381,16 @@ class _ZooScreenState extends State<ZooScreen>
             _showShop();
           },
         ),
+        if (widget.assignmentStore != null && Navigator.of(context).canPop())
+          ListTile(
+            leading: const Icon(Icons.switch_account_outlined),
+            title: const Text('先生・生徒を選び直す'),
+            subtitle: Text(widget.isTeacher ? '現在：先生（デモ）' : '現在：生徒（デモ）'),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
+            },
+          ),
       ],
     );
   }
