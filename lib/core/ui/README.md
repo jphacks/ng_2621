@@ -52,3 +52,11 @@ const ZooArtSprite(part: ZooArtPart.coins, scale: 2)
 `bird1`〜`bird6`, `rhino`, `fox`, `evolvedFox`, `giraffe`, `elephant`, `pond`, `tree`。
 鳥は左上→右上→左中→右中→左下→右下の順です。
 詳細は [追加素材の使い方](../../../docs/artwork_usage.md) を参照してください。
+
+
+## タイル・柵・パターン（20261023.png）
+
+`TerrainPart` が16パーツ、`TerrainSprite` が表示APIです。`quarterTurns` は90度単位、`mirrorX` は左右反転です。
+`TerrainTexture` は透明な余白を除いたパターンを繰り返して子ウィジェットの背景に敷きます。
+画像の読み込み・共有は `SpriteSheetImage` にまとめ、`PixelSprite` とマップ描画から利用します。
+[配置と回転の説明](../../../docs/terrain_usage.md) を参照してください。

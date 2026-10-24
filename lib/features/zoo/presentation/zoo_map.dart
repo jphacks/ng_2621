@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../domain/zoo_world.dart';
 import '../../animals/presentation/animal_art.dart';
 import 'zoo_controller.dart';
+import '../../../core/ui/zoo_ui.dart';
+import 'terrain/terrain_painter.dart';
 
 class ZooMap extends StatelessWidget {
   const ZooMap({super.key, required this.controller, this.onAnimalSelected});
@@ -69,14 +71,18 @@ class ZooMap extends StatelessWidget {
                           builder: (context, revision, child) =>
                               RepaintBoundary(
                                 key: const ValueKey('zoo-terrain'),
-                                child: CustomPaint(
-                                  size: Size(width, height),
-                                  painter: _TilePainter(
-                                    world,
-                                    controller.animals
-                                        .map((a) => a.definition)
-                                        .toList(),
-                                    controller.ownedFacilities,
+                                child: SpriteSheetImage(
+                                  assetPath: TerrainSprite.assetPath,
+                                  builder: (context, image) => CustomPaint(
+                                    size: Size(width, height),
+                                    painter: ZooTerrainPainter(
+                                      world,
+                                      controller.animals
+                                          .map((a) => a.definition)
+                                          .toList(),
+                                      controller.ownedFacilities,
+                                      image,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -147,87 +153,6 @@ class _AnimalSprite extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) => placeholder,
     );
   }
-}
-
-class _TilePainter extends CustomPainter {
-  _TilePainter(this.world, this.animals, this.facilities);
-
-  final ZooWorld world;
-  final List<AnimalDefinition> animals;
-  final Set<String> facilities;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final tile = world.tileSize.toDouble();
-    final paint = Paint()..isAntiAlias = false;
-    for (var y = 0; y < world.rows; y++) {
-      for (var x = 0; x < world.columns; x++) {
-        var type = world.tiles[y][x];
-        for (final facility in world.facilities) {
-          if (!facility.contains(x, y)) continue;
-          if (facilities.contains(facility.id)) {
-            type = facility.tile == 'water' ? '~' : '^';
-          } else if (facility.tile == 'water' && type == '~') {
-            type = '.';
-          }
-        }
-        paint.color = switch (type) {
-          '=' => const Color(0xFFE4CD9B),
-          '~' => const Color(0xFF6CBCCB),
-          '^' => const Color(0xFF4F8150),
-          _ =>
-            (x + y).isEven ? const Color(0xFF91BD70) : const Color(0xFF87B568),
-        };
-        canvas.drawRect(Rect.fromLTWH(x * tile, y * tile, tile, tile), paint);
-        if (type == '.') {
-          paint.color = const Color(0xFF78A65D);
-          canvas.drawRect(
-            Rect.fromLTWH(x * tile + 3, y * tile + 9, 2, 2),
-            paint,
-          );
-        } else if (type == '^') {
-          paint.color = const Color(0xFF315C3A);
-          canvas.drawRect(
-            Rect.fromLTWH(x * tile + 4, y * tile + 3, 8, 7),
-            paint,
-          );
-          paint.color = const Color(0xFF70583D);
-          canvas.drawRect(
-            Rect.fromLTWH(x * tile + 7, y * tile + 10, 2, 4),
-            paint,
-          );
-        } else if (type == '~') {
-          paint.color = const Color(0xFF9CD5DF);
-          canvas.drawRect(
-            Rect.fromLTWH(x * tile + 3, y * tile + 7, 7, 1),
-            paint,
-          );
-        }
-      }
-    }
-    // Each configured movement rectangle is also shown as an enclosure.
-    paint.color = const Color(0xFF876449);
-    paint.style = PaintingStyle.stroke;
-    paint.strokeWidth = 1;
-    for (final animal in animals) {
-      final area = animal.area;
-      canvas.drawRect(
-        Rect.fromLTRB(
-          (area.left - 0.5) * tile + 0.5,
-          (area.top - 0.5) * tile + 0.5,
-          (area.right + 0.5) * tile - 0.5,
-          (area.bottom + 0.5) * tile - 0.5,
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_TilePainter oldDelegate) =>
-      oldDelegate.world != world ||
-      oldDelegate.animals != animals ||
-      oldDelegate.facilities != facilities;
 }
 
 /// Temporary 8x8 pixel animal, replaceable through imagePath in JSON.
