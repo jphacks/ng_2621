@@ -63,9 +63,14 @@ class FacilityDefinition {
     required this.top,
     required this.width,
     required this.height,
-  });
+    this.name,
+    bool? blocksAnimalAreas,
+  }) : blocksAnimalAreas = blocksAnimalAreas ?? (tile == 'water');
   final String id;
   final String tile;
+  final String? name;
+  final bool blocksAnimalAreas;
+  String get displayName => name ?? id;
   final int left, top, width, height;
   bool contains(int x, int y) =>
       x >= left && x < left + width && y >= top && y < top + height;
@@ -77,6 +82,8 @@ class FacilityDefinition {
         top: json['top'] as int,
         width: json['width'] as int,
         height: json['height'] as int,
+        name: json['name'] as String?,
+        blocksAnimalAreas: json['blocksAnimalAreas'] as bool?,
       );
 }
 

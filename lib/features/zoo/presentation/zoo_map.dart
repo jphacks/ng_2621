@@ -3,15 +3,26 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../domain/zoo_world.dart';
+import '../domain/facility_placement.dart';
 import '../../animals/presentation/animal_art.dart';
 import 'zoo_controller.dart';
 import '../../../core/ui/zoo_ui.dart';
 import 'terrain/terrain_painter.dart';
 
 class ZooMap extends StatelessWidget {
-  const ZooMap({super.key, required this.controller, this.onAnimalSelected});
+  const ZooMap({
+    super.key,
+    required this.controller,
+    this.onAnimalSelected,
+    this.onTileSelected,
+    this.placementsOverride,
+    this.overlay,
+  });
 
   final ZooController controller;
+  final void Function(int x, int y)? onTileSelected;
+  final Map<String, FacilityPlacement>? placementsOverride;
+  final Widget? overlay;
   final ValueChanged<AnimalDefinition>? onAnimalSelected;
 
   @override
@@ -40,9 +51,18 @@ class ZooMap extends StatelessWidget {
                 child: Builder(
                   builder: (mapContext) => GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTapUp: onAnimalSelected == null
+                    onTapUp: onAnimalSelected == null && onTileSelected == null
                         ? null
                         : (details) {
+                            if (onTileSelected != null) {
+                              onTileSelected!(
+                                (details.localPosition.dx / world.tileSize)
+                                    .floor(),
+                                (details.localPosition.dy / world.tileSize)
+                                    .floor(),
+                              );
+                              return;
+                            }
                             final box =
                                 mapContext.findRenderObject()! as RenderBox;
                             AnimalDefinition? nearest;
@@ -82,6 +102,9 @@ class ZooMap extends StatelessWidget {
                                           .toList(),
                                       controller.ownedFacilities,
                                       image,
+                                      placements:
+                                          placementsOverride ??
+                                          controller.placements,
                                     ),
                                   ),
                                 ),
@@ -113,6 +136,10 @@ class ZooMap extends StatelessWidget {
                                     definition: animal.definition,
                                   ),
                                 ),
+                              ),
+                            if (overlay != null)
+                              Positioned.fill(
+                                child: IgnorePointer(child: overlay!),
                               ),
                           ],
                         ),

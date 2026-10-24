@@ -14,9 +14,15 @@ import 'shop_purchase_controller.dart';
 /// Owns only browsing state. Session and purchase state survive the route when
 /// supplied by the zoo, including requests whose result is not yet known.
 class ShopScreen extends StatefulWidget {
-  const ShopScreen({super.key, required this.session, this.purchases});
+  const ShopScreen({
+    super.key,
+    required this.session,
+    this.purchases,
+    this.onPlaceFacility,
+  });
   final GameSession session;
   final ShopPurchaseController? purchases;
+  final ValueChanged<String>? onPlaceFacility;
 
   @override
   State<ShopScreen> createState() => _ShopScreenState();
@@ -92,6 +98,15 @@ class _ShopScreenState extends State<ShopScreen> {
                   purchases: _purchases,
                   item: item,
                   catalog: _catalog!,
+                  onPlaceFacility: widget.onPlaceFacility == null
+                      ? null
+                      : () {
+                          Navigator.pop(detailContext);
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.pop(context);
+                          }
+                          widget.onPlaceFacility!(item.targetId);
+                        },
                   onViewZoo: () {
                     Navigator.pop(detailContext);
                     if (Navigator.of(context).canPop()) Navigator.pop(context);

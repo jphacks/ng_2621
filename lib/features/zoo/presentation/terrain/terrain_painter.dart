@@ -5,10 +5,18 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/ui/sprites/terrain_part.dart';
 import '../../domain/zoo_world.dart';
+import '../../domain/facility_placement.dart';
 import 'terrain_selection.dart';
 
 class ZooTerrainPainter extends CustomPainter {
-  ZooTerrainPainter(this.world, this.animals, this.facilities, this.image);
+  ZooTerrainPainter(
+    this.world,
+    this.animals,
+    this.facilities,
+    this.image, {
+    this.placements = const {},
+  });
+  final Map<String, FacilityPlacement> placements;
   final ZooWorld world;
   final List<AnimalDefinition> animals;
   final Set<String> facilities;
@@ -18,11 +26,21 @@ class ZooTerrainPainter extends CustomPainter {
     if (x < 0 || y < 0 || x >= world.columns || y >= world.rows) return '.';
     var type = world.tiles[y][x];
     for (final facility in world.facilities) {
-      if (!facility.contains(x, y)) continue;
-      if (facilities.contains(facility.id)) {
-        type = facility.tile == 'water' ? '~' : '^';
-      } else if (facility.tile == 'water' && type == '~') {
+      if (facility.tile == 'water' && facility.contains(x, y) && type == '~') {
         type = '.';
+      }
+    }
+    for (final facility in world.facilities) {
+      if (!facilities.contains(facility.id)) continue;
+      final position =
+          placements[facility.id] ??
+          FacilityPlacement(
+            facilityId: facility.id,
+            left: facility.left,
+            top: facility.top,
+          );
+      if (position.contains(x, y, facility)) {
+        type = facility.tile == 'water' ? '~' : '^';
       }
     }
     return type;
@@ -129,5 +147,6 @@ class ZooTerrainPainter extends CustomPainter {
       old.world != world ||
       old.animals != animals ||
       old.facilities != facilities ||
-      old.image != image;
+      old.image != image ||
+      old.placements != placements;
 }

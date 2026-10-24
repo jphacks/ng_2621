@@ -15,12 +15,14 @@ class ShopPanel extends StatefulWidget {
     required this.item,
     required this.catalog,
     this.onViewZoo,
+    this.onPlaceFacility,
   });
   final GameSession session;
   final ShopPurchaseController purchases;
   final ShopItem item;
   final ShopCatalog catalog;
   final VoidCallback? onViewZoo;
+  final VoidCallback? onPlaceFacility;
   @override
   State<ShopPanel> createState() => _ShopPanelState();
 }
@@ -90,7 +92,7 @@ class _ShopPanelState extends State<ShopPanel> {
               Text(
                 item.kind == ShopItemKind.animal
                     ? '購入後、動物園に自動で配置されます。'
-                    : '購入後、動物園の決まった場所に追加されます。',
+                    : '購入後、動物園で配置・移動できます。',
               ),
             ],
           ),
@@ -264,7 +266,7 @@ class _ShopPanelState extends State<ShopPanel> {
                   Text(
                     item.kind == ShopItemKind.animal
                         ? '購入後、動物園に自動で配置されます。'
-                        : '購入後、動物園の決まった場所に追加されます。',
+                        : '購入後、動物園で配置・移動できます。',
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
@@ -291,6 +293,17 @@ class _ShopPanelState extends State<ShopPanel> {
               ),
             ),
           ),
+          if (owned &&
+              item.kind == ShopItemKind.facility &&
+              widget.onPlaceFacility != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: FilledButton(
+                key: const ValueKey('place-facility'),
+                onPressed: blocked ? null : widget.onPlaceFacility,
+                child: const Text('配置・移動する'),
+              ),
+            ),
           const SizedBox(height: 12),
           if (!available) ...[
             const Text('購入先に未接続、または更新停止中です'),

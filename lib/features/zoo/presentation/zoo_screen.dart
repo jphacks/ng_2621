@@ -7,6 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../data/zoo_repository.dart';
+import '../data/memory_facility_placement_repository.dart';
+import '../domain/facility_placement_repository.dart';
+import 'facility_placement_screen.dart';
 import '../../game/data/mock_game_repository.dart';
 import '../../game/domain/game_repository.dart';
 import '../../game/presentation/game_session.dart';
@@ -28,11 +31,13 @@ class ZooScreen extends StatefulWidget {
     this.gameRepository,
     this.isTeacher = false,
     this.assignmentStore,
+    this.placementRepository,
   });
 
   final GameRepository? gameRepository;
   final bool isTeacher;
   final DemoAssignmentStore? assignmentStore;
+  final FacilityPlacementRepository? placementRepository;
 
   @override
   State<ZooScreen> createState() => _ZooScreenState();
@@ -41,6 +46,8 @@ class ZooScreen extends StatefulWidget {
 class _ZooScreenState extends State<ZooScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   ZooController? _controller;
+  late final _placementRepository =
+      widget.placementRepository ?? MemoryFacilityPlacementRepository();
   late final GameSession _game;
   late final ShopPurchaseController _purchases;
   MockGameRepository? _ownedMock;
@@ -93,10 +100,12 @@ class _ZooScreenState extends State<ZooScreen>
     setState(() => _failed = false);
     try {
       final world = await ZooRepository().load();
+      final placements = await _placementRepository.load();
       if (!mounted) return;
       setState(
         () => _controller = ZooController(
           world,
+          initialPlacements: placements,
           ownedAnimalIds: _game.snapshot?.ownedAnimalIds ?? {},
           ownedFacilityIds: _game.snapshot?.ownedFacilityIds ?? {},
         ),
@@ -282,7 +291,76 @@ class _ZooScreenState extends State<ZooScreen>
   void _showShop() {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => ShopScreen(session: _game, purchases: _purchases),
+        builder: (_) => ShopScreen(
+          session: _game,
+          purchases: _purchases,
+          onPlaceFacility: _startPlacement,
+        ),
+      ),
+    );
+  }
+
+  void _showFacilities() {
+    final controller = _controller;
+    if (controller == null) return;
+    showZooSheet(
+      context,
+      title: '施設の配置・移動',
+      children: [
+        const Text('購入済みの施設を選んで、配置する場所を決めましょう。'),
+        const Text('配置は起動中だけ保持されます。', style: TextStyle(fontSize: 12)),
+        for (final definition in controller.world.facilities)
+          if (controller.ownedFacilities.contains(definition.id))
+            SpriteTile(
+              title: Text(definition.displayName),
+              subtitle: Text('${definition.width}×${definition.height}マス'),
+              trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
+              onTap: () {
+                Navigator.pop(context);
+                _startPlacement(definition.id);
+              },
+            ),
+        if (controller.ownedFacilities.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text('配置できる施設がありません。ショップで購入してください。'),
+          ),
+        OutlinedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            _showShop();
+          },
+          child: const Text('ショップを見る'),
+        ),
+      ],
+    );
+  }
+
+  void _startPlacement(String facilityId) {
+    final controller = _controller;
+    if (controller == null || !controller.ownedFacilities.contains(facilityId)) {
+      return;
+    }
+    final definition = controller.world.facilities
+        .where((f) => f.id == facilityId)
+        .firstOrNull;
+    if (definition == null) return;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => FacilityPlacementScreen(
+          controller: controller,
+          definition: definition,
+          name: definition.displayName,
+          onSave: (placement) async {
+            if (controller.placementIssue(placement) != null) {
+              throw StateError('Invalid placement');
+            }
+            await _placementRepository.save(placement);
+            if (!mounted || !controller.placeFacility(placement)) {
+              throw StateError('Placement state changed');
+            }
+          },
+        ),
       ),
     );
   }
@@ -375,6 +453,16 @@ class _ZooScreenState extends State<ZooScreen>
           onTap: () {
             Navigator.pop(context);
             _showShop();
+          },
+        ),
+        SpriteTile(
+          title: const Text('施設の配置・移動'),
+          leading: const ZooArtSprite(part: ZooArtPart.pond, scale: 2),
+          trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
+          enabled: _controller != null,
+          onTap: () {
+            Navigator.pop(context);
+            _showFacilities();
           },
         ),
         if (widget.assignmentStore != null && Navigator.of(context).canPop())

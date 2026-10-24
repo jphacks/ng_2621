@@ -103,7 +103,8 @@
       "left": 14,
       "top": 11,
       "width": 5,
-      "height": 4
+      "height": 4,
+      "name": "池"
     },
     {
       "id": "forest",
@@ -111,7 +112,8 @@
       "left": 1,
       "top": 1,
       "width": 7,
-      "height": 5
+      "height": 5,
+      "name": "森エリア"
     }
   ]
 }
