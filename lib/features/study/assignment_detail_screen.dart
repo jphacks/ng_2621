@@ -1,3 +1,5 @@
+import '../../core/ui/zoo_ui.dart';
+import 'presentation/study_chrome.dart';
 import 'attachments/study_file_picker.dart';
 import 'attachments/attachment_preview_screen.dart';
 
@@ -102,7 +104,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     trailing: removable
         ? IconButton(
             tooltip: '添付を外す',
-            icon: const Icon(Icons.close),
+            icon: const ZooUiSprite(part: ZooUiPart.cross, scale: 2),
             onPressed: _busy || _selectingFiles
                 ? null
                 : () {
@@ -187,8 +189,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.isTeacher ? '提出内容の確認' : '課題の詳細・提出')),
+  Widget build(BuildContext context) => StudyScaffold(
+    appBar: StudyAppBar(title: Text(widget.isTeacher ? '提出内容の確認' : '課題の詳細・提出')),
     body: _draftLoading
         ? const Center(child: CircularProgressIndicator())
         : Center(
@@ -219,7 +221,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                       children: [
                         if (_draftError != null) Text(_draftError!),
                         if (_message != null)
-                          Card(
+                          StudyCard(
                             child: Padding(
                               padding: const EdgeInsets.all(12),
                               child: Text(_message!, semanticsLabel: _message),

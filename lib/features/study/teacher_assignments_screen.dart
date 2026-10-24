@@ -1,3 +1,5 @@
+import '../../core/ui/zoo_ui.dart';
+import 'presentation/study_chrome.dart';
 import 'assignment_submissions_screen.dart';
 import 'study_detector/study_records_screen.dart';
 import '../../core/storage/draft_storage.dart';
@@ -43,7 +45,7 @@ class DemoAssignmentList extends StatelessWidget {
             child: Text('追加された課題はありません'),
           ),
         for (final assignment in store.assignments.reversed)
-          Card(
+          StudyCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -112,8 +114,8 @@ class TeacherAssignmentsScreen extends StatelessWidget {
   final StudyRepository store;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('課題を配布')),
+  Widget build(BuildContext context) => StudyScaffold(
+    appBar: StudyAppBar(title: const Text('課題を配布')),
     body: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 640),
@@ -126,7 +128,7 @@ class TeacherAssignmentsScreen extends StatelessWidget {
                   builder: (_) => _AssignmentForm(store: store),
                 ),
               ),
-              icon: const Icon(Icons.add),
+              icon: const ZooUiSprite(part: ZooUiPart.plus, scale: 3),
               label: const Text('課題を作成'),
             ),
             const SizedBox(height: 24),
@@ -255,8 +257,8 @@ class _AssignmentFormState extends State<_AssignmentForm> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('新しい課題')),
+  Widget build(BuildContext context) => StudyScaffold(
+    appBar: StudyAppBar(title: const Text('新しい課題')),
     body: _draftLoading
         ? const Center(child: CircularProgressIndicator())
         : Center(
