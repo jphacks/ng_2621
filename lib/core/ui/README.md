@@ -35,3 +35,28 @@ const ZooUiSprite(
 
 木製ボタンやスライダーは各パーツを呼び出せる状態です。つなぎ合わせた操作部品、ゲージの値・増減操作、画面への配置は未実装です。
 元シートを差し替える際はサイズ・配置が変わらないか確認し、変わる場合は `sourceRect` と `sheetSize` を更新してください。
+
+
+## 追加素材（20261024_2.png）
+
+`assets/sprites/20261024_2.png` に元画像を変更せず登録しています。
+`ZooArtPart` が全21パーツの座標、`ZooArtSprite` が表示用 API です。
+`PixelSprite` を2つのシートで共有し、従来の `ZooUiSprite` の使い方は変えていません。
+
+```dart
+const ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2)
+const ZooArtSprite(part: ZooArtPart.coins, scale: 2)
+```
+
+`bookAndPen`, `home`, `shop`, `coins`, `deer`, `rabbit`, `penguin`, `monkey`,
+`bird1`〜`bird6`, `rhino`, `fox`, `evolvedFox`, `giraffe`, `elephant`, `pond`, `tree`。
+鳥は左上→右上→左中→右中→左下→右下の順です。
+詳細は [追加素材の使い方](../../../docs/artwork_usage.md) を参照してください。
+
+
+## タイル・柵・パターン（20261023.png）
+
+`TerrainPart` が16パーツ、`TerrainSprite` が表示APIです。`quarterTurns` は90度単位、`mirrorX` は左右反転です。
+`TerrainTexture` は透明な余白を除いたパターンを繰り返して子ウィジェットの背景に敷きます。
+画像の読み込み・共有は `SpriteSheetImage` にまとめ、`PixelSprite` とマップ描画から利用します。
+[配置と回転の説明](../../../docs/terrain_usage.md) を参照してください。

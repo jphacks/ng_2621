@@ -123,11 +123,7 @@ class ZooHeader extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.paid_outlined,
-                            size: 22,
-                            color: Color(0xFF8C6A20),
-                          ),
+                          const ZooArtSprite(part: ZooArtPart.coins, scale: 2),
                           SizedBox(width: 6),
                           Expanded(
                             child: Column(
@@ -188,82 +184,86 @@ class ZooBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: zooPaper,
-        border: Border(top: BorderSide(color: zooLine)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  selected: true,
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: zooGreen,
-                      minimumSize: const Size(48, 56),
+    return TerrainTexture(
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: zooLine)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    selected: true,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: zooGreen,
+                        minimumSize: const Size(48, 56),
+                      ),
+                      onPressed: onHome,
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ZooArtSprite(part: ZooArtPart.home, scale: 2),
+                          SizedBox(height: 3),
+                          Text('ホーム'),
+                        ],
+                      ),
                     ),
-                    onPressed: onHome,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: zooGreen,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(48, 62),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    onPressed: onStudy,
                     child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.home_rounded, size: 25),
+                        ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
                         SizedBox(height: 3),
-                        Text('ホーム'),
+                        Text(
+                          '課題',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: zooGreen,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(48, 62),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: zooInk,
+                      minimumSize: const Size(48, 56),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                    onPressed: onMore,
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.more_horiz_rounded, size: 25),
+                        SizedBox(height: 3),
+                        Text('その他'),
+                      ],
                     ),
-                  ),
-                  onPressed: onStudy,
-                  child: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.menu_book_rounded, size: 25),
-                      SizedBox(height: 3),
-                      Text('課題', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: zooInk,
-                    minimumSize: const Size(48, 56),
-                  ),
-                  onPressed: onMore,
-                  child: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.more_horiz_rounded, size: 25),
-                      SizedBox(height: 3),
-                      Text('その他'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

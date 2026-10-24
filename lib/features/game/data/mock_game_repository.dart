@@ -13,8 +13,16 @@ class MockGameRepository implements GameRepository, ShopRepository {
   MockGameRepository({
     DemoScenario scenario = DemoScenario.assigned,
     Future<ShopCatalog> Function()? catalogLoader,
-  }) : _current = snapshotFor(scenario),
+    int bonusCoins = 0,
+  }) : _current = _initialSnapshot(scenario, bonusCoins),
        _catalogLoader = catalogLoader ?? loadShopCatalog;
+
+  static GameSnapshot _initialSnapshot(DemoScenario scenario, int bonusCoins) {
+    if (bonusCoins < 0) throw ArgumentError.value(bonusCoins, 'bonusCoins');
+    final data = snapshotFor(scenario).toJson();
+    data['coins'] = (data['coins'] as int) + bonusCoins;
+    return GameSnapshot.fromJson(data);
+  }
 
   GameSnapshot _current;
 

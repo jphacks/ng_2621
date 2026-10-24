@@ -44,6 +44,35 @@ Matcher failure(PurchaseFailureCode code) =>
 
 void main() {
   test(
+    'debug bonus survives rewards, purchases and repeated result reception',
+    () async {
+      final repository = MockGameRepository(
+        bonusCoins: 1000,
+        catalogLoader: () async => catalog(),
+      );
+      final session = GameSession(repository);
+      addTearDown(() async {
+        session.dispose();
+        await repository.dispose();
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(session.snapshot!.coins, 1000);
+      expect(session.snapshot!.rewards, isEmpty);
+      repository.receiveDemoScenario(DemoScenario.submitted);
+      expect(session.snapshot!.coins, 1030);
+      repository.receiveDemoScenario(DemoScenario.approved);
+      expect(session.snapshot!.coins, 1100);
+      await repository.purchase(
+        const PurchaseRequest(requestId: 'bonus-rabbit', itemId: 'rabbit'),
+      );
+      repository.receiveDemoScenario(DemoScenario.approved);
+      expect(session.snapshot!.coins, 1000);
+      expect(session.snapshot!.ownedAnimalIds, {'rabbit'});
+      expect(session.snapshot!.rewards, hasLength(2));
+    },
+  );
+
+  test(
     'catalog uses specified prices and every target has a valid map definition',
     () {
       final data = catalog();

@@ -92,13 +92,13 @@ Firebase SDK・Cloud Functions・Security Rules は未導入です。クライ�
 モックは debug ビルドかつ明示フラグを付けた場合のみ有効です。profile/release の通常起動ではフラグを付けても有効にしません。
 
 ```powershell
-C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true
+C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true --dart-define=ZOOSTUDY_DEMO_BONUS_COINS=0
 ```
 
 課題ボタンで固定の未提出課題を確認します。状態例を変える場合はアプリを停止して、例えば以下で再起動します。
 
 ```powershell
-C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true --dart-define=ZOOSTUDY_DEMO_SCENARIO=submitted
+C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true --dart-define=ZOOSTUDY_DEMO_BONUS_COINS=0 --dart-define=ZOOSTUDY_DEMO_SCENARIO=submitted
 ```
 
 | シナリオ | 課題状態 | 固定の確定残高 |
@@ -171,7 +171,7 @@ docs/game_integration_contract.md
 
 ### インタラクティブなデモの操作
 
-上記の `--dart-define=ZOOSTUDY_DEMO=true` で debug 起動し、**その他 → 連携デモ** を開きます。
+上記の `--dart-define=ZOOSTUDY_DEMO=true --dart-define=ZOOSTUDY_DEMO_BONUS_COINS=0` で debug 起動し、**その他 → 連携デモ** を開きます。
 
 1. 「初回提出の確定結果を受信」→ 30コイン表示と提出通知。
 2. 通知を閉じる。「同じ確定結果を再受信」→ 残高も通知も増えない。
@@ -227,7 +227,7 @@ Firebase の原子性・Security Rules・本番認可・永続保存を実装し
 
 ```powershell
 git pull --ff-only origin chore/zoo-study-pre-hackday-setup
-C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true
+C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true --dart-define=ZOOSTUDY_DEMO_BONUS_COINS=0
 ```
 
 1. 起動時は0コイン・動物0匹。
@@ -328,3 +328,24 @@ docs/game_integration_contract.md
 フェーズ4ゲーム担当分の検証結果: `flutter analyze --no-pub` は指摘なし、`flutter test --no-pub` は60件成功。
 購入キャンセル、確認後の残高再検証、処理中の重複抑止、成否不明・タイムアウトと遅延応答、ショップ再表示時のキー維持、確定状態待ち、読込再試行、スクロール下部での結果表示、文字サイズ2倍、購入後の詳細表示、拡大・移動後の動物選択を検証しました。
 Android 実機での操作と本番接続は未検証です。
+
+
+## 一時的なデバッグ用コイン
+
+debug の明示的デモ起動時に限り、初期残高へ1,000コインを追加します。通常起動の未接続状態や profile/release の標準起動には適用しません。
+課題報酬の履歴に偽の取引を作らず、購入残高や重複受信の扱いはそのままです。
+
+```powershell
+C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true
+```
+
+`ZOOSTUDY_DEMO_BONUS_COINS` の既定値は1000。0で無効化、別の非負整数で変更できます。変更後はアプリを停止して再起動します。
+以前のフェーズの操作例は、報酬だけのフローを再現するため0を指定しています。
+未提出なら1000、提出結果で1030、承認結果で1100。購入分は減算し、同じ結果を再受信しても消費済みコインは復活しません。
+アプリ再起動時はモック全体が初期化され、ボーナスも改めて初期残高に含まれます。本番付与・永続保存ではありません。
+
+## フェーズ5の提案（未着手）
+
+元の指示書はフェーズ4までです。次は「本番接続・保存・端末での総合確認」を置けます。
+ゲーム側は認証済みセッションの GameRepository / ShopRepository 接続、取引結果の復旧、Androidでの確認を担当します。
+課題管理・認証・先生画面・サーバーでの報酬確定は共同開発者の担当として、無断で変更しません。

@@ -97,7 +97,7 @@ class ZooWorld {
         tiles.length != rows ||
         tiles.any((row) => row.length != columns) ||
         tiles.any(
-          (row) => row.split('').any((tile) => !'.~='.contains(tile)),
+          (row) => row.split('').any((tile) => !'.~=#'.contains(tile)),
         )) {
       throw const FormatException('Invalid map dimensions or tiles');
     }
