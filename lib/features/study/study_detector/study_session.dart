@@ -37,7 +37,15 @@ class StudyDecision {
   final StudyState state;
   final String reason;
   final int score;
-  const StudyDecision(this.state, this.reason, [this.score = 0]);
+  final bool observed;
+  const StudyDecision(
+    this.state,
+    this.reason, [
+    this.score = 0,
+    this.observed = true,
+  ]);
+  bool get rewardEvidence =>
+      state != StudyState.unknown && state != StudyState.suspended;
 }
 
 class ActivitySample {
@@ -73,7 +81,12 @@ class ActivityClassifier {
     if (_recent.length > 4) _recent.removeAt(0);
     if (!sample.recognitionAvailable) {
       reset();
-      return const StudyDecision(StudyState.unknown, '認識に失敗したため学習時間へ加算しません');
+      return const StudyDecision(
+        StudyState.unknown,
+        '認識に失敗したため学習時間へ加算しません',
+        0,
+        false,
+      );
     }
     // A device may itself be the source of OCR text. Do not call that paper study.
     if ((sample.computer || sample.phone) &&
@@ -139,16 +152,23 @@ class StudySegment {
   Duration get duration => end - start;
 }
 
+class RewardInterval {
+  const RewardInterval(this.start, this.end);
+  final Duration start, end;
+}
+
 class SessionReport {
   final DateTime startedAt;
   final Duration elapsed;
   final List<StudySegment> segments;
   final StudyMode mode;
+  final List<RewardInterval> rewardIntervals;
   const SessionReport(
     this.startedAt,
     this.elapsed,
     this.segments, {
     this.mode = StudyMode.desk,
+    this.rewardIntervals = const [],
   });
   Duration total(StudyState state) => segments
       .where((item) => item.decision.state == state)
@@ -162,17 +182,37 @@ class StudySession {
   final List<StudySegment> _segments = [];
   Duration _cursor = Duration.zero;
   Duration? _validUntil;
+  Duration? _rewardUntil, _lastEvidence;
+  final _rewardIntervals = <RewardInterval>[];
   Duration? _finishedAt;
   StudyDecision _current = const StudyDecision(
     StudyState.unknown,
     '開始直後：最初の分析を待っています',
+    0,
+    false,
   );
-  static const stale = StudyDecision(StudyState.unknown, '新しい認識結果がないため判定保留');
+  static const stale = StudyDecision(
+    StudyState.unknown,
+    '新しい認識結果がないため判定保留',
+    0,
+    false,
+  );
 
   StudySession(this.startedAt, {this.mode = StudyMode.desk});
 
   void _append(Duration end) {
     if (end <= _cursor) return;
+    final rewardEnd = _rewardUntil == null
+        ? _cursor
+        : (end < _rewardUntil! ? end : _rewardUntil!);
+    if (rewardEnd > _cursor) {
+      if (_rewardIntervals.isNotEmpty && _rewardIntervals.last.end == _cursor) {
+        final previous = _rewardIntervals.removeLast();
+        _rewardIntervals.add(RewardInterval(previous.start, rewardEnd));
+      } else {
+        _rewardIntervals.add(RewardInterval(_cursor, rewardEnd));
+      }
+    }
     if (_segments.isNotEmpty &&
         _segments.last.decision.state == _current.state &&
         _segments.last.decision.reason == _current.reason) {
@@ -189,6 +229,7 @@ class StudySession {
     if (_validUntil != null && now >= _validUntil!) {
       _append(_validUntil!);
       _current = stale;
+      _lastEvidence = null;
       _validUntil = null;
     }
     _append(now);
@@ -198,6 +239,20 @@ class StudySession {
     if (_finishedAt != null) return;
     _advance(now);
     _current = decision;
+    _rewardUntil = null;
+    if (!decision.observed || decision.state == StudyState.suspended) {
+      _lastEvidence = null;
+    }
+    if (decision.rewardEvidence && decision.observed) {
+      _lastEvidence = now;
+      _rewardUntil = now + const Duration(seconds: 8);
+    } else if (decision.state == StudyState.unknown &&
+        decision.observed &&
+        _lastEvidence != null) {
+      final grace = _lastEvidence! + const Duration(seconds: 30);
+      final fresh = now + const Duration(seconds: 8);
+      if (grace > now) _rewardUntil = grace < fresh ? grace : fresh;
+    }
     // A frozen/failed inference must never keep granting study time indefinitely.
     _validUntil = expires ? now + const Duration(seconds: 8) : null;
   }
@@ -210,7 +265,13 @@ class StudySession {
       at,
       List.unmodifiable(_segments),
       mode: mode,
+      rewardIntervals: List.unmodifiable(_rewardIntervals),
     );
+  }
+
+  bool rewardCounting(Duration now) {
+    snapshot(now);
+    return _rewardUntil != null && now < _rewardUntil!;
   }
 
   StudyDecision current(Duration now) {

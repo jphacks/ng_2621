@@ -30,7 +30,7 @@ abstract class StudyRepository extends ChangeNotifier
   Future<void> flush() async {}
   Future<void> refresh() async {}
   Future<List<StudyRecord>> loadStudyRecords() async => [];
-  Future<void> saveStudyRecord(StudyRecord record) async =>
+  Future<int> saveStudyRecord(StudyRecord record) async =>
       throw const StudyFailure('学習記録の保存に未対応です');
   FutureOr<void> publish(
     DemoAssignment assignment, {

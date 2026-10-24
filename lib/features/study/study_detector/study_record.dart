@@ -1,4 +1,5 @@
 import 'study_session.dart';
+import 'study_reward.dart';
 
 /// Aggregate observations only; never pixels, OCR text or face landmarks.
 class StudyRecord {
@@ -13,6 +14,9 @@ class StudyRecord {
     required this.completed,
     this.studentId = 'demo_student',
     this.studentName = 'デモ生徒',
+    this.rewardPolicyVersion = 0,
+    this.rewardMsByDay = const {},
+    this.rewardCoins = 0,
   });
   final String id, subject, studentId, studentName;
   final DateTime startedAt;
@@ -20,6 +24,9 @@ class StudyRecord {
   final int elapsedMs, samples;
   final Map<String, int> stateMs;
   final bool completed;
+  final int rewardPolicyVersion, rewardCoins;
+  final Map<String, int> rewardMsByDay;
+  int get eligibleMs => rewardMsByDay.values.fold(0, (a, b) => a + b);
   int get suspendedMs => stateMs[StudyState.suspended.name] ?? 0;
   int get activeMs => elapsedMs - suspendedMs;
   DateTime get endedAt => startedAt.add(Duration(milliseconds: elapsedMs));
@@ -48,6 +55,8 @@ class StudyRecord {
       subject: subject,
       completed: completed,
       stateMs: Map.unmodifiable(totals),
+      rewardPolicyVersion: 2,
+      rewardMsByDay: Map.unmodifiable(rewardDays(report)),
     );
   }
   Map<String, dynamic> toJson() => {
@@ -61,10 +70,19 @@ class StudyRecord {
     'completed': completed,
     'studentId': studentId,
     'studentName': studentName,
-    'detectorVersion': 'study-detector-v1',
+    'detectorVersion': rewardPolicyVersion == 2
+        ? 'study-detector-v2'
+        : 'study-detector-v1',
+    if (rewardPolicyVersion == 2) 'rewardPolicyVersion': 2,
+    if (rewardPolicyVersion == 2) 'rewardMsByDay': rewardMsByDay,
   };
   factory StudyRecord.fromJson(Map<String, dynamic> json) {
     final result = StudyRecord(
+      rewardPolicyVersion: json['rewardPolicyVersion'] as int? ?? 0,
+      rewardCoins: json['rewardCoins'] as int? ?? 0,
+      rewardMsByDay: Map<String, dynamic>.from(
+        json['rewardMsByDay'] as Map? ?? {},
+      ).map((k, v) => MapEntry(k, v as int)),
       id: json['id'] as String,
       startedAt: DateTime.parse(json['startedAt'] as String),
       mode: StudyMode.values.byName(json['mode'] as String),
@@ -87,6 +105,16 @@ class StudyRecord {
         samples < 0 ||
         samples > 100000 ||
         subject.length > 100 ||
+        rewardPolicyVersion != 0 && rewardPolicyVersion != 2 ||
+        (rewardPolicyVersion == 0 && rewardMsByDay.isNotEmpty) ||
+        eligibleMs > samples * 8000 ||
+        eligibleMs > elapsedMs ||
+        rewardMsByDay.length > 2 ||
+        rewardMsByDay.entries.any(
+          (e) =>
+              e.value < 0 ||
+              e.value > studyDayCapacity(startedAt, elapsedMs, e.key),
+        ) ||
         stateMs.length != StudyState.values.length ||
         StudyState.values.any((s) => (stateMs[s.name] ?? -1) < 0) ||
         stateMs.values.fold(0, (a, b) => a + b) != elapsedMs) {

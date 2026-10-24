@@ -84,11 +84,35 @@ function createService(db = getFirestore()) {
         const fingerprint = digest(record);
         if (existing.exists) {
           if (existing.data().fingerprint !== fingerprint) fail('already-exists', '保存済みの学習記録と一致しません');
-          return {sessionId: doc.id};
+          return {sessionId: doc.id, rewardAmount: existing.data().rewardAmount || 0};
         }
+        const entries = Object.entries(record.rewardMsByDay || {});
+        const dailyRefs = entries.map(([day]) => ref(db, 'studyDailyRewards', `${uid}_${day}`));
+        const dailyDocs = dailyRefs.length ? await tx.getAll(...dailyRefs) : [];
+        let rewardAmount = 0;
+        const dailyUpdates = entries.map(([day, ms], index) => {
+          const previous = dailyDocs[index].data();
+          const before = previous?.eligibleMs || 0;
+          const paid = previous?.coinsGranted || 0;
+          if (!Number.isSafeInteger(before) || before < 0 || paid !== Math.min(30, Math.floor(before / 120000))) {
+            fail('failed-precondition', '日別の勉強報酬を確認してください');
+          }
+          const eligibleMs = before + ms;
+          const coinsGranted = Math.min(30, Math.floor(eligibleMs / 120000));
+          rewardAmount += coinsGranted - paid;
+          return {...contextFields(context), studentId: uid, day, eligibleMs, coinsGranted, updatedAt: stamp()};
+        });
+        // Read all documents before any writes; concurrent saves share the daily cap.
+        const zoo = rewardAmount > 0 ? await tx.get(ref(db, 'zoos', uid)) : null;
+        if (zoo) {
+          const current = wallet(zoo.data(), context);
+          tx.set(zoo.ref, {...current, coins: current.coins + rewardAmount,
+            revision: current.revision + 1, updatedAt: stamp()});
+        }
+        dailyUpdates.forEach((value, index) => tx.set(dailyRefs[index], value));
         tx.create(doc, {...contextFields(context), studentId: uid, studentName: context.displayName,
-          record, fingerprint, source: 'device_observation', receivedAt: stamp()});
-        return {sessionId: doc.id};
+          record, fingerprint, rewardAmount, source: 'device_observation', receivedAt: stamp()});
+        return {sessionId: doc.id, rewardAmount};
       });
     },
     async publishAssignment(request) {
