@@ -154,7 +154,8 @@ class ZooViewportState extends State<ZooViewport> {
                   left: 16,
                   bottom: 16,
                   right: 76,
-                  child: SpritePanel(
+                  child: WoodPanel(
+                    originalSheet: true,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(

@@ -52,3 +52,17 @@ Android実機・エミュレーターでの起動確認はこの環境では未�
 390×844の描画を目視確認。既存の小画面・大きな文字・購入キャンセル・購入結果再確認・課題連携テストも成功。
 認証・課題管理、コイン計算、価格、所持データ、マップ配置は変更していない。追加パッケージなし。
 Android実機での起動確認は未実施。
+
+## 素材指定の調整
+
+- ホームボタンを黄緑からクリーム色に変更（選択中のセマンティクスは維持）。
+- 空の動物園のチュートリアルを `zooStudyUI.png` の木製3パーツに変更。内部のショップボタンは維持。
+- 「その他」のシート背景には、従来の最下部ナビと同じクリーム柄（`TerrainTexture`）を使用。
+- 最下部のホーム・課題・その他ナビ背景を、追加シートのレンガ左・中・右を連結・反復する描画に変更。
+- パターン背景でも一覧のタップ時フィードバックが隠れないよう、一覧内に透明なMaterialを配置。
+
+変更ファイル: `lib/core/ui/widgets/wood_panel.dart`, `lib/core/ui/widgets/sprite_panel.dart`,
+`lib/features/zoo/presentation/zoo_chrome.dart`, `zoo_screen.dart`, `zoo_viewport.dart`,
+`lib/core/ui/README.md`, 本書。
+認証・課題管理・購入処理・画像ファイルは変更なし。
+検証: `flutter analyze` 指摘なし、`flutter test` 全86件成功。ホームと「その他」の描画を目視確認。

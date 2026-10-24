@@ -187,7 +187,8 @@ class ZooBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TerrainTexture(
+    return SpritePanel(
+      style: SpritePanelStyle.brick,
       child: DecoratedBox(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: zooLine)),
@@ -202,7 +203,7 @@ class ZooBottomBar extends StatelessWidget {
                   child: Semantics(
                     selected: true,
                     child: TextButton(
-                      style: PixelUiTheme.buttonStyle(SpritePanelStyle.lime)
+                      style: PixelUiTheme.buttonStyle(SpritePanelStyle.cream)
                           .copyWith(
                             minimumSize: const WidgetStatePropertyAll(
                               Size(48, 56),
@@ -269,7 +270,11 @@ Future<void> showZooSheet(
   BuildContext context, {
   required String title,
   required List<Widget> children,
+  bool patternedBackground = false,
 }) {
+  Widget surface(Widget child) => patternedBackground
+      ? TerrainTexture(child: child)
+      : SpritePanel(child: child);
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -281,8 +286,8 @@ Future<void> showZooSheet(
       maxHeight: MediaQuery.sizeOf(context).height * 0.8,
     ),
     builder: (context) => PixelUiTheme(
-      child: SpritePanel(
-        child: SafeArea(
+      child: surface(
+        SafeArea(
           top: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,

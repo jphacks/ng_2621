@@ -7,7 +7,7 @@ import '../sprites/sprite_sheet_image.dart';
 import '../sprites/zoo_extra_sprite.dart';
 import '../sprites/zoo_extra_part.dart';
 
-enum SpritePanelStyle { wood, cream, gray, lime, roundGray }
+enum SpritePanelStyle { wood, cream, gray, lime, roundGray, brick }
 
 /// Nine-slice frames from the supplied sheet. Edges and fill are tiled at 2x;
 /// corners keep their original shape rather than being stretched with content.
@@ -45,6 +45,9 @@ class _PanelPainter extends CustomPainter {
         ZooExtraPart.limeButtonRight.sourceRect,
       ),
     SpritePanelStyle.roundGray => ZooExtraPart.grayRoundButton.sourceRect,
+    SpritePanelStyle.brick => ZooExtraPart.brickLeft.sourceRect.expandToInclude(
+      ZooExtraPart.brickRight.sourceRect,
+    ),
   };
 
   @override
@@ -61,6 +64,34 @@ class _PanelPainter extends CustomPainter {
     final paint = Paint()
       ..filterQuality = FilterQuality.none
       ..isAntiAlias = false;
+    if (style == SpritePanelStyle.brick) {
+      // Repeat full brick cells vertically, joining left/middle/right horizontally.
+      final cap = math.min(32.0, size.width / 2);
+      void strip(Rect source, double left, double width) {
+        if (width <= 0) return;
+        canvas.save();
+        canvas.clipRect(
+          Rect.fromLTWH(left, 0, width, size.height),
+          doAntiAlias: false,
+        );
+        for (var y = 0.0; y < size.height; y += 32) {
+          for (var x = left; x < left + width; x += 32) {
+            canvas.drawImageRect(
+              image,
+              source,
+              Rect.fromLTWH(x, y, 32, 32),
+              paint,
+            );
+          }
+        }
+        canvas.restore();
+      }
+
+      strip(ZooExtraPart.brickLeft.sourceRect, 0, cap);
+      strip(ZooExtraPart.brickMiddle.sourceRect, cap, size.width - 2 * cap);
+      strip(ZooExtraPart.brickRight.sourceRect, size.width - cap, cap);
+      return;
+    }
     if (style == SpritePanelStyle.roundGray) {
       canvas.drawImageRect(image, source, Offset.zero & size, paint);
       return;
@@ -174,14 +205,20 @@ class SpriteTile extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: SpritePanel(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: leading,
-        title: title,
-        subtitle: subtitle,
-        trailing: trailing,
-        enabled: enabled,
-        onTap: onTap,
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 4,
+          ),
+          leading: leading,
+          title: title,
+          subtitle: subtitle,
+          trailing: trailing,
+          enabled: enabled,
+          onTap: onTap,
+        ),
       ),
     ),
   );

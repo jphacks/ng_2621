@@ -348,6 +348,7 @@ class _ZooScreenState extends State<ZooScreen>
     showZooSheet(
       context,
       title: 'その他',
+      patternedBackground: true,
       children: [
         if (kDebugMode &&
             _game.repository is MockGameRepository &&
