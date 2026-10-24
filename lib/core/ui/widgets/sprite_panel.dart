@@ -65,7 +65,8 @@ class _PanelPainter extends CustomPainter {
       ..filterQuality = FilterQuality.none
       ..isAntiAlias = false;
     if (style == SpritePanelStyle.brick) {
-      // Repeat full brick cells vertically, joining left/middle/right horizontally.
+      // Keep the recessed top two source rows only at the outer top edge.
+      // Repeat the opaque 14-row body so internal seams have no gaps.
       final cap = math.min(32.0, size.width / 2);
       void strip(Rect source, double left, double width) {
         if (width <= 0) return;
@@ -74,12 +75,20 @@ class _PanelPainter extends CustomPainter {
           Rect.fromLTWH(left, 0, width, size.height),
           doAntiAlias: false,
         );
-        for (var y = 0.0; y < size.height; y += 32) {
-          for (var x = left; x < left + width; x += 32) {
+        final top = Rect.fromLTWH(source.left, source.top, source.width, 2);
+        final body = Rect.fromLTWH(
+          source.left,
+          source.top + 2,
+          source.width,
+          source.height - 2,
+        );
+        for (var x = left; x < left + width; x += 32) {
+          canvas.drawImageRect(image, top, Rect.fromLTWH(x, 0, 32, 4), paint);
+          for (var y = 4.0; y < size.height; y += 28) {
             canvas.drawImageRect(
               image,
-              source,
-              Rect.fromLTWH(x, y, 32, 32),
+              body,
+              Rect.fromLTWH(x, y, 32, 28),
               paint,
             );
           }

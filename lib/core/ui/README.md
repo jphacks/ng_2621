@@ -106,3 +106,6 @@ const SpritePanel(
 `WoodPanel(originalSheet: true, child: ...)` は旧 `assets/ui/zooStudyUI.png` の木製3パーツをつなぎます。
 デフォルトは追加シートの木製枠です。チュートリアルだけ旧シートを選択しています。
 `SpritePanelStyle.brick` はレンガの左右端を保ち、中央を横方向・各列を縦方向に繰り返すナビ背景です。
+
+修正版の旧木製パーツは高さ11px（y=22〜32）です。y=33の透明行は含めません。
+レンガの凹んだ上端2pxは最上部に一度だけ描画し、その下は残り14pxを縦に繰り返します。

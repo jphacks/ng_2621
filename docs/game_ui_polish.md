@@ -66,3 +66,13 @@ Android実機での起動確認は未実施。
 `lib/core/ui/README.md`, 本書。
 認証・課題管理・購入処理・画像ファイルは変更なし。
 検証: `flutter analyze` 指摘なし、`flutter test` 全86件成功。ホームと「その他」の描画を目視確認。
+
+## 接続部分のピクセル修正
+
+レンガの上端2pxを独立させて最上部だけに描画し、下部は不透明な14pxを繰り返すよう変更した。各段に凹みが繰り返される隙間を解消。
+旧UIシートの木製3パーツは修正版画像に合わせて高さを12pxから11pxに修正し、透明な最下行を除外。縦方向の中央部分も高さから計算して下端を揃える。
+
+変更ファイル: `lib/core/ui/widgets/sprite_panel.dart`, `lib/core/ui/widgets/wood_panel.dart`,
+`lib/core/ui/sprites/zoo_ui_part.dart`, `test/core/ui/sprite_seams_test.dart`, `lib/core/ui/README.md`, 本書。
+元画像とゲーム処理は変更なし。レンガ内部の透明な隙間と、木製3パーツの全ピクセルを比較する回帰テストを追加。
+検証: `flutter analyze` 指摘なし、`flutter test` 全88件成功。ホーム画面の描画も目視確認。

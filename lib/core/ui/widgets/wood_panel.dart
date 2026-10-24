@@ -94,7 +94,12 @@ class _OriginalWoodPainter extends CustomPainter {
     void piece(Rect source, Rect dest) {
       final src = [
         Rect.fromLTWH(source.left, source.top, source.width, 3),
-        Rect.fromLTWH(source.left, source.top + 3, source.width, 6),
+        Rect.fromLTWH(
+          source.left,
+          source.top + 3,
+          source.width,
+          source.height - 6,
+        ),
         Rect.fromLTWH(source.left, source.bottom - 3, source.width, 3),
       ];
       final dst = [
