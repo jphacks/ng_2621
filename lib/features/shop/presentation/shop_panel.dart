@@ -26,9 +26,9 @@ class ShopPanel extends StatefulWidget {
 class _ShopPanelState extends State<ShopPanel> {
   ShopCatalog? _catalog;
   bool _loadFailed = false;
+  ShopItemKind? _filter;
   late final ShopPurchaseController _purchases;
   bool _confirming = false;
-  final _feedbackAnchor = GlobalKey();
   PurchaseStatus? _presentedStatus;
   bool _revealScheduled = false;
 
@@ -48,15 +48,12 @@ class _ShopPanelState extends State<ShopPanel> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _revealScheduled = false;
       if (!mounted) return;
-      final target = _feedbackAnchor.currentContext;
-      if (target != null) {
-        Scrollable.ensureVisible(
-          target,
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 220),
-        );
-      }
+      Scrollable.ensureVisible(
+        context,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
+      );
     });
   }
 
@@ -112,6 +109,10 @@ class _ShopPanelState extends State<ShopPanel> {
           ),
           FilledButton(
             key: const ValueKey('confirm-purchase'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF386A43),
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('購入を確定'),
           ),
@@ -154,9 +155,23 @@ class _ShopPanelState extends State<ShopPanel> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      success ? Icons.check_circle_outline : Icons.info_outline,
-                    ),
+                    if (success)
+                      TweenAnimationBuilder<double>(
+                        key: const ValueKey('purchase-success-animation'),
+                        tween: Tween(begin: 0.65, end: 1.0),
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 280),
+                        curve: Curves.easeOutBack,
+                        builder: (context, scale, child) =>
+                            Transform.scale(scale: scale, child: child),
+                        child: const ZooUiSprite(
+                          part: ZooUiPart.check,
+                          scale: 2,
+                        ),
+                      )
+                    else
+                      const Icon(Icons.info_outline),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -180,11 +195,23 @@ class _ShopPanelState extends State<ShopPanel> {
                     child: const Text('残高・所持情報を再読み込み'),
                   ),
                 ],
+                if (success && !_purchases.awaitingSnapshot) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _purchases.item?.kind == ShopItemKind.animal
+                        ? '仲間が増えました！'
+                        : '動物園が広がりました！',
+                  ),
+                ],
                 if (success &&
                     !_purchases.awaitingSnapshot &&
                     widget.onViewZoo != null)
                   FilledButton.icon(
                     onPressed: widget.onViewZoo,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF386A43),
+                      foregroundColor: Colors.white,
+                    ),
                     icon: const Icon(Icons.pets),
                     label: const Text('動物園を見る'),
                   ),
@@ -219,6 +246,9 @@ class _ShopPanelState extends State<ShopPanel> {
           !widget.session.failed &&
           !widget.session.loading &&
           snapshot != null;
+      final visibleItems = catalog.items
+          .where((item) => _filter == null || item.kind == _filter)
+          .toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -241,24 +271,56 @@ class _ShopPanelState extends State<ShopPanel> {
                 child: const Text('残高を再読み込み'),
               ),
           ],
-          Container(
-            key: _feedbackAnchor,
-            child: AnimatedSwitcher(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 160),
-              child: KeyedSubtree(
-                key: ValueKey(_purchases.status),
-                child: _feedback(),
-              ),
+          AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 160),
+            child: KeyedSubtree(
+              key: ValueKey(_purchases.status),
+              child: _feedback(),
             ),
           ),
-          if (catalog.items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final entry in <(String, ShopItemKind?)>[
+                  ('すべて', null),
+                  ('動物', ShopItemKind.animal),
+                  ('施設', ShopItemKind.facility),
+                ])
+                  ChoiceChip(
+                    label: Text(entry.$1),
+                    selected: _filter == entry.$2,
+                    showCheckmark: false,
+                    selectedColor: const Color(0xFFE0EBD2),
+                    backgroundColor: const Color(0xFFFAF9F0),
+                    side: BorderSide(
+                      color: _filter == entry.$2
+                          ? const Color(0xFF386A43)
+                          : const Color(0xFFD8E1CF),
+                    ),
+                    labelStyle: TextStyle(
+                      color: const Color(0xFF263D2D),
+                      fontWeight: _filter == entry.$2
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                    onSelected: (selected) {
+                      if (selected) setState(() => _filter = entry.$2);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          if (visibleItems.isEmpty)
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text('購入できる商品はまだありません'),
             ),
-          for (final item in catalog.items)
+          for (final item in visibleItems)
             Builder(
               builder: (context) {
                 final owned = snapshot != null && item.isOwned(snapshot);

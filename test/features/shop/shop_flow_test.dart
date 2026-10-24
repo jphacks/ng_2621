@@ -83,7 +83,8 @@ void main() {
       await transition(tester);
       await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
       await transition(tester);
-      expect(find.text('ウサギを購入しました'), findsOneWidget);
+      expect(find.text('ウサギを購入しました').hitTestable(), findsOneWidget);
+      expect(find.text('仲間が増えました！'), findsOneWidget);
       expect(find.text('0 コイン'), findsOneWidget);
       expect(
         tester

@@ -217,19 +217,7 @@ class ZooBottomBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: zooGreen,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(48, 62),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
+                  child: WoodButton(
                     onPressed: onStudy,
                     child: const Column(
                       mainAxisSize: MainAxisSize.min,
@@ -286,37 +274,52 @@ Future<void> showZooSheet(
     constraints: BoxConstraints(
       maxHeight: MediaQuery.sizeOf(context).height * 0.8,
     ),
-    builder: (context) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: zooInk,
+    builder: (context) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: WoodPanel(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 2,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: zooInk,
+                        ),
+                      ),
                     ),
-                  ),
+                    IconButton(
+                      tooltip: '閉じる',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: zooInk),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  tooltip: '閉じる',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: zooInk),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 12),
-            ...children,
-          ],
-        ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
+            ),
+          ),
+        ],
       ),
     ),
   );

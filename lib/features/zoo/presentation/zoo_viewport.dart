@@ -12,10 +12,12 @@ class ZooViewport extends StatefulWidget {
     required this.controller,
     required this.onAnimals,
     this.onAnimalSelected,
+    this.onShop,
   });
 
   final ZooController controller;
   final VoidCallback onAnimals;
+  final VoidCallback? onShop;
   final ValueChanged<AnimalDefinition>? onAnimalSelected;
 
   @override
@@ -87,7 +89,7 @@ class ZooViewportState extends State<ZooViewport> {
                 right: 12,
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -101,7 +103,9 @@ class ZooViewportState extends State<ZooViewport> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            '小さな一歩で、にぎやかな毎日。',
+                            widget.controller.animals.isEmpty
+                                ? 'ここから動物園を育てよう'
+                                : 'タップで動物の詳細',
                             style: TextStyle(fontSize: 11, color: zooGreen),
                           ),
                         ],
@@ -110,29 +114,31 @@ class ZooViewportState extends State<ZooViewport> {
                     Tooltip(
                       message: '動物一覧',
                       child: Material(
-                        color: zooPaper,
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(14),
                         child: InkWell(
                           onTap: widget.onAnimals,
                           borderRadius: BorderRadius.circular(14),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const ZooUiSprite(
-                                  part: ZooUiPart.encyclopediaRed,
-                                  scale: 3,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${widget.controller.animals.length}匹',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: zooInk,
+                          child: WoodPanel(
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const ZooUiSprite(
+                                    part: ZooUiPart.encyclopediaRed,
+                                    scale: 3,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${widget.controller.animals.length}匹',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: zooInk,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -141,7 +147,53 @@ class ZooViewportState extends State<ZooViewport> {
                   ],
                 ),
               ),
-              if (!_hasInteracted && constraints.maxHeight >= 280)
+              if (widget.controller.animals.isEmpty &&
+                  widget.onShop != null &&
+                  constraints.maxHeight >= 380)
+                Positioned(
+                  left: 16,
+                  bottom: 16,
+                  right: 76,
+                  child: Card(
+                    elevation: 0,
+                    color: zooPaper,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '最初の仲間を迎えよう',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: zooInk,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            '課題でコインを集めて、ショップへ。',
+                            style: TextStyle(fontSize: 12, color: zooGreen),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: widget.onShop,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: zooGreen,
+                              side: const BorderSide(color: zooGreen),
+                            ),
+                            icon: const ZooArtSprite(
+                              part: ZooArtPart.shop,
+                              scale: 1,
+                            ),
+                            label: const Text('ショップへ'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else if (!_hasInteracted && constraints.maxHeight >= 280)
                 const Positioned(
                   left: 16,
                   bottom: 18,
@@ -166,6 +218,24 @@ class ZooViewportState extends State<ZooViewport> {
                       : Axis.vertical,
                   spacing: 4,
                   children: [
+                    ValueListenableBuilder<Matrix4>(
+                      valueListenable: _camera,
+                      builder: (context, matrix, child) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: zooPaper,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${matrix.getMaxScaleOnAxis().toStringAsFixed(1)}×',
+                          key: const ValueKey('zoo-zoom-level'),
+                          style: const TextStyle(fontSize: 11, color: zooGreen),
+                        ),
+                      ),
+                    ),
                     _MapButton(
                       label: '拡大',
                       onPressed: () => _zoom(2),

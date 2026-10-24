@@ -439,6 +439,7 @@ class _ZooScreenState extends State<ZooScreen>
                       key: _viewportKey,
                       controller: controller,
                       onAnimals: _showAnimals,
+                      onShop: _showShop,
                       onAnimalSelected: _showAnimal,
                     ),
             ),

@@ -33,7 +33,7 @@ const ZooUiSprite(
 - 4段目: `lock`, `back`, `arrowLeft`, `arrowRight`, `encyclopediaRed`, `encyclopediaBlue`。
 - 最下段: `cylinder`, `cylinderGauge`, `plus`, `minus`, `sliderLeft`, `sliderMiddle`, `sliderRight`, `sliderThumb`, `speechBubble`。
 
-木製ボタンやスライダーは各パーツを呼び出せる状態です。つなぎ合わせた操作部品、ゲージの値・増減操作、画面への配置は未実装です。
+木製ボタンは `WoodPanel`（装飾枠）と `WoodButton`（押下操作）で連結して利用できます。上下の縁を保ち中央を繰り返し描画します。`WoodButton` は48論理ピクセル以上の操作領域を確保し、アニメーション無効設定では押下アニメーションを停止します。スライダーやゲージの操作部品は未実装です。
 元シートを差し替える際はサイズ・配置が変わらないか確認し、変わる場合は `sourceRect` と `sheetSize` を更新してください。
 
 
