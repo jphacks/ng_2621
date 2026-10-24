@@ -41,6 +41,8 @@ class _StudyModeScreenState extends State<StudyModeScreen>
   StudySession? _session;
   StudyMode? _mode;
   StudyRecord? _pending, _saved;
+  int _awardedCoins = 0;
+  bool _showRunningPreview = false;
   String _id = newRequestId();
   String _subject = 'その他';
   String? _error;
@@ -69,6 +71,7 @@ class _StudyModeScreenState extends State<StudyModeScreen>
       (_) => _analyze(),
     );
     _checkpointTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_session != null && _foreground && !_working) _update(() {});
       if (_session != null &&
           _pending == null &&
           _clock.isRunning &&
@@ -132,7 +135,7 @@ class _StudyModeScreenState extends State<StudyModeScreen>
         await _engine.keepAwake(true);
         _session!.record(
           _elapsed,
-          const StudyDecision(StudyState.unknown, '再開後の観測を確認中'),
+          const StudyDecision(StudyState.unknown, '再開後の観測を確認中', 0, false),
         );
       }
       _analyze();
@@ -171,7 +174,12 @@ class _StudyModeScreenState extends State<StudyModeScreen>
           if (running) {
             _session?.record(
               _elapsed,
-              const StudyDecision(StudyState.unknown, '観測結果が古いため判定保留'),
+              const StudyDecision(
+                StudyState.unknown,
+                '観測結果が古いため判定保留',
+                0,
+                false,
+              ),
             );
           } else {
             _selector.reset();
@@ -190,7 +198,12 @@ class _StudyModeScreenState extends State<StudyModeScreen>
           if (running) {
             _session?.record(
               _elapsed,
-              const StudyDecision(StudyState.unknown, '撮影・判定を確認できませんでした'),
+              const StudyDecision(
+                StudyState.unknown,
+                '撮影・判定を確認できませんでした',
+                0,
+                false,
+              ),
             );
           } else {
             _selector.reset();
@@ -267,7 +280,7 @@ class _StudyModeScreenState extends State<StudyModeScreen>
           await _engine.suspend();
         });
       }
-      await widget.store.saveStudyRecord(_pending!);
+      _awardedCoins = await widget.store.saveStudyRecord(_pending!);
       await _journal.clear();
       _update(() {
         _saved = _pending;
@@ -375,6 +388,14 @@ class _StudyModeScreenState extends State<StudyModeScreen>
               if (_saved != null) ...[
                 const Text('学習記録を保存しました', style: TextStyle(fontSize: 24)),
                 Text(
+                  '+$_awardedCoinsコイン',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Text('同日の対象時間を合算し、2分につき1コイン・1日最大30コインです。'),
+                Text(
                   '学習モードの利用時間：${formatDuration(Duration(milliseconds: _saved!.activeMs))}',
                 ),
                 FilledButton(
@@ -398,7 +419,30 @@ class _StudyModeScreenState extends State<StudyModeScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 16),
+                if (_session != null && _pending == null) ...[
+                  Text(
+                    '今回のコイン対象時間：${formatDuration(Duration(milliseconds: _record(completed: false).eligibleMs))}',
+                  ),
+                  Text(
+                    _ready && _session!.rewardCounting(_elapsed)
+                        ? 'コイン対象を計測中（短い見失いは最大30秒までつなぎます）'
+                        : 'コイン対象の計測を保留中です。カメラや映り方を確認してください。すでに数えた時間は減りません。',
+                  ),
+                  if (_ready)
+                    TextButton(
+                      onPressed: () => _update(
+                        () => _showRunningPreview = !_showRunningPreview,
+                      ),
+                      child: Text(_showRunningPreview ? '映像を隠す' : 'カメラの映り方を確認'),
+                    ),
+                  if (_ready && _showRunningPreview)
+                    SizedBox(
+                      height: 240,
+                      child: ClipRect(child: _engine.preview()),
+                    ),
+                ],
+                const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _working ? null : () => _finish(),
                   child: Text(_pending != null ? '保存を再試行' : '終了して保存'),
@@ -409,6 +453,25 @@ class _StudyModeScreenState extends State<StudyModeScreen>
                     child: const Text('カメラを再接続'),
                   ),
               ] else ...[
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      '2分につき1コイン・1日最大30コイン（60分）。同じ日の複数回の利用を合算し、終了して保存した時に確定します。日付は日本時間の0時に切り替わります。',
+                    ),
+                  ),
+                ),
+                ExpansionTile(
+                  title: const Text('コイン対象時間の判定について'),
+                  children: const [
+                    Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text(
+                        '教材が映っていれば手を動かしていなくても対象にします。顔モードでは姿勢確認中も対象です。スマホ・PCが映る時間も調べ学習を除外しないため対象にします。読書・思考を不利にしないための設定で、実際の理解・集中を証明する判定ではありません。\n一時的な見失いは最後の確認から最大30秒までつなぎます。画面外、撮影・解析エラー、8秒以上新しい結果がない時間は対象外です。計測状況は勉強中にも表示します。',
+                      ),
+                    ),
+                  ],
+                ),
                 const Text(
                   'はじめに映り方を確認します',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -450,7 +513,7 @@ class _StudyModeScreenState extends State<StudyModeScreen>
                   ),
                   Text(
                     _mode == null
-                        ? '顔または教材と手元が映る位置で数秒お待ちください。両方が映る場合は、どちらかを中心に映してください。'
+                        ? '顔または教材が映る位置で数秒お待ちください。両方が映る場合は教材を使う方式を優先します。手は動かしていなくても大丈夫です。'
                         : '自動選択：${_mode == StudyMode.face ? "顔モード" : "手元モード"}',
                   ),
                   if (_engine.canSwitchCamera)

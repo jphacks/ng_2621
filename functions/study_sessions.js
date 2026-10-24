@@ -16,8 +16,28 @@ function normalizeStudyRecord(raw) {
   const started = new Date(raw.startedAt);
   if (!Number.isFinite(started.getTime()) || started.getTime() > Date.now() + 300000 ||
       raw.elapsedMs > Date.now() - started.getTime() + 300000) fail();
-  return {id: raw.id, startedAt: started.toISOString(), mode: raw.mode, subject: raw.subject.trim(),
+  const record = {id: raw.id, startedAt: started.toISOString(), mode: raw.mode, subject: raw.subject.trim(),
     completed: raw.completed, elapsedMs: raw.elapsedMs, samples: raw.samples,
     stateMs: Object.fromEntries(states.map(s => [s, raw.stateMs[s]])), detectorVersion: 'study-detector-v1'};
+  if (raw.rewardPolicyVersion == null) {
+    if (raw.rewardMsByDay != null) fail();
+    return record;
+  }
+  if (raw.rewardPolicyVersion !== 2 || !raw.rewardMsByDay || Array.isArray(raw.rewardMsByDay) ||
+      Object.keys(raw.rewardMsByDay).length > 2) fail();
+  let eligible = 0;
+  for (const [day, milliseconds] of Object.entries(raw.rewardMsByDay)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isSafeInteger(milliseconds) || milliseconds < 0) fail();
+    const midnight = Date.parse(`${day}T00:00:00+09:00`);
+    if (!Number.isFinite(midnight) || new Date(midnight + 32400000).toISOString().slice(0,10) !== day) fail();
+    const capacity = Math.max(0, Math.min(midnight + 86400000, started.getTime() + raw.elapsedMs) - Math.max(midnight, started.getTime()));
+    if (milliseconds > capacity) fail();
+    eligible += milliseconds;
+  }
+  if (eligible > raw.elapsedMs || eligible > raw.samples * 8000) fail();
+  record.detectorVersion = 'study-detector-v2';
+  record.rewardPolicyVersion = 2;
+  record.rewardMsByDay = Object.fromEntries(Object.entries(raw.rewardMsByDay).sort(([a],[b]) => a.localeCompare(b)));
+  return record;
 }
 module.exports = {normalizeStudyRecord};

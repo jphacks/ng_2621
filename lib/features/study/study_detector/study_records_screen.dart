@@ -91,6 +91,12 @@ class _StudyRecordsScreenState extends State<StudyRecordsScreen> {
                             '学習モードの利用時間：${formatDuration(Duration(milliseconds: record.activeMs))}',
                           ),
                           Text(record.completed ? '終了して保存' : '中断時点までの記録'),
+                          Text('獲得コイン：+${record.rewardCoins}'),
+                          Text(
+                            'コイン対象時間：${formatDuration(Duration(milliseconds: record.eligibleMs))}',
+                          ),
+                          if (record.rewardPolicyVersion == 0)
+                            const Text('導入前の記録はコイン対象外です'),
                           if (widget.isTeacher) ...[
                             Text(
                               '判定方式：${record.mode == StudyMode.face ? "顔の姿勢" : "教材と手元"}',

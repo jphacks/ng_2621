@@ -111,11 +111,8 @@ class _NativeDetector extends StudyDetectorEngine {
         final boxes = result['boxes'] as List? ?? [];
         final scores = summarizeDetections(boxes).scores;
         final paper = text.paperOutsideScreens(boxes);
-        deskEvidence =
-            text.handAvailable &&
-            text.hands > 0 &&
-            paper.material &&
-            paper.nearHand;
+        // Reading can be stationary, with the hands outside the frame.
+        deskEvidence = paper.material && text.ocrAvailable && _modelReady;
         decision = _deskClassifier.classify(
           ActivitySample(
             at,

@@ -220,3 +220,40 @@ test('malformed study statistics and future time are rejected before persistence
   await assert.rejects(service.saveStudySession(request(null, {record})), denied);
   assert.equal((await db.collection('studySessions').get()).size, 0);
 });
+
+function rewardedRecord(id, seconds, start) {
+  const at = start || new Date(Date.now() - 86400000 * 2).toISOString().slice(0,10) + 'T10:00:00+09:00';
+  const date = new Date(at);
+  const day = new Date(date.getTime() + 32400000).toISOString().slice(0,10);
+  return {id, startedAt: date.toISOString(), mode:'desk', subject:'数学', completed:true,
+    elapsedMs:seconds*1000, samples:seconds, rewardPolicyVersion:2, rewardMsByDay:{[day]:seconds*1000},
+    stateMs:{studying:0,facePosture:0,faceCheck:0,material:seconds*1000,device:0,unknown:0,suspended:0}};
+}
+test('study rewards carry partial minutes, replay safely and cap concurrently at 30 per JST day', async()=>{
+  const save = record => service.saveStudySession(request('student_a',{record}));
+  assert.equal((await save(rewardedRecord('short-a',60))).rewardAmount,0);
+  assert.equal((await save(rewardedRecord('short-b',60))).rewardAmount,1);
+  await Promise.all(Array.from({length:4},()=>save(rewardedRecord('short-b',60))));
+  assert.equal((await db.doc('zoos/student_a').get()).data().coins,1);
+  await Promise.all(['long-a','long-b','long-c','long-d'].map(id=>save(rewardedRecord(id,1200))));
+  assert.equal((await db.doc('zoos/student_a').get()).data().coins,30);
+  assert.equal((await db.collection('studyDailyRewards').get()).docs[0].data().coinsGranted,30);
+  const today = new Date(Date.now()-86400000).toISOString().slice(0,10)+'T10:00:00+09:00';
+  assert.equal((await save(rewardedRecord('next-day',120,today))).rewardAmount,1);
+  assert.equal((await db.doc('zoos/student_a').get()).data().coins,31);
+  const peer=await service.saveStudySession(request('student_b',{record:rewardedRecord('peer',120)}));
+  assert.equal(peer.rewardAmount,1);
+  assert.equal((await db.doc('zoos/student_b').get()).data().coins,1);
+});
+test('reward bucket forgery and rewards without fresh samples are rejected', async()=>{
+  const record=rewardedRecord('bad-reward',120);
+  for(const bad of [
+    {...record,rewardMsByDay:{'2026-02-30':120000}},
+    {...record,rewardMsByDay:{'2000-01-01':120000}},
+    {...record,samples:0},
+    {...record,rewardMsByDay:{[Object.keys(record.rewardMsByDay)[0]]:120001}},
+    {...record,rewardPolicyVersion:99},
+  ]) await assert.rejects(service.saveStudySession(request('student_a',{record:bad})),denied);
+  const client=env.authenticatedContext('student_a').firestore();
+  await assertFails(setDoc(doc(client,'studyDailyRewards','student_a_fake'),{eligibleMs:999999999,coinsGranted:30}));
+});
