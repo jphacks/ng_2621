@@ -6,10 +6,12 @@ class RoleSelectionScreen extends StatefulWidget {
     super.key,
     required this.teacherPageBuilder,
     required this.studentPageBuilder,
+    this.storageDescription,
   });
 
   final WidgetBuilder teacherPageBuilder;
   final WidgetBuilder studentPageBuilder;
+  final String? storageDescription;
 
   @override
   State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
@@ -45,6 +47,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text('宿題が、動物園を育てる。', textAlign: TextAlign.center),
+                  if (widget.storageDescription != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.storageDescription!,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                   const SizedBox(height: 40),
                   _RoleCard(
                     title: '先生はこちら',

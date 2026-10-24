@@ -1,50 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'features/auth/presentation/role_selection_screen.dart';
-import 'features/study/demo_assignment_store.dart';
-import 'features/game/domain/game_repository.dart';
-import 'features/zoo/presentation/zoo_screen.dart';
+import 'app_bootstrap.dart';
+export 'app.dart';
 
 void main() {
-  runApp(const ZooStudyApp());
-}
-
-class ZooStudyApp extends StatefulWidget {
-  const ZooStudyApp({super.key, this.gameRepository});
-
-  final GameRepository? gameRepository;
-
-  @override
-  State<ZooStudyApp> createState() => _ZooStudyAppState();
-}
-
-class _ZooStudyAppState extends State<ZooStudyApp> {
-  final _assignments = DemoAssignmentStore();
-
-  @override
-  void dispose() {
-    _assignments.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ZooっとStudy',
-      home: RoleSelectionScreen(
-        teacherPageBuilder: (_) => ZooScreen(
-          gameRepository:
-              widget.gameRepository ?? (kDebugMode ? _assignments : null),
-          isTeacher: true,
-          assignmentStore: kDebugMode ? _assignments : null,
-        ),
-        studentPageBuilder: (_) => ZooScreen(
-          gameRepository:
-              widget.gameRepository ?? (kDebugMode ? _assignments : null),
-          assignmentStore: kDebugMode ? _assignments : null,
-        ),
-      ),
-    );
-  }
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const AppBootstrap());
 }
