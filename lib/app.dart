@@ -1,17 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'features/auth/presentation/role_selection_screen.dart';
+import 'features/auth/presentation/saved_role_gate.dart';
+import 'core/storage/draft_storage.dart';
 import 'features/study/demo_assignment_store.dart';
 import 'features/study/study_repository.dart';
 import 'features/game/domain/game_repository.dart';
 import 'features/zoo/presentation/zoo_screen.dart';
 
 class ZooStudyApp extends StatefulWidget {
-  const ZooStudyApp({super.key, this.gameRepository, this.studyRepository});
+  const ZooStudyApp({
+    super.key,
+    this.gameRepository,
+    this.studyRepository,
+    this.roleStorage,
+  });
 
   final GameRepository? gameRepository;
   final StudyRepository? studyRepository;
+  final DraftStorage? roleStorage;
 
   @override
   State<ZooStudyApp> createState() => _ZooStudyAppState();
@@ -31,7 +38,8 @@ class _ZooStudyAppState extends State<ZooStudyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ZooっとStudy',
-      home: RoleSelectionScreen(
+      home: SavedRoleGate(
+        storage: widget.roleStorage,
         storageDescription: _assignments.storageLabel,
         teacherPageBuilder: (_) => ZooScreen(
           gameRepository:
