@@ -1,60 +1,173 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zoo_study/core/ui/zoo_ui.dart';
 import 'package:zoo_study/features/zoo/presentation/zoo_map.dart';
 import 'package:zoo_study/main.dart';
 
+Future<void> loadZoo(WidgetTester tester, {double textScale = 1}) async {
+  await tester.runAsync(() async {
+    await rootBundle.loadString('assets/zoo/world.json');
+    await tester.pumpWidget(
+      MediaQuery(
+        data: MediaQueryData.fromView(tester.view)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: const ZooStudyApp(),
+      ),
+    );
+    await precacheImage(
+      const AssetImage(ZooUiSprite.assetPath),
+      tester.element(find.byType(ZooStudyApp)),
+    );
+  });
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+Future<void> closeSheet(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('閉じる'));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
-  testWidgets('loads bundled zoo, renders animals and placeholder controls', (
+  testWidgets(
+    'sketch layout keeps status above zoo and three actions below it',
+    (tester) async {
+      await loadZoo(tester);
+      expect(find.text('ZooっとStudy'), findsOneWidget);
+      expect(find.text('ゲスト'), findsOneWidget);
+      expect(find.text('Lv.1'), findsOneWidget);
+      expect(find.text('1,000'), findsOneWidget);
+      expect(find.byType(ZooMap), findsOneWidget);
+      for (final id in ['rabbit-1', 'fox-1', 'panda-1']) {
+        expect(find.byKey(ValueKey(id)), findsOneWidget);
+      }
+      final viewport = tester.getRect(find.byType(InteractiveViewer));
+      expect(tester.getBottomLeft(find.text('ゲスト')).dy, lessThan(viewport.top));
+      for (final label in ['ホーム', '勉強', 'その他']) {
+        expect(
+          tester.getTopLeft(find.text(label)).dy,
+          greaterThan(viewport.bottom),
+        );
+      }
+      expect(find.text('ショップ'), findsNothing);
+      await tester.pump(const Duration(seconds: 3));
+      expect(tester.takeException(), isNull);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(const Duration(seconds: 10));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('profile wallet study and more open dismissible detail sheets', (
     tester,
   ) async {
-    // Warm the real asset cache outside the fake frame clock.
-    await tester.runAsync(() async {
-      await rootBundle.loadString('assets/zoo/world.json');
-      await tester.pumpWidget(const ZooStudyApp());
-    });
+    await loadZoo(tester);
+    await tester.tap(find.byTooltip('プロフィール'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('プロフィール'), findsOneWidget);
+    expect(find.text('レベル 1'), findsOneWidget);
+    await closeSheet(tester);
 
-    expect(find.text('ZooっとStudy'), findsOneWidget);
-    expect(find.byType(ZooMap), findsOneWidget);
-    expect(find.text('1,000 コイン（仮）'), findsOneWidget);
-    expect(find.byKey(const ValueKey('rabbit-1')), findsOneWidget);
-    expect(find.byKey(const ValueKey('fox-1')), findsOneWidget);
-    expect(find.byKey(const ValueKey('panda-1')), findsOneWidget);
-    await tester.pump(const Duration(seconds: 3));
-    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('所持金の詳細'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('1,000 コイン'), findsOneWidget);
+    await closeSheet(tester);
 
+    await tester.tap(find.text('勉強'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('勉強機能は準備中です'), findsOneWidget);
+    await closeSheet(tester);
+
+    await tester.tap(find.text('その他'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('ショップ'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('ショップは準備中です'), findsOneWidget);
-    await tester.tap(find.text('動物一覧'));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('動物一覧は準備中です'), findsOneWidget);
-
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    await tester.pump(const Duration(seconds: 10));
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await closeSheet(tester);
+    await tester.tap(find.byTooltip('動物一覧'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    for (final name in ['うさぎ', 'きつね', 'パンダ']) {
+      expect(find.text(name), findsOneWidget);
+    }
+    await closeSheet(tester);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('map and controls fit a compact Android viewport', (
+  testWidgets('map zoom is bounded, dragging works and home resets view', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(320, 568);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.runAsync(() async {
-      await rootBundle.loadString('assets/zoo/world.json');
-      await tester.pumpWidget(const ZooStudyApp());
-    });
-    await tester.pump();
+    await loadZoo(tester);
+    final camera = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController!;
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.byTooltip('拡大'));
+      await tester.pump();
+    }
+    expect(camera.value.getMaxScaleOnAxis(), 4);
+    await tester.drag(find.byType(InteractiveViewer), const Offset(30, 30));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(ZooMap), findsOneWidget);
+    expect(camera.value.getTranslation().length, greaterThan(0));
+    await tester.tap(find.text('ホーム'));
+    await tester.pump();
+    expect(camera.value, Matrix4.identity());
+    await tester.tap(find.byTooltip('拡大'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('全体を表示'));
+    await tester.pump();
+    expect(camera.value, Matrix4.identity());
+    await tester.tap(find.byTooltip('縮小'));
+    await tester.pump();
+    expect(camera.value.getMaxScaleOnAxis(), 1);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  for (final size in [const Size(320, 568), const Size(568, 320)]) {
+    testWidgets('layout fits $size without overflow', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await loadZoo(tester);
+      expect(find.byType(ZooMap), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets(
+    'large text on a compact phone keeps navigation and sheets usable',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await loadZoo(tester, textScale: 2);
+      expect(
+        MediaQuery.textScalerOf(tester.element(find.byType(ZooMap))).scale(10),
+        20,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('その他'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('ショップ').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await closeSheet(tester);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 }
