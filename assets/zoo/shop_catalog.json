@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "rabbit",
+      "name": "ウサギ",
+      "kind": "animal",
+      "targetId": "rabbit",
+      "price": 100
+    },
+    {
+      "id": "fox",
+      "name": "キツネ",
+      "kind": "animal",
+      "targetId": "fox",
+      "price": 250
+    },
+    {
+      "id": "deer",
+      "name": "シカ",
+      "kind": "animal",
+      "targetId": "deer",
+      "price": 400,
+      "requiredAnimalIds": [
+        "fox"
+      ]
+    },
+    {
+      "id": "pond",
+      "name": "池",
+      "kind": "facility",
+      "targetId": "pond",
+      "price": 200
+    },
+    {
+      "id": "forest",
+      "name": "森エリア",
+      "kind": "facility",
+      "targetId": "forest",
+      "price": 500,
+      "minimumAnimalSpecies": 3
+    },
+    {
+      "id": "evolved_fox",
+      "name": "進化キツネ",
+      "kind": "animal",
+      "targetId": "evolved_fox",
+      "price": 800,
+      "requiredAnimalIds": [
+        "fox"
+      ]
+    }
+  ]
+}

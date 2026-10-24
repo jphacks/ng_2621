@@ -36,10 +36,20 @@ class ZooMap extends StatelessWidget {
                 child: ClipRect(
                   child: AnimatedBuilder(
                     animation: controller,
-                    child: RepaintBoundary(
-                      child: CustomPaint(
-                        size: Size(width, height),
-                        painter: _TilePainter(world),
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: controller.sceneryRevision,
+                      builder: (context, revision, child) => RepaintBoundary(
+                        key: const ValueKey('zoo-terrain'),
+                        child: CustomPaint(
+                          size: Size(width, height),
+                          painter: _TilePainter(
+                            world,
+                            controller.animals
+                                .map((a) => a.definition)
+                                .toList(),
+                            controller.ownedFacilities,
+                          ),
+                        ),
                       ),
                     ),
                     builder: (context, background) => Stack(
@@ -99,9 +109,11 @@ class _AnimalSprite extends StatelessWidget {
 }
 
 class _TilePainter extends CustomPainter {
-  _TilePainter(this.world);
+  _TilePainter(this.world, this.animals, this.facilities);
 
   final ZooWorld world;
+  final List<AnimalDefinition> animals;
+  final Set<String> facilities;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -109,10 +121,19 @@ class _TilePainter extends CustomPainter {
     final paint = Paint()..isAntiAlias = false;
     for (var y = 0; y < world.rows; y++) {
       for (var x = 0; x < world.columns; x++) {
-        final type = world.tiles[y][x];
+        var type = world.tiles[y][x];
+        for (final facility in world.facilities) {
+          if (!facility.contains(x, y)) continue;
+          if (facilities.contains(facility.id)) {
+            type = facility.tile == 'water' ? '~' : '^';
+          } else if (facility.tile == 'water' && type == '~') {
+            type = '.';
+          }
+        }
         paint.color = switch (type) {
           '=' => const Color(0xFFE4CD9B),
           '~' => const Color(0xFF6CBCCB),
+          '^' => const Color(0xFF4F8150),
           _ =>
             (x + y).isEven ? const Color(0xFF91BD70) : const Color(0xFF87B568),
         };
@@ -121,6 +142,17 @@ class _TilePainter extends CustomPainter {
           paint.color = const Color(0xFF78A65D);
           canvas.drawRect(
             Rect.fromLTWH(x * tile + 3, y * tile + 9, 2, 2),
+            paint,
+          );
+        } else if (type == '^') {
+          paint.color = const Color(0xFF315C3A);
+          canvas.drawRect(
+            Rect.fromLTWH(x * tile + 4, y * tile + 3, 8, 7),
+            paint,
+          );
+          paint.color = const Color(0xFF70583D);
+          canvas.drawRect(
+            Rect.fromLTWH(x * tile + 7, y * tile + 10, 2, 4),
             paint,
           );
         } else if (type == '~') {
@@ -136,7 +168,7 @@ class _TilePainter extends CustomPainter {
     paint.color = const Color(0xFF876449);
     paint.style = PaintingStyle.stroke;
     paint.strokeWidth = 1;
-    for (final animal in world.animals) {
+    for (final animal in animals) {
       final area = animal.area;
       canvas.drawRect(
         Rect.fromLTRB(
@@ -151,7 +183,10 @@ class _TilePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TilePainter oldDelegate) => oldDelegate.world != world;
+  bool shouldRepaint(_TilePainter oldDelegate) =>
+      oldDelegate.world != world ||
+      oldDelegate.animals != animals ||
+      oldDelegate.facilities != facilities;
 }
 
 /// Temporary 8x8 pixel animal, replaceable through imagePath in JSON.

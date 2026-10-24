@@ -2,15 +2,103 @@ import 'dart:async';
 
 import '../domain/game_repository.dart';
 import '../domain/game_snapshot.dart';
+import '../../shop/domain/shop_repository.dart';
+import '../../shop/domain/shop_catalog.dart';
+import '../../shop/data/shop_catalog_loader.dart';
 
 enum DemoScenario { assigned, submitted, needsRevision, resubmitted, approved }
 
 /// Development fixture adapter only. Never a source of production rewards.
-class MockGameRepository implements GameRepository {
-  MockGameRepository({DemoScenario scenario = DemoScenario.assigned})
-    : _current = snapshotFor(scenario);
+class MockGameRepository implements GameRepository, ShopRepository {
+  MockGameRepository({
+    DemoScenario scenario = DemoScenario.assigned,
+    Future<ShopCatalog> Function()? catalogLoader,
+  }) : _current = snapshotFor(scenario),
+       _catalogLoader = catalogLoader ?? loadShopCatalog;
 
   GameSnapshot _current;
+  final Future<ShopCatalog> Function() _catalogLoader;
+  ShopCatalog? _catalog;
+  final _purchases = <String, PurchaseReceipt>{};
+
+  @override
+  Future<ShopCatalog> loadCatalog() async =>
+      _catalog ??= await _catalogLoader();
+
+  @override
+  Future<PurchaseReceipt> purchase(PurchaseRequest request) async {
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(request.requestId) ||
+        request.itemId.isEmpty) {
+      throw const PurchaseFailure(PurchaseFailureCode.invalidRequest);
+    }
+    final catalog = await loadCatalog();
+    // No await between this check and the snapshot/receipt commit.
+    final previous = _purchases[request.requestId];
+    if (previous != null) {
+      if (previous.itemId != request.itemId) {
+        throw const PurchaseFailure(PurchaseFailureCode.requestConflict);
+      }
+      return previous;
+    }
+    if (_changes.isClosed) {
+      throw const PurchaseFailure(PurchaseFailureCode.unavailable);
+    }
+    final item = catalog.items.where((i) => i.id == request.itemId).firstOrNull;
+    if (item == null) {
+      throw const PurchaseFailure(PurchaseFailureCode.unknownItem);
+    }
+    if (item.isOwned(_current)) {
+      throw const PurchaseFailure(PurchaseFailureCode.alreadyOwned);
+    }
+    if (!item.isUnlocked(_current)) {
+      throw const PurchaseFailure(PurchaseFailureCode.locked);
+    }
+    if (_current.coins < item.price) {
+      throw const PurchaseFailure(PurchaseFailureCode.insufficientCoins);
+    }
+    final data = _current.toJson();
+    data['coins'] = _current.coins - item.price;
+    data['revision'] = _current.revision + 1;
+    data['confirmedAt'] = DateTime.now().toUtc().toIso8601String();
+    final field = item.kind == ShopItemKind.animal
+        ? 'ownedAnimalIds'
+        : 'ownedFacilityIds';
+    data[field] = [...data[field] as List, item.targetId];
+    final next = GameSnapshot.fromJson(data);
+    final receipt = PurchaseReceipt(
+      requestId: request.requestId,
+      itemId: item.id,
+      price: item.price,
+      revision: next.revision,
+    );
+    _purchases[request.requestId] = receipt;
+    _current = next;
+    _changes.add(next);
+    return receipt;
+  }
+
+  /// Fixture event merging keeps prior spending and ownership intact.
+  void receiveDemoScenario(DemoScenario scenario) {
+    final data = snapshotFor(
+      scenario,
+      revision: _current.revision + 1,
+    ).toJson();
+    final receipts = {for (final r in _current.rewards) r.transactionId: r};
+    var increase = 0;
+    for (final raw in data['rewards'] as List) {
+      final receipt = RewardReceipt.fromJson(raw as Map<String, dynamic>);
+      if (!receipts.containsKey(receipt.transactionId)) {
+        receipts[receipt.transactionId] = receipt;
+        increase += receipt.amount;
+      }
+    }
+    data['coins'] = _current.coins + increase;
+    data['rewards'] = receipts.values.map((r) => r.toJson()).toList();
+    data['ownedAnimalIds'] = _current.ownedAnimalIds.toList();
+    data['ownedFacilityIds'] = _current.ownedFacilityIds.toList();
+    receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
+  }
+
   final _changes = StreamController<GameSnapshot>.broadcast(sync: true);
 
   @override

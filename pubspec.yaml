@@ -58,6 +58,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/zoo/world.json
+    - assets/zoo/shop_catalog.json
     - assets/ui/zooStudyUI.png
 
   # To add assets to your application, add an assets section, like this:

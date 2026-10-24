@@ -1,4 +1,4 @@
-# 新 ZooStudy フェーズ1・2：ゲーム側の接続契約
+# 新 ZooStudy フェーズ1〜3：ゲーム側の接続契約
 
 ## 担当境界と現在地
 
@@ -9,7 +9,7 @@
 
 新しい方針は「宿題が、動物園を育てる。」です。
 このフェーズでは外部システムの確定結果を読み取り、ゲームの残高・課題状態・履歴に表示します。
-課題作成、回答送信、講師承認、報酬の実付与、認証、購入の実処理はまだ実装しません。
+課題作成、回答送信、講師承認、報酬の実付与、認証は担当範囲外です。フェーズ3で購入のゲーム側インターフェースとインメモリモックを追加しました。本番の購入処理はまだ未接続です。
 したがって、指示書のフェーズ1全体の受け入れ条件（先生が配布し、生徒が提出して先生一覧に反映）は、課題管理側との統合後に検証する必要があります。
 
 ## 階層
@@ -73,7 +73,7 @@ lib/features/game/
 - 課題状態は `not_submitted / pending_review / needs_revision / approved` の4種類。未提出は `submittedAt=null`、それ以外は確定した提出日時が必要です。
 - 期限後表示は `submittedAt > dueAt` で判断し、課題状態とは別に表示します。
 - 報酬キーは `${assignmentId}_${studentId}_submit` と `${assignmentId}_${studentId}_approve`。履歴に含む課題は `assignments` にも含めます。
-- `ownedAnimalIds` / `ownedFacilityIds` は購入連携用に予約しています。フェーズ1の表示用の動物は従来の配置確認用3匹のままで、所持状態とまだ連動しません。
+- `ownedAnimalIds` / `ownedFacilityIds` は購入連携用に予約しています。フェーズ3から確定した所持状態と描画が連動します。未接続・未購入では動物を表示せず、未所持の施設も描画しません。元の定義や素材は残しています。
 - 混在した塾・クラス・生徒、重複した課題ID・報酬キー、負の残高、未対応スキーマ／状態は受け付けません。これらはクライアントの整合性検査であり、認可の代わりにはなりません。
 
 ## 課題管理側への実装依頼
@@ -182,4 +182,92 @@ docs/game_integration_contract.md
 この操作はモックの固定スナップショットの受信シミュレーションで、課題の作成・回答送信・講師権限による承認操作ではありません。
 通常起動の未接続状態と profile/release の標準起動経路にはデモメニューを出しません。
 
-次はフェーズ3のゲーム担当分として、購入契約とショップ・所持動物の描画連動を実装します。
+フェーズ3で以下の購入契約とショップ・所持動物の描画連動を追加しました。
+
+
+## フェーズ3：ショップと所持情報の反映
+
+### 購入契約
+
+`GameRepository` の読み取り API は変更せず、同じセッションに `ShopRepository` を追加実装します。
+
+- `Future<ShopCatalog> loadCatalog()`：商品一覧・正規価格・条件の取得。
+- `Future<PurchaseReceipt> purchase(PurchaseRequest(requestId, itemId))`：UID・価格・残高をクライアント引数にしません。
+- `PurchaseReceipt`：`requestId`, `itemId`, `price`, `revision`。確定後は同じセッションのゲーム状態ストリームにも、減算後残高と所持品を一緒に通知します。
+- サーバー実装では認証ユーザーと塾にキーをスコープし、正規カタログ・残高・条件・所有を検証して、購入記録＋残高減算＋所持追加＋revision更新を原子的に実施してください。
+- 同じキー・同じ商品は保存済みの結果を返します。同じキーで別商品を要求した場合は `requestConflict`。別キーでも単一所有品の重複購入は拒否します。
+- `PurchaseFailure` は未決済と確認できる拒否結果に使います。タイムアウトなど成否が不明な例外では同じキーを再利用して結果を照会／再送します。
+- UI の連打抑止だけを二重決済対策にしないでください。モックは await 後に再検証し、その後の残高・所持・記録の更新を await なしでまとめて実行します。
+
+現在は `MockGameRepository implements GameRepository, ShopRepository` がこの契約をインメモリで模擬します。
+Firebase の原子性・Security Rules・本番認可・永続保存を実装したものではありません。
+`receiveConfirmedSnapshot` は外部の完全な確定結果を置き換えるテスト入口です。アダプターは購入後の所持品・残高を含む一貫した状態を必ず渡してください。
+連携デモの受信は専用の `receiveDemoScenario` で既知の報酬を再加算せず、購入済み所持品と消費残高を維持します。
+
+### 商品と表示
+
+`assets/zoo/shop_catalog.json` が商品定義です。モックではこの定義を正規カタログとして扱い、UI が申告した価格は受け取りません。
+
+| 商品 | 価格 | 条件 |
+| --- | ---: | --- |
+| ウサギ | 100 | なし |
+| キツネ | 250 | なし |
+| シカ | 400 | キツネ所持 |
+| 池 | 200 | なし |
+| 森エリア | 500 | 動物3種類所持 |
+| 進化キツネ | 800 | キツネ所持。購入しても元のキツネは残る |
+
+動物の価格・条件は商品 JSON、移動範囲・施設のタイル位置は `world.json` に分離しています。
+購入後に確定スナップショットを受信すると、所持 ID に対応する動物・施設だけを自動配置します。
+既存の動物の位置・待機状態は保持し、施設や柵は所持状態が変わったときだけ背景を再描画します。
+未所持の池の予約領域は草地として表示します。元の水タイルデータは削除しません。
+動物は仮ドット絵で、画像パスを設定すれば既存の画像読み込み処理で差し替えられます。
+
+### 実演手順
+
+```powershell
+git pull --ff-only origin chore/zoo-study-pre-hackday-setup
+C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true
+```
+
+1. 起動時は0コイン・動物0匹。
+2. その他 → 連携デモ → 初回提出の確定結果を受信。30コインを確認。
+3. その他 → ショップ。ウサギは「コイン不足」で購入不可。
+4. その他 → 連携デモ → 承認の確定結果を受信。100コインを確認。
+5. その他 → ショップ → ウサギの「購入する」。0コイン・購入済みになる。
+6. ショップを閉じる。ウサギ1匹が配置され、ランダムウォークする。
+7. 同じ結果を再受信しても消費した100コインは復活せず、所持動物も消えない。
+
+現在の操作用モックは1課題分の100コインのみです。他の商品や解放条件は十分な確定残高を用意したテストで検証しています。実画面で複数商品を購入するには、課題管理側から追加の確定報酬を供給する必要があります。
+モックの残高・購入・再送キーは同一プロセス内では保持され、アプリの再起動でリセットされます。
+本物の先生の配布・承認や回答提出の画面は実装していません。最優先フローのゲーム側を受信シミュレーションで検証した段階です。
+
+### 変更ファイル
+
+```text
+assets/zoo/shop_catalog.json
+assets/zoo/world.json
+pubspec.yaml
+lib/features/shop/domain/shop_catalog.dart
+lib/features/shop/domain/shop_repository.dart
+lib/features/shop/data/shop_catalog_loader.dart
+lib/features/shop/presentation/shop_panel.dart
+lib/features/game/data/mock_game_repository.dart
+lib/features/zoo/domain/zoo_world.dart
+lib/features/zoo/presentation/zoo_controller.dart
+lib/features/zoo/presentation/zoo_map.dart
+lib/features/zoo/presentation/zoo_screen.dart
+lib/features/zoo/README.md
+test/features/shop/shop_repository_test.dart
+test/features/shop/shop_flow_test.dart
+test/features/shop/facility_map_test.dart
+test/features/zoo/zoo_world_test.dart
+test/widget_test.dart
+docs/game_integration_contract.md
+```
+
+次はゲーム側の UX 改善・素材の差し替えと、共同開発者による本番アダプター接続です。進化演出や保存先の実装は未完了です。
+
+フェーズ3の検証結果: `flutter analyze --no-pub` は指摘なし、`flutter test --no-pub` は48件成功。
+購入の残高・条件・重複・並行再送、タイムアウト後の同一キー再利用、元動物を残す解放、購入後の報酬再受信、施設の実描画と移動状態の保持を検証しました。
+Android のビルド・実機動作、本番 Firebase の取引・認可・永続化は未検証です。

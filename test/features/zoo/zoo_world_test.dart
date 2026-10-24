@@ -19,6 +19,8 @@ void main() {
       'rabbit',
       'fox',
       'panda',
+      'deer',
+      'evolved_fox',
     ]);
     expect(world.animals.every((animal) => animal.imagePath == null), isTrue);
   });

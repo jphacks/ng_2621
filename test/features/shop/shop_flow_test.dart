@@ -1,0 +1,141 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:zoo_study/core/ui/zoo_ui.dart';
+import 'package:zoo_study/features/game/data/mock_game_repository.dart';
+import 'package:zoo_study/features/game/domain/game_repository.dart';
+import 'package:zoo_study/features/game/domain/game_snapshot.dart';
+import 'package:zoo_study/features/game/presentation/game_session.dart';
+import 'package:zoo_study/features/shop/domain/shop_catalog.dart';
+import 'package:zoo_study/features/shop/domain/shop_repository.dart';
+import 'package:zoo_study/features/shop/presentation/shop_panel.dart';
+import 'package:zoo_study/main.dart';
+
+ShopCatalog fixture() => ShopCatalog.fromJson(
+  jsonDecode(File('assets/zoo/shop_catalog.json').readAsStringSync())
+      as Map<String, dynamic>,
+);
+Future<void> transition(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
+Future<void> menu(WidgetTester tester, String name) async {
+  await tester.tap(find.text('その他'));
+  await transition(tester);
+  await tester.tap(find.text(name));
+  await transition(tester);
+}
+
+void main() {
+  testWidgets(
+    'confirmed submission then approval buys rabbit and shows it in zoo',
+    (tester) async {
+      final repository = MockGameRepository(
+        catalogLoader: () async => fixture(),
+      );
+      addTearDown(repository.dispose);
+      await tester.runAsync(() async {
+        await rootBundle.loadString('assets/zoo/world.json');
+        await repository.loadCatalog();
+        await tester.pumpWidget(ZooStudyApp(gameRepository: repository));
+        await precacheImage(
+          const AssetImage(ZooUiSprite.assetPath),
+          tester.element(find.byType(ZooStudyApp)),
+        );
+      });
+      await tester.pump();
+      expect(find.byKey(const ValueKey('rabbit-1')), findsNothing);
+      await menu(tester, '連携デモ');
+      await tester.tap(find.text('初回提出の確定結果を受信'));
+      await transition(tester);
+      expect(find.text('30'), findsOneWidget);
+      await tester.tap(find.byTooltip('通知を閉じる'));
+      await tester.pump();
+      await menu(tester, 'ショップ');
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const ValueKey('buy-rabbit')))
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.byTooltip('閉じる'));
+      await transition(tester);
+      await menu(tester, '連携デモ');
+      await tester.tap(find.text('承認の確定結果を受信'));
+      await transition(tester);
+      expect(find.text('100'), findsOneWidget);
+      await tester.tap(find.byTooltip('通知を閉じる'));
+      await tester.pump();
+      await menu(tester, 'ショップ');
+      await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
+      await tester.pump();
+      expect(find.text('ウサギを購入しました'), findsOneWidget);
+      expect(find.text('0 コイン'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const ValueKey('buy-rabbit')))
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.byTooltip('閉じる'));
+      await transition(tester);
+      expect(find.byKey(const ValueKey('rabbit-1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('fox-1')), findsNothing);
+      expect(find.text('1匹'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('ambiguous failure retries the same purchase request id', (
+    tester,
+  ) async {
+    final repository = _RetryRepository();
+    final session = GameSession(repository);
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(child: ShopPanel(session: session)),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
+    await tester.pump();
+    expect(find.textContaining('再試行'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
+    await tester.pump();
+    expect(repository.ids, hasLength(2));
+    expect(repository.ids.first, repository.ids.last);
+    expect(find.text('ウサギを購入しました'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+}
+
+class _RetryRepository implements GameRepository, ShopRepository {
+  final ids = <String>[];
+  @override
+  GameConnection get connection => GameConnection.demo;
+  @override
+  Stream<GameSnapshot> watchGameState() =>
+      Stream.value(MockGameRepository.snapshotFor(DemoScenario.approved));
+  @override
+  Future<ShopCatalog> loadCatalog() async => fixture();
+  @override
+  Future<PurchaseReceipt> purchase(PurchaseRequest request) async {
+    ids.add(request.requestId);
+    if (ids.length == 1) throw StateError('lost response');
+    return PurchaseReceipt(
+      requestId: request.requestId,
+      itemId: request.itemId,
+      price: 100,
+      revision: 5,
+    );
+  }
+}

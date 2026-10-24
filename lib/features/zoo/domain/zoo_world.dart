@@ -55,6 +55,31 @@ class AnimalDefinition {
   );
 }
 
+class FacilityDefinition {
+  const FacilityDefinition({
+    required this.id,
+    required this.tile,
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
+  final String id;
+  final String tile;
+  final int left, top, width, height;
+  bool contains(int x, int y) =>
+      x >= left && x < left + width && y >= top && y < top + height;
+  factory FacilityDefinition.fromJson(Map<String, dynamic> json) =>
+      FacilityDefinition(
+        id: json['id'] as String,
+        tile: json['tile'] as String,
+        left: json['left'] as int,
+        top: json['top'] as int,
+        width: json['width'] as int,
+        height: json['height'] as int,
+      );
+}
+
 class ZooWorld {
   ZooWorld({
     required this.columns,
@@ -62,8 +87,10 @@ class ZooWorld {
     required this.tileSize,
     required List<String> tiles,
     required List<AnimalDefinition> animals,
+    List<FacilityDefinition> facilities = const [],
   }) : tiles = List.unmodifiable(tiles),
-       animals = List.unmodifiable(animals) {
+       animals = List.unmodifiable(animals),
+       facilities = List.unmodifiable(facilities) {
     if (columns <= 0 ||
         rows <= 0 ||
         tileSize < 16 ||
@@ -73,6 +100,21 @@ class ZooWorld {
           (row) => row.split('').any((tile) => !'.~='.contains(tile)),
         )) {
       throw const FormatException('Invalid map dimensions or tiles');
+    }
+    if (this.facilities.map((f) => f.id).toSet().length !=
+            this.facilities.length ||
+        this.facilities.any(
+          (f) =>
+              f.id.isEmpty ||
+              !['water', 'forest'].contains(f.tile) ||
+              f.left < 0 ||
+              f.top < 0 ||
+              f.width <= 0 ||
+              f.height <= 0 ||
+              f.left + f.width > columns ||
+              f.top + f.height > rows,
+        )) {
+      throw const FormatException('Invalid facility placement');
     }
     final ids = <String>{};
     for (final animal in animals) {
@@ -109,6 +151,7 @@ class ZooWorld {
   final int tileSize;
   final List<String> tiles;
   final List<AnimalDefinition> animals;
+  final List<FacilityDefinition> facilities;
 
   factory ZooWorld.fromJson(Map<String, dynamic> json) {
     final map = json['map'] as Map<String, dynamic>;
@@ -117,6 +160,9 @@ class ZooWorld {
       rows: map['rows'] as int,
       tileSize: map['tileSize'] as int,
       tiles: List<String>.from(map['tiles'] as List),
+      facilities: (json['facilities'] as List? ?? [])
+          .map((f) => FacilityDefinition.fromJson(f as Map<String, dynamic>))
+          .toList(),
       animals: (json['animals'] as List)
           .map(
             (entry) => AnimalDefinition.fromJson(entry as Map<String, dynamic>),

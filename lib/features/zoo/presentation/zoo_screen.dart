@@ -13,6 +13,7 @@ import 'zoo_controller.dart';
 import '../../../core/ui/zoo_ui.dart';
 import 'zoo_chrome.dart';
 import 'zoo_viewport.dart';
+import '../../shop/presentation/shop_panel.dart';
 
 class ZooScreen extends StatefulWidget {
   const ZooScreen({super.key, this.gameRepository});
@@ -56,7 +57,13 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _onGameChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final snapshot = _game.snapshot;
+    _controller?.synchronizeOwnership(
+      snapshot?.ownedAnimalIds ?? {},
+      snapshot?.ownedFacilityIds ?? {},
+    );
+    setState(() {});
   }
 
   Future<void> _load() async {
@@ -64,7 +71,13 @@ class _ZooScreenState extends State<ZooScreen>
     try {
       final world = await ZooRepository().load();
       if (!mounted) return;
-      setState(() => _controller = ZooController(world));
+      setState(
+        () => _controller = ZooController(
+          world,
+          ownedAnimalIds: _game.snapshot?.ownedAnimalIds ?? {},
+          ownedFacilityIds: _game.snapshot?.ownedFacilityIds ?? {},
+        ),
+      );
       if (WidgetsBinding.instance.lifecycleState == null ||
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
         _ticker.start();
@@ -156,7 +169,9 @@ class _ZooScreenState extends State<ZooScreen>
             subtitle: const Text('動物園で暮らしています'),
           ),
         const SizedBox(height: 8),
-        const Text('動物の見た目は仮素材です。収集・進化は準備中です。', style: TextStyle(fontSize: 12)),
+        if (controller.animals.isEmpty)
+          const Text('まだ動物はいません。ショップから仲間を迎えましょう。'),
+        const Text('動物の見た目は仮素材です。', style: TextStyle(fontSize: 12)),
       ],
     );
   }
@@ -169,12 +184,7 @@ class _ZooScreenState extends State<ZooScreen>
     }
     final state = snapshot.assignments.single.state;
     void receive(DemoScenario scenario) {
-      repository.receiveConfirmedSnapshot(
-        MockGameRepository.snapshotFor(
-          scenario,
-          revision: snapshot.revision + 1,
-        ),
-      );
+      repository.receiveDemoScenario(scenario);
       Navigator.pop(context);
     }
 
@@ -251,18 +261,14 @@ class _ZooScreenState extends State<ZooScreen>
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.storefront_outlined, color: zooGreen),
           title: const Text('ショップ'),
-          subtitle: const Text('準備中'),
+          subtitle: const Text('動物や施設を迎える'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             Navigator.pop(context);
             showZooSheet(
               context,
               title: 'ショップ',
-              children: const [
-                Text('ショップは準備中です'),
-                SizedBox(height: 12),
-                Text('動物や施設を迎える機能は、今後追加します。コインは消費しません。'),
-              ],
+              children: [ShopPanel(session: _game)],
             );
           },
         ),

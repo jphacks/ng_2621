@@ -11,6 +11,7 @@ Future<void> loadZoo(WidgetTester tester, {double textScale = 1}) async {
   addTearDown(repository.dispose);
   await tester.runAsync(() async {
     await rootBundle.loadString('assets/zoo/world.json');
+    await repository.loadCatalog();
     await tester.pumpWidget(
       MediaQuery(
         data: MediaQueryData.fromView(tester.view)
@@ -44,7 +45,7 @@ void main() {
       expect(find.text('100'), findsOneWidget);
       expect(find.byType(ZooMap), findsOneWidget);
       for (final id in ['rabbit-1', 'fox-1', 'panda-1']) {
-        expect(find.byKey(ValueKey(id)), findsOneWidget);
+        expect(find.byKey(ValueKey(id)), findsNothing);
       }
       final viewport = tester.getRect(find.byType(InteractiveViewer));
       expect(tester.getBottomLeft(find.text('ゲスト')).dy, lessThan(viewport.top));
@@ -96,14 +97,12 @@ void main() {
     await tester.tap(find.text('ショップ'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('ショップは準備中です'), findsOneWidget);
+    expect(find.byKey(const ValueKey('buy-rabbit')), findsOneWidget);
     await closeSheet(tester);
     await tester.tap(find.byTooltip('動物一覧'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    for (final name in ['うさぎ', 'きつね', 'パンダ']) {
-      expect(find.text(name), findsOneWidget);
-    }
+    expect(find.text('まだ動物はいません。ショップから仲間を迎えましょう。'), findsOneWidget);
     await closeSheet(tester);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
