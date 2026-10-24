@@ -62,7 +62,8 @@ void main() {
       await tester.tap(find.byType(BackButton).hitTestable().last);
       await frame();
       await restartAs('生徒はこちら');
-      await tap('課題');
+      await tap('学習');
+      await tap('課題提出');
       expect(find.text('理科の復習'), findsOneWidget);
       await tap('詳細・回答する');
       await tester.enterText(find.byType(TextFormField), '実験結果をまとめました');

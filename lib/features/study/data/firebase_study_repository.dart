@@ -16,6 +16,7 @@ import '../../shop/data/shop_catalog_loader.dart';
 import '../../shop/domain/shop_catalog.dart';
 import '../../shop/domain/shop_repository.dart';
 import '../study_repository.dart';
+import '../study_detector/study_record.dart';
 
 class FirebaseStudyRepository extends StudyRepository {
   FirebaseStudyRepository._(
@@ -290,6 +291,34 @@ class FirebaseStudyRepository extends StudyRepository {
         notifyListeners();
       }
     }
+  }
+
+  @override
+  Future<List<StudyRecord>> loadStudyRecords() async {
+    final query = isTeacher
+        ? _query('studySessions')
+        : _query('studySessions').where('studentId', isEqualTo: uid);
+    final result = await query
+        .get(const GetOptions(source: Source.server))
+        .timeout(const Duration(seconds: 20));
+    final records = result.docs.map((doc) {
+      final data = doc.data();
+      return StudyRecord.fromJson({
+        ...Map<String, dynamic>.from(data['record'] as Map),
+        'studentId': data['studentId'],
+        'studentName': data['studentName'],
+      });
+    }).toList()..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    return records;
+  }
+
+  @override
+  Future<void> saveStudyRecord(StudyRecord record) async {
+    if (isTeacher) throw const StudyFailure('生徒だけが学習記録を保存できます');
+    record.validate();
+    await _call('saveStudySession', {
+      'record': record.toJson(),
+    }, requestId: record.id);
   }
 
   Future<Map<String, dynamic>> _call(

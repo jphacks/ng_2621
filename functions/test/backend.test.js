@@ -172,6 +172,51 @@ test('unuploaded, forged, oversized and cross-user files cannot earn a reward', 
   // A client can lie about MIME; the trusted submission function checks actual bytes and hash.
   await owner.put(Buffer.from('NOT A PDF'), {contentType: 'application/pdf'});
   await assert.rejects(send({...attachment, size: 9}, 'forged-content'), denied);
-  assert.equal((await db.doc('zoos/student_a').get()).data().coins, 0);
+  assert.equal((await db.doc('zoos/student_a').get()).data()?.coins ?? 0, 0);
   assert.equal((await db.collection('submissions').get()).size, 0);
+});
+
+test('study records are immutable, idempotent, reward-free and readable only by owner or class teacher', async () => {
+  const record = {id: 'study-1', startedAt: new Date(Date.now() - 20000).toISOString(),
+    elapsedMs: 20000, samples: 2, mode: 'face', subject: '数学', completed: true,
+    stateMs: {studying: 0, facePosture: 3000, faceCheck: 0, material: 0, device: 0, unknown: 2000, suspended: 15000},
+    studentId: 'student_other', studentName: '偽名', rawFrame: 'must-not-be-stored'};
+  await Promise.all(Array.from({length: 4}, () => service.saveStudySession(request('student_a', {record}))));
+  assert.equal((await db.collection('studySessions').get()).size, 1);
+  const saved = (await db.doc('studySessions/student_a_study-1').get()).data();
+  assert.equal(saved.studentId, 'student_a');
+  assert.notEqual(saved.studentName, '偽名');
+  assert.equal(saved.record.rawFrame, undefined);
+  assert.equal((await db.doc('zoos/student_a').get()).data()?.coins ?? 0, 0);
+  assert.equal((await db.collection('rewardTransactions').get()).size, 0);
+  const owner = env.authenticatedContext('student_a').firestore();
+  const teacher = env.authenticatedContext('teacher_a').firestore();
+  const peer = env.authenticatedContext('student_b').firestore();
+  const other = env.authenticatedContext('teacher_other').firestore();
+  const key = 'student_a_study-1';
+  await assertSucceeds(getDoc(doc(owner, 'studySessions', key)));
+  await assertSucceeds(getDoc(doc(teacher, 'studySessions', key)));
+  await assertSucceeds(getDocs(query(collection(teacher, 'studySessions'), where('classId', '==', 'class_a'), where('organizationId', '==', 'org_a'))));
+  await assertSucceeds(getDocs(query(collection(owner, 'studySessions'), where('classId', '==', 'class_a'), where('organizationId', '==', 'org_a'), where('studentId', '==', 'student_a'))));
+  await assertFails(getDoc(doc(peer, 'studySessions', key)));
+  await assertFails(getDoc(doc(other, 'studySessions', key)));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'studySessions', key)));
+  await assertFails(setDoc(doc(owner, 'studySessions', 'forged'), {...saved, receivedAt: new Date()}));
+  await assertFails(updateDoc(doc(teacher, 'studySessions', key), {record: {}}));
+  await assert.rejects(service.saveStudySession(request('student_a', {record: {...record, subject: '英語'}})), denied);
+  await assert.rejects(service.saveStudySession(request('teacher_a', {record})), denied);
+});
+
+test('malformed study statistics and future time are rejected before persistence', async () => {
+  const record = {id: 'study-invalid', startedAt: new Date(Date.now() - 20000).toISOString(),
+    elapsedMs: 20000, samples: 2, mode: 'desk', subject: '数学', completed: false,
+    stateMs: {studying: 3000, facePosture: 0, faceCheck: 0, material: 0, device: 0, unknown: 2000, suspended: 15000}};
+  for (const bad of [
+    {...record, elapsedMs: -1}, {...record, elapsedMs: 86400001},
+    {...record, stateMs: {...record.stateMs, unknown: 0}}, {...record, mode: 'face'},
+    {...record, startedAt: new Date(Date.now() + 86400000).toISOString()},
+    {...record, samples: -1}, {...record, id: '../wrong'},
+  ]) await assert.rejects(service.saveStudySession(request('student_a', {record: bad})), denied);
+  await assert.rejects(service.saveStudySession(request(null, {record})), denied);
+  assert.equal((await db.collection('studySessions').get()).size, 0);
 });
