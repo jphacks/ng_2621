@@ -8,7 +8,10 @@ import 'package:zoo_study/features/game/domain/game_snapshot.dart';
 import 'package:zoo_study/features/game/presentation/game_session.dart';
 import 'package:zoo_study/features/shop/domain/shop_catalog.dart';
 import 'package:zoo_study/features/shop/domain/shop_repository.dart';
-import 'package:zoo_study/features/shop/presentation/shop_panel.dart';
+import 'package:zoo_study/features/shop/presentation/shop_screen.dart';
+
+import '../../support/shop_actions.dart';
+
 import 'package:zoo_study/features/shop/presentation/shop_purchase_controller.dart';
 
 Future<void> frames(WidgetTester tester) async {
@@ -24,14 +27,9 @@ void main() {
       final repository = _Repository();
       final session = GameSession(repository);
       addTearDown(session.dispose);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(child: ShopPanel(session: session)),
-          ),
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: ShopScreen(session: session)));
       await tester.pump();
+      await openShopItem(tester, 'rabbit');
       await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
       await frames(tester);
       expect(find.text('ウサギを購入しますか？'), findsOneWidget);
@@ -39,6 +37,7 @@ void main() {
       await tester.tap(find.text('やめる'));
       await frames(tester);
       expect(repository.calls, isEmpty);
+      await openShopItem(tester, 'rabbit');
       await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
       await frames(tester);
       await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
@@ -60,14 +59,11 @@ void main() {
         session.dispose();
       });
       Widget panel() => MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: ShopPanel(session: session, purchases: purchases),
-          ),
-        ),
+        home: ShopScreen(session: session, purchases: purchases),
       );
       await tester.pumpWidget(panel());
       await tester.pump();
+      await openShopItem(tester, 'rabbit');
       await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
       await frames(tester);
       await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
@@ -75,6 +71,8 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpWidget(panel());
       await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('resume-purchase')));
+      await frames(tester);
       expect(find.byKey(const ValueKey('retry-purchase')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('retry-purchase')));
       await frames(tester);
@@ -106,15 +104,12 @@ void main() {
         );
       final session = GameSession(repository);
       addTearDown(session.dispose);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(child: ShopPanel(session: session)),
-          ),
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: ShopScreen(session: session)));
       await tester.pump();
+      await openShopItem(tester, 'item7');
       await tester.ensureVisible(find.byKey(const ValueKey('buy-item7')));
+      await tester.pump();
+      await openShopItem(tester, 'item7');
       await tester.tap(find.byKey(const ValueKey('buy-item7')));
       await frames(tester);
       await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
@@ -132,16 +127,12 @@ void main() {
     final repository = _Repository()..failCatalog = true;
     final session = GameSession(repository);
     addTearDown(session.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: ShopPanel(session: session)),
-      ),
-    );
+    await tester.pumpWidget(MaterialApp(home: ShopScreen(session: session)));
     await tester.pump();
     expect(find.text('商品を読み込めませんでした'), findsOneWidget);
     await tester.tap(find.text('再読み込み'));
     await tester.pump();
-    expect(find.byKey(const ValueKey('buy-rabbit')), findsOneWidget);
+    expect(find.byKey(const ValueKey('shop-item-rabbit')), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -158,15 +149,14 @@ void main() {
       MediaQuery(
         data: MediaQueryData.fromView(tester.view)
             .copyWith(textScaler: TextScaler.linear(2)),
-        child: MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(child: ShopPanel(session: session)),
-          ),
-        ),
+        child: MaterialApp(home: ShopScreen(session: session)),
       ),
     );
     await tester.pump();
+    await openShopItem(tester, 'rabbit');
     await tester.ensureVisible(find.byKey(const ValueKey('buy-rabbit')));
+    await tester.pump();
+    await openShopItem(tester, 'rabbit');
     await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
     await frames(tester);
     expect(

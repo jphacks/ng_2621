@@ -11,7 +11,10 @@ import 'package:zoo_study/features/game/domain/game_snapshot.dart';
 import 'package:zoo_study/features/game/presentation/game_session.dart';
 import 'package:zoo_study/features/shop/domain/shop_catalog.dart';
 import 'package:zoo_study/features/shop/domain/shop_repository.dart';
-import 'package:zoo_study/features/shop/presentation/shop_panel.dart';
+import 'package:zoo_study/features/shop/presentation/shop_screen.dart';
+
+import '../../support/shop_actions.dart';
+
 import 'package:zoo_study/main.dart';
 
 ShopCatalog fixture() => ShopCatalog.fromJson(
@@ -64,12 +67,15 @@ void main() {
       await tester.tap(find.byTooltip('通知を閉じる'));
       await tester.pump();
       await menu(tester, 'ショップ');
+      await openShopItem(tester, 'rabbit');
       expect(
         tester
             .widget<FilledButton>(find.byKey(const ValueKey('buy-rabbit')))
             .onPressed,
         isNull,
       );
+      await tester.tap(find.byTooltip('商品一覧へ戻る'));
+      await transition(tester);
       await tester.tap(find.byTooltip('閉じる'));
       await transition(tester);
       await menu(tester, '連携デモ');
@@ -79,6 +85,7 @@ void main() {
       await tester.tap(find.byTooltip('通知を閉じる'));
       await tester.pump();
       await menu(tester, 'ショップ');
+      await openShopItem(tester, 'rabbit');
       await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
       await transition(tester);
       await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
@@ -116,14 +123,9 @@ void main() {
     final repository = _RetryRepository();
     final session = GameSession(repository);
     addTearDown(session.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(child: ShopPanel(session: session)),
-        ),
-      ),
-    );
+    await tester.pumpWidget(MaterialApp(home: ShopScreen(session: session)));
     await tester.pump();
+    await openShopItem(tester, 'rabbit');
     await tester.tap(find.byKey(const ValueKey('buy-rabbit')));
     await transition(tester);
     await tester.tap(find.byKey(const ValueKey('confirm-purchase')));

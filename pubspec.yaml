@@ -63,6 +63,12 @@ flutter:
     - assets/sprites/20261024_2.png
     - assets/sprites/20261023.png
     - assets/sprites/20261024_3.png
+    - assets/fonts/OFL-DotGothic16.txt
+
+  fonts:
+    - family: DotGothic16
+      fonts:
+        - asset: assets/fonts/DotGothic16-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

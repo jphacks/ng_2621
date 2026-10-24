@@ -10,6 +10,8 @@ import 'package:zoo_study/features/game/domain/game_snapshot.dart';
 import 'package:zoo_study/features/shop/domain/shop_catalog.dart';
 import 'package:zoo_study/features/zoo/presentation/zoo_screen.dart';
 
+import '../../support/shop_actions.dart';
+
 Future<MockGameRepository> openGame(WidgetTester tester) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -57,6 +59,7 @@ void main() {
     await tester.tap(find.text('ショップへ'));
     await frames(tester);
     expect(find.text('ショップ'), findsOneWidget);
+    await openShopItem(tester, 'rabbit');
     expect(
       tester
           .widget<FilledButton>(find.byKey(const ValueKey('buy-rabbit')))
@@ -76,15 +79,12 @@ void main() {
       final before = repository.currentSnapshot.toJson();
       await tester.tap(find.byKey(const ValueKey('shop-filter-施設')));
       await tester.pump();
-      expect(find.byKey(const ValueKey('buy-rabbit')), findsNothing);
-      expect(find.byKey(const ValueKey('buy-pond')), findsOneWidget);
+      expect(find.byKey(const ValueKey('shop-item-rabbit')), findsNothing);
+      expect(find.byKey(const ValueKey('shop-item-pond')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('shop-filter-動物')));
       await tester.pump();
-      expect(find.byKey(const ValueKey('buy-rabbit')), findsOneWidget);
-      expect(find.byKey(const ValueKey('buy-pond')), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('shop-filter-すべて')));
-      await tester.pump();
-      expect(find.byKey(const ValueKey('buy-pond')), findsOneWidget);
+      expect(find.byKey(const ValueKey('shop-item-rabbit')), findsOneWidget);
+      expect(find.byKey(const ValueKey('shop-item-pond')), findsNothing);
       expect(repository.currentSnapshot.toJson(), before);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -97,7 +97,11 @@ void main() {
       await openGame(tester);
       await tester.tap(find.text('ショップへ'));
       await frames(tester);
-      await tester.ensureVisible(find.byKey(const ValueKey('buy-evolved_fox')));
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('shop-item-evolved_fox')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pump();
       expect(find.byTooltip('閉じる').hitTestable(), findsOneWidget);
       expect(find.text('ショップ').hitTestable(), findsOneWidget);

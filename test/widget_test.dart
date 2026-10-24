@@ -104,7 +104,7 @@ void main() {
     await tester.tap(find.text('ショップ'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byKey(const ValueKey('buy-rabbit')), findsOneWidget);
+    expect(find.byKey(const ValueKey('shop-item-rabbit')), findsOneWidget);
     await closeSheet(tester);
     await tester.tap(find.byTooltip('動物一覧'));
     await tester.pump();

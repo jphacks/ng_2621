@@ -17,7 +17,7 @@ import 'zoo_controller.dart';
 import '../../../core/ui/zoo_ui.dart';
 import 'zoo_chrome.dart';
 import 'zoo_viewport.dart';
-import '../../shop/presentation/shop_panel.dart';
+import '../../shop/presentation/shop_screen.dart';
 import '../../shop/presentation/shop_purchase_controller.dart';
 import '../domain/zoo_world.dart';
 import '../../animals/presentation/animal_art.dart';
@@ -280,16 +280,10 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showShop() {
-    showZooSheet(
-      context,
-      title: 'ショップ',
-      children: [
-        ShopPanel(
-          session: _game,
-          purchases: _purchases,
-          onViewZoo: () => Navigator.pop(context),
-        ),
-      ],
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => ShopScreen(session: _game, purchases: _purchases),
+      ),
     );
   }
 

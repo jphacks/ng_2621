@@ -76,3 +76,9 @@ Android実機での起動確認は未実施。
 `lib/core/ui/sprites/zoo_ui_part.dart`, `test/core/ui/sprite_seams_test.dart`, `lib/core/ui/README.md`, 本書。
 元画像とゲーム処理は変更なし。レンガ内部の透明な隙間と、木製3パーツの全ピクセルを比較する回帰テストを追加。
 検証: `flutter analyze` 指摘なし、`flutter test` 全88件成功。ホーム画面の描画も目視確認。
+
+## ショップ再構成とDotGothic16
+
+ショップを専用画面に変更し、動物・施設タブ、名前検索、購入可能・購入済みの絞り込み、遅延生成グリッド、商品詳細に分割した。
+購入確認と再確認処理を維持し、既存のドット絵枠と同梱のDotGothic16で描画する。
+最新の変更ファイル・検証・拡張方法は [ショップの説明](shop_browsing.md) を参照。

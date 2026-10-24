@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../sprites/sprite_sheet_image.dart';
 import '../sprites/zoo_extra_sprite.dart';
 import '../sprites/zoo_extra_part.dart';
+import '../zoo_font.dart';
 
 enum SpritePanelStyle { wood, cream, gray, lime, roundGray, brick }
 
@@ -168,9 +169,14 @@ class PixelUiTheme extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ZooFont.registerLicense();
     final base = Theme.of(context);
     return Theme(
       data: base.copyWith(
+        textTheme: base.textTheme.apply(fontFamily: ZooFont.family),
+        primaryTextTheme: base.primaryTextTheme.apply(
+          fontFamily: ZooFont.family,
+        ),
         filledButtonTheme: FilledButtonThemeData(
           style: buttonStyle(SpritePanelStyle.lime),
         ),

@@ -1,73 +1,65 @@
 import 'package:flutter/material.dart';
 
-import '../../game/domain/game_repository.dart';
 import '../../game/presentation/game_session.dart';
-import '../data/shop_catalog_loader.dart';
 import '../domain/shop_catalog.dart';
 import '../domain/shop_repository.dart';
 import 'shop_purchase_controller.dart';
 import '../../../core/ui/zoo_ui.dart';
-import '../../animals/presentation/animal_art.dart';
+import 'shop_item_art.dart';
 
 class ShopPanel extends StatefulWidget {
   const ShopPanel({
     super.key,
     required this.session,
-    this.purchases,
+    required this.purchases,
+    required this.item,
+    required this.catalog,
     this.onViewZoo,
   });
   final GameSession session;
-  final ShopPurchaseController? purchases;
+  final ShopPurchaseController purchases;
+  final ShopItem item;
+  final ShopCatalog catalog;
   final VoidCallback? onViewZoo;
   @override
   State<ShopPanel> createState() => _ShopPanelState();
 }
 
 class _ShopPanelState extends State<ShopPanel> {
-  ShopCatalog? _catalog;
-  bool _loadFailed = false;
-  ShopItemKind? _filter;
   late final ShopPurchaseController _purchases;
   bool _confirming = false;
   PurchaseStatus? _presentedStatus;
   bool _revealScheduled = false;
+  final _feedbackAnchor = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _purchases = widget.purchases ?? ShopPurchaseController(widget.session);
+    _purchases = widget.purchases;
     _purchases.addListener(_revealFeedback);
-    _load();
+    _revealFeedback();
   }
 
   void _revealFeedback() {
-    if (_presentedStatus == _purchases.status) return;
+    if (_purchases.item?.id != widget.item.id ||
+        _presentedStatus == _purchases.status) {
+      return;
+    }
     _presentedStatus = _purchases.status;
     if (_revealScheduled || _purchases.status == PurchaseStatus.idle) return;
     _revealScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _revealScheduled = false;
       if (!mounted) return;
+      final target = _feedbackAnchor.currentContext;
+      if (target == null) return;
       Scrollable.ensureVisible(
-        context,
+        target,
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
             : const Duration(milliseconds: 220),
       );
     });
-  }
-
-  Future<void> _load() async {
-    setState(() => _loadFailed = false);
-    try {
-      final repository = widget.session.repository;
-      final catalog = await (repository is ShopRepository
-          ? (repository as ShopRepository).loadCatalog()
-          : loadShopCatalog());
-      if (mounted) setState(() => _catalog = catalog);
-    } catch (_) {
-      if (mounted) setState(() => _loadFailed = true);
-    }
   }
 
   Future<void> _confirmAndBuy(ShopItem item) async {
@@ -124,12 +116,12 @@ class _ShopPanelState extends State<ShopPanel> {
   @override
   void dispose() {
     _purchases.removeListener(_revealFeedback);
-    if (widget.purchases == null) _purchases.dispose();
     super.dispose();
   }
 
   Widget _feedback() {
-    if (_purchases.status == PurchaseStatus.idle) {
+    if (_purchases.status == PurchaseStatus.idle ||
+        _purchases.item?.id != widget.item.id) {
       return const SizedBox.shrink();
     }
     final success = _purchases.status == PurchaseStatus.success;
@@ -219,28 +211,27 @@ class _ShopPanelState extends State<ShopPanel> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: Listenable.merge([widget.session, _purchases]),
     builder: (context, child) {
-      final catalog = _catalog;
-      if (_loadFailed) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('商品を読み込めませんでした'),
-            TextButton(onPressed: _load, child: const Text('再読み込み')),
-          ],
-        );
-      }
-      if (catalog == null) {
-        return const Center(child: CircularProgressIndicator());
-      }
+      final item = widget.item;
       final snapshot = widget.session.snapshot;
       final available =
           widget.session.repository is ShopRepository &&
           !widget.session.failed &&
           !widget.session.loading &&
           snapshot != null;
-      final visibleItems = catalog.items
-          .where((item) => _filter == null || item.kind == _filter)
-          .toList();
+      final owned = snapshot != null && item.isOwned(snapshot);
+      final unlocked = snapshot != null && item.isUnlocked(snapshot);
+      final enough = snapshot != null && snapshot.coins >= item.price;
+      final names = {for (final i in widget.catalog.items) i.targetId: i.name};
+      final requirements = [
+        ...item.requiredAnimalIds.map((id) => '${names[id] ?? id}を解放'),
+        if (item.minimumAnimalSpecies > 0)
+          '動物${item.minimumAnimalSpecies}種類を解放',
+      ];
+      final blocked =
+          _purchases.busy ||
+          _purchases.uncertain ||
+          _purchases.awaitingSnapshot ||
+          _confirming;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -248,13 +239,59 @@ class _ShopPanelState extends State<ShopPanel> {
           Text(
             '${snapshot?.coins ?? '—'} コイン',
             key: const ValueKey('shop-balance'),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 22),
           ),
-          if (widget.session.repository.connection == GameConnection.demo)
-            const Text(
-              'デモショップ・再起動で購入状態はリセットされます',
-              style: TextStyle(fontSize: 12),
+          const SizedBox(height: 12),
+          SpritePanel(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(child: ShopItemArt(item: item, size: 64)),
+                  const SizedBox(height: 12),
+                  Text(item.name, style: const TextStyle(fontSize: 22)),
+                  Text('${item.price} コイン'),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '解放条件',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    requirements.isEmpty ? '初期から購入可' : requirements.join('・'),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    item.kind == ShopItemKind.animal
+                        ? '購入後、動物園に自動で配置されます。'
+                        : '購入後、動物園の決まった場所に追加されます。',
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    key: ValueKey('buy-${item.id}'),
+                    onPressed:
+                        available && !owned && unlocked && enough && !blocked
+                        ? () => _confirmAndBuy(item)
+                        : null,
+                    child: Text(
+                      _purchases.busy && _purchases.item?.id == item.id
+                          ? '購入を確認中…'
+                          : owned
+                          ? '購入済み'
+                          : !available
+                          ? '未接続'
+                          : !unlocked
+                          ? '未解放'
+                          : !enough
+                          ? 'コイン不足'
+                          : '購入する',
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ),
+          const SizedBox(height: 12),
           if (!available) ...[
             const Text('購入先に未接続、または更新停止中です'),
             if (widget.session.failed)
@@ -263,159 +300,20 @@ class _ShopPanelState extends State<ShopPanel> {
                 child: const Text('残高を再読み込み'),
               ),
           ],
-          AnimatedSwitcher(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 160),
-            child: KeyedSubtree(
-              key: ValueKey(_purchases.status),
-              child: _feedback(),
+          if (blocked && _purchases.item?.id != item.id)
+            const Text('別の購入結果を確認中です。ショップに戻り「前回の購入結果を確認」から確認してください。'),
+          Container(
+            key: _feedbackAnchor,
+            child: AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 160),
+              child: KeyedSubtree(
+                key: ValueKey(_purchases.status),
+                child: _feedback(),
+              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final entry in <(String, ShopItemKind?)>[
-                  ('すべて', null),
-                  ('動物', ShopItemKind.animal),
-                  ('施設', ShopItemKind.facility),
-                ])
-                  Semantics(
-                    selected: _filter == entry.$2,
-                    child: OutlinedButton(
-                      key: ValueKey('shop-filter-${entry.$1}'),
-                      style: PixelUiTheme.buttonStyle(
-                        _filter == entry.$2
-                            ? SpritePanelStyle.lime
-                            : SpritePanelStyle.cream,
-                      ),
-                      onPressed: () => setState(() => _filter = entry.$2),
-                      child: Text(
-                        entry.$1,
-                        style: TextStyle(
-                          fontWeight: _filter == entry.$2
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (visibleItems.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('購入できる商品はまだありません'),
-            ),
-          for (final item in visibleItems)
-            Builder(
-              builder: (context) {
-                final owned = snapshot != null && item.isOwned(snapshot);
-                final unlocked = snapshot != null && item.isUnlocked(snapshot);
-                final enough = snapshot != null && snapshot.coins >= item.price;
-                final names = {
-                  for (final i in catalog.items) i.targetId: i.name,
-                };
-                final requirements = [
-                  ...item.requiredAnimalIds.map(
-                    (id) => '${names[id] ?? id}を解放',
-                  ),
-                  if (item.minimumAnimalSpecies > 0)
-                    '動物${item.minimumAnimalSpecies}種類を解放',
-                ];
-                return Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: SpritePanel(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  item.name,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              if (item.kind == ShopItemKind.animal)
-                                AnimalArt(animalId: item.targetId)
-                              else if (item.targetId == 'pond' ||
-                                  item.targetId == 'forest')
-                                SizedBox.square(
-                                  dimension: 32,
-                                  child: Center(
-                                    child: ZooArtSprite(
-                                      part: item.targetId == 'pond'
-                                          ? ZooArtPart.pond
-                                          : ZooArtPart.tree,
-                                      scale: 2,
-                                    ),
-                                  ),
-                                )
-                              else
-                                const Icon(Icons.park_outlined),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              const ZooArtSprite(
-                                part: ZooArtPart.coins,
-                                scale: 1,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(child: Text('${item.price} コイン')),
-                            ],
-                          ),
-                          Text(
-                            requirements.isEmpty
-                                ? '初期から購入可'
-                                : requirements.join('・'),
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          const SizedBox(height: 8),
-                          FilledButton(
-                            key: ValueKey('buy-${item.id}'),
-                            onPressed:
-                                available &&
-                                    !owned &&
-                                    unlocked &&
-                                    enough &&
-                                    !_purchases.busy &&
-                                    !_purchases.uncertain &&
-                                    !_purchases.awaitingSnapshot &&
-                                    !_confirming
-                                ? () => _confirmAndBuy(item)
-                                : null,
-                            child: Text(
-                              _purchases.busy && _purchases.item?.id == item.id
-                                  ? '購入を確認中…'
-                                  : owned
-                                  ? '購入済み'
-                                  : !available
-                                  ? '未接続'
-                                  : !unlocked
-                                  ? '未解放'
-                                  : !enough
-                                  ? 'コイン不足'
-                                  : '購入する',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
         ],
       );
     },

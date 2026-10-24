@@ -1,0 +1,60 @@
+# ショップ一覧と商品詳細
+
+ショップを下部シートから専用ルートに移し、一覧で探す操作と詳細で購入する操作を分離しました。
+初期タブは「動物」で、「施設」と混在する「すべて」は廃止しています。
+
+## 操作
+
+- 上部の戻る・所持コイン・動物／施設タブは固定。
+- 名前検索、「購入可能のみ」「購入済みを隠す」を組み合わせて絞り込める。
+- 一覧は画像・名前・価格・状態だけ。解放済み、未解放、購入済みの商品もタップして詳細を確認できる。
+- 詳細で解放条件を確認し、購入ボタン→確認ダイアログ→購入結果の順に進む。
+- 詳細から戻るとタブ・検索・フィルター・一覧位置を維持。タブごとにスクロール位置を保持する。
+- 結果不明の購入があれば一覧の「前回の購入結果を確認」から同じ購入処理を再確認できる。
+- 「動物園を見る」は詳細とショップを閉じて元の動物園へ戻る。
+
+一覧は通常2列、広い画面は最大4列。幅360未満または文字倍率1.3倍超では1列にする。
+検索・絞り込みなどの補助操作は一覧と一緒にスクロールし、大きな文字でも固定領域が画面を埋めないようにする。
+商品は `SliverChildBuilderDelegate` で必要分だけ生成する。
+
+## 構成と拡張
+
+| ファイル | 役割 |
+| --- | --- |
+| `lib/features/shop/presentation/shop_screen.dart` | 専用ルート、カタログ読み込み、閲覧状態、一覧、詳細への遷移 |
+| `shop_catalog_filter.dart` | カテゴリ・検索・所持・購入可否を組み合わせる表示フィルター |
+| `shop_item_card.dart` | 情報を絞った一覧カード |
+| `shop_item_art.dart` | 商品IDと素材の対応。素材未登録時は仮表示 |
+| `shop_panel.dart` | 選択商品の詳細、既存の購入確認と結果表示 |
+| `shop_purchase_controller.dart` | 既存の購入・同一リクエスト再確認。今回変更なし |
+
+商品は引き続き `assets/zoo/shop_catalog.json` に追加する。価格・解放条件の判定は既存の `ShopItem` と購入リポジトリを利用する。
+新しい施設素材は `ShopItemArt` に追加すれば一覧と詳細の両方に反映される。
+ゲーム状態の取得・購入は既存の `GameSession` / `ShopRepository` に任せ、表示フィルターから残高・所持状態を変更しない。
+購入コントローラーは動物園から渡すため、ショップを閉じても結果未確定のリクエストを失わない。
+
+## フォント
+
+ゲームの `PixelUiTheme` に同梱のDotGothic16を適用。専用画面・シート・購入確認でも同じフォントを利用する。
+認証・課題管理画面のコードとテーマは変更していない。
+出典・ライセンス・チェックサムは `assets/fonts/README.md`、ライセンス原文は `OFL-DotGothic16.txt` を参照。
+追加パッケージ・実行時の外部取得はない。
+
+## 変更ファイル
+
+- 上表の表示用5ファイル（`shop_screen`, `shop_catalog_filter`, `shop_item_card`, `shop_item_art` は新規）。
+- `lib/features/zoo/presentation/zoo_screen.dart`: ショップ専用ルートを開く。
+- `lib/core/ui/widgets/sprite_panel.dart`, `lib/core/ui/zoo_font.dart`（新規）: ゲームのフォントとライセンス登録。
+- `pubspec.yaml`, `assets/fonts/`: フォント、原文ライセンス、出典を同梱。
+- `test/features/shop/shop_browse_test.dart`（新規）: 検索・条件組み合わせ・状態保持・120商品・実フォントの文字拡大を検証。
+- `test/support/shop_actions.dart`（新規）: 商品カードから詳細を開くテスト操作。
+- `test/features/shop/shop_flow_test.dart`, `shop_ux_test.dart`, `test/features/zoo/game_ui_polish_test.dart`, `test/widget_test.dart`: 新しい導線へテストを更新。
+- 本書、`docs/game_ui_polish.md`, `lib/core/ui/README.md`, `lib/features/zoo/README.md`: 説明を更新。
+
+## 検証と制限
+
+`flutter analyze`: 指摘なし。`flutter test`: 全92件成功。
+購入成功・キャンセル・結果不明の再確認・ショップ再表示・課題連携・大きな文字の既存テストも維持。
+390×844のホーム、ショップ、商品詳細、購入結果を実フォントで目視確認。
+Android実機・エミュレーターでの起動確認は未実施。
+一覧の検索は商品名の部分一致。読み仮名検索や並び替え、本番保存は今回追加していない。
