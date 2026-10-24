@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'features/zoo/presentation/zoo_screen.dart';
+
 void main() {
   runApp(const ZooStudyApp());
 }
@@ -9,9 +11,6 @@ class ZooStudyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'ZooっとStudy',
-      home: Scaffold(body: Center(child: Text('ZooっとStudy'))),
-    );
+    return const MaterialApp(title: 'ZooっとStudy', home: ZooScreen());
   }
 }
