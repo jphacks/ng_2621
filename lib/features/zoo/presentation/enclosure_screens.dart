@@ -284,7 +284,7 @@ class _EnclosureEditorState extends State<EnclosureEditor> {
                       '${state?.coins ?? '—'} コイン・追加料金 $price コイン',
                       key: const ValueKey('enclosure-price'),
                     ),
-                    const Text('左上の位置をマップで選択します。幅・高さは柵を含むマス数です。'),
+                    const Text('選択枠をドラッグするか、左上の位置をマップで選択します。幅・高さは柵を含むマス数です。'),
                     Wrap(
                       spacing: 12,
                       children: [
@@ -315,6 +315,18 @@ class _EnclosureEditorState extends State<EnclosureEditor> {
                           child: ZooMap(
                             controller: widget.controller,
                             enclosurePreview: _draft,
+                            draggableTileArea: Rect.fromLTWH(
+                              _left.toDouble(),
+                              _top.toDouble(),
+                              _width.toDouble(),
+                              _height.toDouble(),
+                            ),
+                            onTileDragged: _blocked
+                                ? null
+                                : (x, y) => setState(() {
+                                    _left = x;
+                                    _top = y;
+                                  }),
                             previewValid: issue == null,
                             onTileSelected: _blocked
                                 ? null

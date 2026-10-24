@@ -46,6 +46,17 @@ void main() {
     expect(source.height, 64);
     final sourceBytes = (await tester.runAsync(() => source.toByteData()))!;
     source.dispose();
+    // The corrected sheet places minus above plus. Check the vertical stroke,
+    // so matching enum names to the wrong glyph cannot pass a pixel-copy test.
+    int redAt(ZooUiPart part) => sourceBytes.getUint8(
+      ((part.sourceRect.top.toInt() + 2) * 64 +
+              part.sourceRect.left.toInt() +
+              3) *
+          4,
+    );
+    expect(redAt(ZooUiPart.plus), lessThan(100));
+    expect(redAt(ZooUiPart.minus), greaterThan(100));
+
     // Every visible source pixel belongs to exactly one named part.
     for (var y = 0; y < 64; y++) {
       for (var x = 0; x < 64; x++) {
