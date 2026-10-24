@@ -6,6 +6,8 @@ import '../data/shop_catalog_loader.dart';
 import '../domain/shop_catalog.dart';
 import '../domain/shop_repository.dart';
 import 'shop_purchase_controller.dart';
+import '../../../core/ui/zoo_ui.dart';
+import '../../animals/presentation/animal_art.dart';
 
 class ShopPanel extends StatefulWidget {
   const ShopPanel({
@@ -273,6 +275,11 @@ class _ShopPanelState extends State<ShopPanel> {
                     '動物${item.minimumAnimalSpecies}種類を解放',
                 ];
                 return Card(
+                  color: const Color(0xFFE9EEDC),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Color(0xFFD8E1CF)),
+                  ),
                   elevation: 0,
                   margin: const EdgeInsets.only(top: 12),
                   child: Padding(
@@ -291,14 +298,35 @@ class _ShopPanelState extends State<ShopPanel> {
                                 ),
                               ),
                             ),
-                            Icon(
-                              item.kind == ShopItemKind.animal
-                                  ? Icons.pets
-                                  : Icons.park_outlined,
-                            ),
+                            if (item.kind == ShopItemKind.animal)
+                              AnimalArt(animalId: item.targetId)
+                            else if (item.targetId == 'pond' ||
+                                item.targetId == 'forest')
+                              SizedBox.square(
+                                dimension: 32,
+                                child: Center(
+                                  child: ZooArtSprite(
+                                    part: item.targetId == 'pond'
+                                        ? ZooArtPart.pond
+                                        : ZooArtPart.tree,
+                                    scale: 2,
+                                  ),
+                                ),
+                              )
+                            else
+                              const Icon(Icons.park_outlined),
                           ],
                         ),
-                        Text('${item.price} コイン'),
+                        Row(
+                          children: [
+                            const ZooArtSprite(
+                              part: ZooArtPart.coins,
+                              scale: 1,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(child: Text('${item.price} コイン')),
+                          ],
+                        ),
                         Text(
                           requirements.isEmpty
                               ? '初期から購入可'
@@ -308,6 +336,10 @@ class _ShopPanelState extends State<ShopPanel> {
                         const SizedBox(height: 8),
                         FilledButton(
                           key: ValueKey('buy-${item.id}'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF386A43),
+                            foregroundColor: Colors.white,
+                          ),
                           onPressed:
                               available &&
                                   !owned &&

@@ -123,11 +123,7 @@ class ZooHeader extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.paid_outlined,
-                            size: 22,
-                            color: Color(0xFF8C6A20),
-                          ),
+                          const ZooArtSprite(part: ZooArtPart.coins, scale: 2),
                           SizedBox(width: 6),
                           Expanded(
                             child: Column(
@@ -211,7 +207,7 @@ class ZooBottomBar extends StatelessWidget {
                     child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.home_rounded, size: 25),
+                        ZooArtSprite(part: ZooArtPart.home, scale: 2),
                         SizedBox(height: 3),
                         Text('ホーム'),
                       ],
@@ -238,7 +234,7 @@ class ZooBottomBar extends StatelessWidget {
                   child: const Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.menu_book_rounded, size: 25),
+                      ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
                       SizedBox(height: 3),
                       Text('課題', style: TextStyle(fontWeight: FontWeight.bold)),
                     ],

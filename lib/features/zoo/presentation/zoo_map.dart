@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../domain/zoo_world.dart';
+import '../../animals/presentation/animal_art.dart';
 import 'zoo_controller.dart';
 
 class ZooMap extends StatelessWidget {
@@ -129,8 +130,12 @@ class _AnimalSprite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final placeholder = CustomPaint(
-      painter: _AnimalPainter(Color(definition.placeholderColor)),
+    final placeholder = AnimalArt(
+      animalId: definition.id,
+      size: 16,
+      fallback: CustomPaint(
+        painter: _AnimalPainter(Color(definition.placeholderColor)),
+      ),
     );
     final path = definition.imagePath;
     if (path == null || path.isEmpty) return placeholder;

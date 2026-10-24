@@ -16,6 +16,7 @@ import 'zoo_viewport.dart';
 import '../../shop/presentation/shop_panel.dart';
 import '../../shop/presentation/shop_purchase_controller.dart';
 import '../domain/zoo_world.dart';
+import '../../animals/presentation/animal_art.dart';
 
 class ZooScreen extends StatefulWidget {
   const ZooScreen({super.key, this.gameRepository});
@@ -181,7 +182,7 @@ class _ZooScreenState extends State<ZooScreen>
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
                     backgroundColor: Color(animal.definition.placeholderColor),
-                    child: const Icon(Icons.pets, color: zooInk),
+                    child: AnimalArt(animalId: animal.definition.id, size: 28),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -194,7 +195,7 @@ class _ZooScreenState extends State<ZooScreen>
               const SizedBox(height: 8),
               if (controller.animals.isEmpty)
                 const Text('まだ動物はいません。ショップから仲間を迎えましょう。'),
-              const Text('動物の見た目は仮素材です。', style: TextStyle(fontSize: 12)),
+              const Text('動物を選ぶと詳細を表示します。', style: TextStyle(fontSize: 12)),
             ],
           ),
         ),
@@ -208,11 +209,11 @@ class _ZooScreenState extends State<ZooScreen>
       context,
       title: animal.name,
       children: [
-        const ListTile(
+        ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.pets),
-          title: Text('動物園で暮らしています'),
-          subtitle: Text('解放済み'),
+          leading: AnimalArt(animalId: animal.id, size: 40),
+          title: const Text('動物園で暮らしています'),
+          subtitle: const Text('解放済み'),
         ),
         if (animal.evolutionIds.isNotEmpty) ...[
           const Text('進化先', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -236,7 +237,7 @@ class _ZooScreenState extends State<ZooScreen>
             Navigator.pop(context);
             _showShop();
           },
-          icon: const Icon(Icons.storefront_outlined),
+          icon: const ZooArtSprite(part: ZooArtPart.shop, scale: 2),
           label: const Text('ショップを見る'),
         ),
       ],
@@ -340,7 +341,7 @@ class _ZooScreenState extends State<ZooScreen>
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.storefront_outlined, color: zooGreen),
+          leading: const ZooArtSprite(part: ZooArtPart.shop, scale: 2),
           title: const Text('ショップ'),
           subtitle: const Text('動物や施設を迎える'),
           trailing: const Icon(Icons.chevron_right),
