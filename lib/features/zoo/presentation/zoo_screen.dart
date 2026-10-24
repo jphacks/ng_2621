@@ -1,5 +1,8 @@
 import '../../study/student_assignments_screen.dart';
-import '../../study/demo_assignment_store.dart';
+import '../../study/student_learning_menu.dart';
+import '../../study/study_detector/study_mode_screen.dart';
+import '../../study/study_detector/study_records_screen.dart';
+import '../../study/study_repository.dart';
 import '../../study/teacher_assignments_screen.dart';
 
 import 'package:flutter/material.dart';
@@ -34,11 +37,13 @@ class ZooScreen extends StatefulWidget {
     this.isTeacher = false,
     this.assignmentStore,
     this.placementRepository,
+    this.onSignOut,
   });
 
   final GameRepository? gameRepository;
   final bool isTeacher;
-  final DemoAssignmentStore? assignmentStore;
+  final StudyRepository? assignmentStore;
+  final Future<void> Function()? onSignOut;
   final FacilityPlacementRepository? placementRepository;
 
   @override
@@ -187,6 +192,45 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showStudy() {
+    if (widget.isTeacher) {
+      _showAssignments();
+      return;
+    }
+    showZooSheet(
+      context,
+      title: '学習',
+      children: [
+        StudentLearningMenu(
+          onStudyMode: () => _openLearningFeature(true),
+          onRecords: () => _openLearningFeature(false),
+          onAssignments: () {
+            Navigator.pop(context);
+            _showAssignments();
+          },
+        ),
+      ],
+    );
+  }
+
+  void _openLearningFeature(bool mode) {
+    Navigator.pop(context);
+    final store = widget.assignmentStore;
+    if (store == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('学習データに接続してください')));
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => mode
+            ? StudyModeScreen(store: store)
+            : StudyRecordsScreen(store: store),
+      ),
+    );
+  }
+
+  void _showAssignments() {
     final store = widget.assignmentStore;
     if (widget.isTeacher && store != null) {
       Navigator.of(context).push(
@@ -196,7 +240,7 @@ class _ZooScreenState extends State<ZooScreen>
       );
       return;
     }
-    if (store != null && widget.gameRepository is DemoAssignmentStore) {
+    if (store != null && widget.gameRepository is StudyRepository) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => StudentAssignmentsScreen(store: store),
@@ -513,14 +557,17 @@ class _ZooScreenState extends State<ZooScreen>
             _showFacilities();
           },
         ),
-        if (widget.assignmentStore != null && Navigator.of(context).canPop())
+        SpriteTile(
+          leading: const Icon(Icons.badge_outlined),
+          title: Text(widget.isTeacher ? '先生として利用中' : '生徒として利用中'),
+        ),
+        if (widget.onSignOut != null)
           SpriteTile(
-            leading: const Icon(Icons.switch_account_outlined),
-            title: const Text('先生・生徒を選び直す'),
-            subtitle: Text(widget.isTeacher ? '現在：先生（デモ）' : '現在：生徒（デモ）'),
-            onTap: () {
+            leading: const Icon(Icons.logout),
+            title: const Text('ログアウト'),
+            onTap: () async {
               Navigator.of(context).pop();
-              Navigator.of(context).pop();
+              await widget.onSignOut!();
             },
           ),
       ],
@@ -579,6 +626,7 @@ class _ZooScreenState extends State<ZooScreen>
               ZooBottomBar(
                 onHome: () => _viewportKey.currentState?.resetView(),
                 onStudy: _showStudy,
+                studyLabel: widget.isTeacher ? '課題' : '学習',
                 onMore: _showMore,
               ),
             ],

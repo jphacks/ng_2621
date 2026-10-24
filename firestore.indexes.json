@@ -1,0 +1,7 @@
+{
+  "indexes": [
+    { "collectionGroup": "submissions", "queryScope": "COLLECTION", "fields": [{"fieldPath":"classId","order":"ASCENDING"},{"fieldPath":"studentId","order":"ASCENDING"}] },
+    { "collectionGroup": "rewardTransactions", "queryScope": "COLLECTION", "fields": [{"fieldPath":"classId","order":"ASCENDING"},{"fieldPath":"studentId","order":"ASCENDING"}] }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,9 @@
+{
+  "name": "zoostudy-functions",
+  "private": true,
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "scripts": { "test": "node --test test/*.test.js", "seed": "node ../scripts/seed-emulator.cjs" },
+  "dependencies": { "firebase-admin": "^13.0.0", "firebase-functions": "^6.0.0" },
+  "devDependencies": { "firebase-tools": "14.22.0", "@firebase/rules-unit-testing": "^4.0.0", "firebase": "^11.0.0" }
+}

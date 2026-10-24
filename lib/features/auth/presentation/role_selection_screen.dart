@@ -6,10 +6,14 @@ class RoleSelectionScreen extends StatefulWidget {
     super.key,
     required this.teacherPageBuilder,
     required this.studentPageBuilder,
+    this.storageDescription,
+    this.onConfirmed,
   });
 
   final WidgetBuilder teacherPageBuilder;
   final WidgetBuilder studentPageBuilder;
+  final String? storageDescription;
+  final Future<void> Function(bool isTeacher)? onConfirmed;
 
   @override
   State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
@@ -17,6 +21,32 @@ class RoleSelectionScreen extends StatefulWidget {
 
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool? _isTeacher;
+  bool _saving = false;
+  String? _error;
+
+  Future<void> _confirm() async {
+    final teacher = _isTeacher;
+    if (teacher == null || _saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      if (widget.onConfirmed != null) await widget.onConfirmed!(teacher);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: teacher
+              ? widget.teacherPageBuilder
+              : widget.studentPageBuilder,
+        ),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _error = '選択を保存できませんでした。もう一度確定してください。');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,13 +75,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text('宿題が、動物園を育てる。', textAlign: TextAlign.center),
+                  if (widget.storageDescription != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.storageDescription!,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                   const SizedBox(height: 40),
                   _RoleCard(
                     title: '先生はこちら',
                     description: '課題を配布・提出を確認',
                     icon: Icons.school_outlined,
                     selected: _isTeacher == true,
-                    onTap: () => setState(() => _isTeacher = true),
+                    onTap: () {
+                      if (!_saving) setState(() => _isTeacher = true);
+                    },
                   ),
                   const SizedBox(height: 16),
                   _RoleCard(
@@ -59,24 +98,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     description: '宿題を提出・動物園を育成',
                     icon: Icons.pets_outlined,
                     selected: _isTeacher == false,
-                    onTap: () => setState(() => _isTeacher = false),
+                    onTap: () {
+                      if (!_saving) setState(() => _isTeacher = false);
+                    },
                   ),
+                  if (_error != null) Text(_error!),
                   const SizedBox(height: 32),
                   FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF39785A),
                     ),
-                    onPressed: _isTeacher == null
-                        ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: _isTeacher!
-                                    ? widget.teacherPageBuilder
-                                    : widget.studentPageBuilder,
-                              ),
-                            );
-                          },
+                    onPressed: _isTeacher == null || _saving ? null : _confirm,
                     child: const Padding(
                       padding: EdgeInsets.symmetric(vertical: 14),
                       child: Text('確定'),
