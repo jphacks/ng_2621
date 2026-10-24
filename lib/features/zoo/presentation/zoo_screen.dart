@@ -383,16 +383,10 @@ class _ZooScreenState extends State<ZooScreen>
             _showShop();
           },
         ),
-        if (widget.assignmentStore != null && Navigator.of(context).canPop())
-          ListTile(
-            leading: const Icon(Icons.switch_account_outlined),
-            title: const Text('先生・生徒を選び直す'),
-            subtitle: Text(widget.isTeacher ? '現在：先生（デモ）' : '現在：生徒（デモ）'),
-            onTap: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-          ),
+        ListTile(
+          leading: const Icon(Icons.badge_outlined),
+          title: Text(widget.isTeacher ? '先生として利用中' : '生徒として利用中'),
+        ),
         if (widget.onSignOut != null)
           ListTile(
             leading: const Icon(Icons.logout),

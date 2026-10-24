@@ -6,7 +6,7 @@ import 'app.dart';
 import 'core/storage/draft_storage.dart';
 import 'features/auth/data/firebase_configuration.dart';
 import 'features/auth/presentation/firebase_login_screen.dart';
-import 'features/auth/presentation/role_selection_screen.dart';
+import 'features/auth/presentation/saved_role_gate.dart';
 import 'features/study/demo_assignment_store.dart';
 
 class AppBootstrap extends StatefulWidget {
@@ -23,18 +23,29 @@ class _AppBootstrapState extends State<AppBootstrap> {
         throw StateError('端末内デモはデバッグ実行専用です。配布版にはFirebase接続設定が必要です。');
       }
       final preferences = await SharedPreferences.getInstance();
-      final repository = await DemoAssignmentStore.open(
-        PreferencesDraftStorage(preferences, 'local-demo'),
-      );
-      return ZooStudyApp(studyRepository: repository);
+      final storage = PreferencesDraftStorage(preferences, 'local-demo');
+      if (const bool.fromEnvironment('ZOOSTUDY_RESET_ROLE')) {
+        await storage.remove(SavedRoleGate.storageKey);
+      }
+      final repository = await DemoAssignmentStore.open(storage);
+      return ZooStudyApp(studyRepository: repository, roleStorage: storage);
     }
     if (!['firebase', 'emulator'].contains(studyStorageMode)) {
       throw StateError('保存モードが無効です');
     }
     await initializeStudyFirebase();
+    final preferences = await SharedPreferences.getInstance();
+    final roleStorage = PreferencesDraftStorage(
+      preferences,
+      'role.$studyStorageMode',
+    );
+    if (kDebugMode && const bool.fromEnvironment('ZOOSTUDY_RESET_ROLE')) {
+      await roleStorage.remove(SavedRoleGate.storageKey);
+    }
     return MaterialApp(
       title: 'ZooっとStudy',
-      home: RoleSelectionScreen(
+      home: SavedRoleGate(
+        storage: roleStorage,
         storageDescription: studyStorageMode == 'emulator'
             ? 'Firebaseエミュレーターに接続します'
             : 'Firebaseでデータを共有します',

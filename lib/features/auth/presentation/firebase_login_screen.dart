@@ -28,11 +28,18 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
   FirebaseStudyRepository? _repository;
   StreamSubscription<User?>? _authSubscription;
   bool _busy = false;
+  bool _restoringAuth = true;
   String? _error;
   @override
   void initState() {
     super.initState();
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (_restoringAuth) {
+        if (!mounted) return;
+        setState(() => _restoringAuth = false);
+        if (user != null) _open();
+        return;
+      }
       final repository = _repository;
       if (mounted && repository != null && user?.uid != repository.uid) {
         setState(() {
@@ -42,7 +49,6 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
         repository.dispose();
       }
     });
-    if (FirebaseAuth.instance.currentUser != null) _open();
   }
 
   Future<void> _open() async {
@@ -118,6 +124,21 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
         onSignOut: () async {
           await FirebaseAuth.instance.signOut();
         },
+      );
+    }
+    if (_restoringAuth ||
+        (_busy && FirebaseAuth.instance.currentUser != null)) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('前回のログインを確認しています…'),
+            ],
+          ),
+        ),
       );
     }
     return Scaffold(
