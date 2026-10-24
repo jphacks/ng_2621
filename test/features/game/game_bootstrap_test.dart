@@ -29,7 +29,15 @@ void main() {
         DemoScenario.values.byName(name),
       );
       expect(find.text('コイン・デモ'), findsOneWidget);
-      expect(find.text('${snapshot.coins}'), findsOneWidget);
+      const bonus = int.fromEnvironment(
+        'ZOOSTUDY_DEMO_BONUS_COINS',
+        defaultValue: 1000,
+      );
+      final displayed = (snapshot.coins + bonus).toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+        (match) => '${match[1]},',
+      );
+      expect(find.text(displayed), findsOneWidget);
     } else {
       expect(find.text('コイン・未接続'), findsOneWidget);
       expect(find.text('—'), findsOneWidget);

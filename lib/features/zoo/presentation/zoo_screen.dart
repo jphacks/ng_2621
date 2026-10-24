@@ -56,7 +56,14 @@ class _ZooScreenState extends State<ZooScreen>
       'ZOOSTUDY_DEMO_SCENARIO',
       defaultValue: 'assigned',
     );
-    _ownedMock = MockGameRepository(scenario: DemoScenario.values.byName(name));
+    const bonusCoins = int.fromEnvironment(
+      'ZOOSTUDY_DEMO_BONUS_COINS',
+      defaultValue: 1000,
+    );
+    _ownedMock = MockGameRepository(
+      scenario: DemoScenario.values.byName(name),
+      bonusCoins: bonusCoins,
+    );
     return _ownedMock!;
   }
 
