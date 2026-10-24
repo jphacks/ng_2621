@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function member(classId, organizationId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/classMemberships/$(classId + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/classMemberships/$(classId + '_' + request.auth.uid)).data.organizationId == organizationId;
+    }
+    function teacher(classId, organizationId) {
+      return member(classId, organizationId)
+        && get(/databases/$(database)/documents/classMemberships/$(classId + '_' + request.auth.uid)).data.role == 'teacher';
+    }
+    match /users/{uid} { allow get: if signedIn() && request.auth.uid == uid; }
+    match /classMemberships/{membershipId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid
+        || teacher(resource.data.classId, resource.data.organizationId));
+    }
+    match /classes/{classId} { allow get: if member(classId, resource.data.organizationId); }
+    match /assignments/{assignmentId} {
+      allow read: if resource.data.status == 'published'
+        && member(resource.data.classId, resource.data.organizationId);
+    }
+    match /submissions/{submissionId} {
+      allow read: if member(resource.data.classId, resource.data.organizationId)
+        && (resource.data.studentId == request.auth.uid || teacher(resource.data.classId, resource.data.organizationId));
+    }
+    match /zoos/{uid} { allow get: if signedIn() && request.auth.uid == uid; }
+    match /rewardTransactions/{transactionId} {
+      allow read: if signedIn() && resource.data.studentId == request.auth.uid
+        && member(resource.data.classId, resource.data.organizationId);
+    }
+    match /shopTransactions/{transactionId} {
+      allow read: if signedIn() && resource.data.studentId == request.auth.uid
+        && member(resource.data.classId, resource.data.organizationId);
+    }
+    // All mutations, role assignment and operation receipts are server-only.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

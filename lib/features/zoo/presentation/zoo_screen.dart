@@ -1,5 +1,5 @@
 import '../../study/student_assignments_screen.dart';
-import '../../study/demo_assignment_store.dart';
+import '../../study/study_repository.dart';
 import '../../study/teacher_assignments_screen.dart';
 
 import 'package:flutter/material.dart';
@@ -27,11 +27,13 @@ class ZooScreen extends StatefulWidget {
     this.gameRepository,
     this.isTeacher = false,
     this.assignmentStore,
+    this.onSignOut,
   });
 
   final GameRepository? gameRepository;
   final bool isTeacher;
-  final DemoAssignmentStore? assignmentStore;
+  final StudyRepository? assignmentStore;
+  final Future<void> Function()? onSignOut;
 
   @override
   State<ZooScreen> createState() => _ZooScreenState();
@@ -167,7 +169,7 @@ class _ZooScreenState extends State<ZooScreen>
       );
       return;
     }
-    if (store != null && widget.gameRepository is DemoAssignmentStore) {
+    if (store != null && widget.gameRepository is StudyRepository) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => StudentAssignmentsScreen(store: store),
@@ -381,6 +383,15 @@ class _ZooScreenState extends State<ZooScreen>
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).pop();
+            },
+          ),
+        if (widget.onSignOut != null)
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('ログアウト'),
+            onTap: () async {
+              Navigator.of(context).pop();
+              await widget.onSignOut!();
             },
           ),
       ],

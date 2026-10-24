@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'demo_assignment_store.dart';
+import 'study_repository.dart';
 import 'teacher_assignments_screen.dart';
 
 class StudentAssignmentsScreen extends StatelessWidget {
   const StudentAssignmentsScreen({super.key, required this.store});
-  final DemoAssignmentStore store;
+  final StudyRepository store;
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('自分の課題')),
