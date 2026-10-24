@@ -126,7 +126,8 @@ void main() {
     await tester.tap(find.byTooltip('動物一覧'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('まだ動物はいません。ショップから仲間を迎えましょう。'), findsOneWidget);
+    expect(find.text('No.01'), findsOneWidget);
+    expect(find.text('未所持・ロック中'), findsNothing);
     final animalHeader = find.ancestor(
       of: find.text('動物一覧'),
       matching: find.byType(WoodPanel),
@@ -221,8 +222,8 @@ void main() {
       final rabbit = find.byKey(const ValueKey('encyclopedia-rabbit'));
       expect(fox, findsOneWidget);
       expect(rabbit, findsOneWidget);
-      expect(tester.widget<SpriteTile>(fox).enabled, isFalse);
-      expect(tester.widget<SpriteTile>(fox).onTap, isNull);
+      expect(tester.widget<InkWell>(fox).onTap, isNull);
+      expect(tester.widget<InkWell>(fox).onTap, isNull);
       expect(
         find.descendant(
           of: fox,
@@ -246,8 +247,8 @@ void main() {
       await tester.tap(find.byTooltip('動物一覧'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(tester.widget<SpriteTile>(rabbit).enabled, isTrue);
-      expect(tester.widget<SpriteTile>(fox).enabled, isFalse);
+      expect(tester.widget<InkWell>(rabbit).onTap, isNotNull);
+      expect(tester.widget<InkWell>(fox).onTap, isNull);
       await tester.tap(rabbit);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));

@@ -1,3 +1,4 @@
+import '../../animals/presentation/animal_encyclopedia.dart';
 import '../../study/student_assignments_screen.dart';
 import '../../study/student_learning_menu.dart';
 import '../../study/study_detector/study_mode_screen.dart';
@@ -261,47 +262,16 @@ class _ZooScreenState extends State<ZooScreen>
   void _showAnimals() {
     final controller = _controller;
     if (controller == null) return;
-    showZooSheet(
-      context,
-      title: '動物一覧',
-      children: [
-        for (final animal in controller.world.animals)
-          SpriteTile(
-            key: ValueKey('encyclopedia-${animal.id}'),
-            leading: AnimalArt(animalId: animal.id),
-            title: Text(animal.name),
-            subtitle: Text(
-              !controller.ownedAnimals.contains(animal.id)
-                  ? '未所持・ロック中'
-                  : controller.layout.animalEnclosures.containsKey(animal.id)
-                  ? '囲いに配置済み'
-                  : '未配置',
-            ),
-            trailing: !controller.ownedAnimals.contains(animal.id)
-                ? const ZooUiSprite(
-                    part: ZooUiPart.lock,
-                    scale: 3,
-                    semanticLabel: '未所持・ロック中',
-                  )
-                : const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
-            enabled: controller.ownedAnimals.contains(animal.id),
-            onTap: controller.ownedAnimals.contains(animal.id)
-                ? () {
-                    Navigator.pop(context);
-                    _showAnimal(animal);
-                  }
-                : null,
-          ),
-        if (controller.ownedAnimals.isEmpty)
-          const Text('まだ動物はいません。ショップから仲間を迎えましょう。'),
-        OutlinedButton(
-          onPressed: () {
-            Navigator.pop(context);
-            _openEnclosures();
-          },
-          child: const Text('囲いの購入・拡張'),
-        ),
-      ],
+    showDialog<void>(
+      context: context,
+      builder: (_) => AnimalEncyclopedia(
+        animals: controller.world.animals,
+        ownedIds: controller.ownedAnimals,
+        onSelect: (animal) {
+          Navigator.pop(context);
+          _showAnimal(animal);
+        },
+      ),
     );
   }
 

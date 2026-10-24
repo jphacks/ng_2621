@@ -81,7 +81,10 @@ void main() {
       final id = repository.currentSnapshot.layout.enclosures.keys.single;
       await tapVisible(tester, find.byTooltip('閉じる'));
       await tapVisible(tester, find.byTooltip('動物一覧'));
-      await tapVisible(tester, find.text('うさぎ'));
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('encyclopedia-rabbit')),
+      );
       await tapVisible(tester, find.text('囲いに配置する'));
       await tapVisible(tester, find.byKey(ValueKey('assign-$id')));
       expect(find.byKey(const ValueKey('rabbit-1')), findsOneWidget);

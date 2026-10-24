@@ -121,7 +121,7 @@ void main() {
       expect(find.byKey(const ValueKey('rabbit-1')), findsNothing);
       await tester.tap(find.byTooltip('動物一覧'));
       await transition(tester);
-      await tester.tap(find.text('うさぎ'));
+      await tester.tap(find.byKey(const ValueKey('encyclopedia-rabbit')));
       await transition(tester);
       await tester.tap(find.text('囲いに配置する'));
       await transition(tester);
