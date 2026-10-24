@@ -60,3 +60,27 @@ const ZooArtSprite(part: ZooArtPart.coins, scale: 2)
 `TerrainTexture` は透明な余白を除いたパターンを繰り返して子ウィジェットの背景に敷きます。
 画像の読み込み・共有は `SpriteSheetImage` にまとめ、`PixelSprite` とマップ描画から利用します。
 [配置と回転の説明](../../../docs/terrain_usage.md) を参照してください。
+
+## 修正版と追加素材（20261024_3.zip）
+
+`assets/ui/zooStudyUI.png` はZIPの修正版に置き換えました。既存33パーツの座標・APIは維持しています。
+`assets/sprites/20261024_3.png` は新しい元画像をそのまま登録しています。
+`ZooExtraPart` / `ZooExtraSprite` で16×16の区画を呼び出せます。透明な余白も区画内に保持します。
+
+| 行 | 左から順のパーツ名 |
+| --- | --- |
+| 1 | `woodenButtonLeft`, `woodenButtonMiddle`, `woodenButtonRight`, `graySquareButton` |
+| 2 | `grayRoundButton`, `creamSquareButton`, `limeButtonLeft`, `limeButtonRight` |
+| 3 | `magnifyingGlass`, `brickLeft`, `brickMiddle`, `brickRight` |
+| 4 | `fenceVertical`, `fenceBottomLeft`, `grassWaterQuarter`, `grassWaterHalf` |
+
+```dart
+const ZooExtraSprite(part: ZooExtraPart.magnifyingGlass, scale: 2)
+// 左下の角を左右反転して右下にする。
+const ZooExtraSprite(part: ZooExtraPart.fenceBottomLeft, mirrorX: true)
+// 水際の向きを90度単位で変更する。
+const ZooExtraSprite(part: ZooExtraPart.grassWaterQuarter, quarterTurns: 1)
+```
+
+追加シートは利用準備までで、マップや既存の木製部品の配置は変更していません。
+新しい木製パーツは16×16、従来の木製パーツは別サイズなので同じ座標として扱わないでください。

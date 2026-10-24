@@ -14,3 +14,6 @@ export 'sprites/terrain_sprite.dart';
 export 'sprites/terrain_texture.dart';
 
 export 'widgets/wood_panel.dart';
+
+export 'sprites/zoo_extra_part.dart';
+export 'sprites/zoo_extra_sprite.dart';
