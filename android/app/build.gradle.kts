@@ -5,6 +5,7 @@ plugins {
 }
 
 android {
+    androidResources { noCompress += "task" }
     namespace = "com.example.zoo_study"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -46,4 +47,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
+    implementation("com.google.mediapipe:tasks-vision:0.10.35")
 }

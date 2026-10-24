@@ -26,7 +26,12 @@ void main() {
       await tester.pump();
       expect(find.text('コイン・デモ'), findsOneWidget);
       expect(find.text('0'), findsOneWidget);
-      await tester.tap(find.text('課題'));
+      await tester.tap(find.text('学習'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('勉強モード'), findsOneWidget);
+      expect(find.text('学習記録'), findsOneWidget);
+      await tester.tap(find.text('課題提出'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('自分の課題'), findsOneWidget);

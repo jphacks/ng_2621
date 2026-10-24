@@ -11,10 +11,12 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterActivity() {
+    private var studyDetector: StudyDetectorBridge? = null
     private var photoResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        studyDetector = StudyDetectorBridge(this, flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zoostudy/photos")
             .setMethodCallHandler { call, result ->
                 if (call.method == "pickPhoto") pickPhoto(result) else result.notImplemented()
@@ -95,6 +97,12 @@ class MainActivity : FlutterActivity() {
             else -> "image"
         }
         return mapOf("name" to (name ?: "photo.$extension"), "bytes" to bytes)
+    }
+
+    override fun onDestroy() {
+        studyDetector?.close()
+        studyDetector = null
+        super.onDestroy()
     }
 
     private class PhotoTooLarge : Exception()

@@ -175,11 +175,13 @@ class ZooBottomBar extends StatelessWidget {
     super.key,
     required this.onHome,
     required this.onStudy,
+    this.studyLabel = '学習',
     required this.onMore,
   });
 
   final VoidCallback onHome;
   final VoidCallback onStudy;
+  final String studyLabel;
   final VoidCallback onMore;
 
   @override
@@ -231,14 +233,14 @@ class ZooBottomBar extends StatelessWidget {
                       ),
                     ),
                     onPressed: onStudy,
-                    child: const Column(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
                         SizedBox(height: 3),
                         Text(
-                          '課題',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          studyLabel,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),

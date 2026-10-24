@@ -1,4 +1,7 @@
 import '../../study/student_assignments_screen.dart';
+import '../../study/student_learning_menu.dart';
+import '../../study/study_detector/study_mode_screen.dart';
+import '../../study/study_detector/study_records_screen.dart';
 import '../../study/study_repository.dart';
 import '../../study/teacher_assignments_screen.dart';
 
@@ -168,6 +171,45 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showStudy() {
+    if (widget.isTeacher) {
+      _showAssignments();
+      return;
+    }
+    showZooSheet(
+      context,
+      title: '学習',
+      children: [
+        StudentLearningMenu(
+          onStudyMode: () => _openLearningFeature(true),
+          onRecords: () => _openLearningFeature(false),
+          onAssignments: () {
+            Navigator.pop(context);
+            _showAssignments();
+          },
+        ),
+      ],
+    );
+  }
+
+  void _openLearningFeature(bool mode) {
+    Navigator.pop(context);
+    final store = widget.assignmentStore;
+    if (store == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('学習データに接続してください')));
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => mode
+            ? StudyModeScreen(store: store)
+            : StudyRecordsScreen(store: store),
+      ),
+    );
+  }
+
+  void _showAssignments() {
     final store = widget.assignmentStore;
     if (widget.isTeacher && store != null) {
       Navigator.of(context).push(
@@ -450,6 +492,7 @@ class _ZooScreenState extends State<ZooScreen>
             ZooBottomBar(
               onHome: () => _viewportKey.currentState?.resetView(),
               onStudy: _showStudy,
+              studyLabel: widget.isTeacher ? '課題' : '学習',
               onMore: _showMore,
             ),
           ],

@@ -4,6 +4,7 @@ const {getFirestore, FieldValue, Timestamp} = require('firebase-admin/firestore'
 const {HttpsError} = require('firebase-functions/v2/https');
 const catalog = require('./catalog.json').items;
 const {verifyAttachments} = require('./attachments');
+const {normalizeStudyRecord} = require('./study_sessions');
 const subjects = new Set(['japanese', 'mathematics', 'english', 'science', 'socialStudies', 'other']);
 const fail = (code, message) => { throw new HttpsError(code, message); };
 const id = (value, name) => {
@@ -73,6 +74,23 @@ function createService(db = getFirestore()) {
       return context;
     },
 
+    async saveStudySession(request) {
+      const uid = uidOf(request);
+      const record = normalizeStudyRecord(request.data?.record);
+      return db.runTransaction(async tx => {
+        const context = await session(tx, db, uid, 'student');
+        const doc = ref(db, 'studySessions', `${uid}_${record.id}`);
+        const existing = await tx.get(doc);
+        const fingerprint = digest(record);
+        if (existing.exists) {
+          if (existing.data().fingerprint !== fingerprint) fail('already-exists', '保存済みの学習記録と一致しません');
+          return {sessionId: doc.id};
+        }
+        tx.create(doc, {...contextFields(context), studentId: uid, studentName: context.displayName,
+          record, fingerprint, source: 'device_observation', receivedAt: stamp()});
+        return {sessionId: doc.id};
+      });
+    },
     async publishAssignment(request) {
       const uid = uidOf(request), data = request.data || {};
       const title = text(data.title, 100, 'タイトル'), description = text(data.description, 3000, '説明');

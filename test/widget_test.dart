@@ -56,7 +56,7 @@ void main() {
       }
       final viewport = tester.getRect(find.byType(InteractiveViewer));
       expect(tester.getBottomLeft(find.text('ゲスト')).dy, lessThan(viewport.top));
-      for (final label in ['ホーム', '課題', 'その他']) {
+      for (final label in ['ホーム', '学習', 'その他']) {
         expect(
           tester.getTopLeft(find.text(label)).dy,
           greaterThan(viewport.bottom),
@@ -91,7 +91,13 @@ void main() {
     expect(find.text('100 コイン'), findsOneWidget);
     await closeSheet(tester);
 
-    await tester.tap(find.text('課題'));
+    await tester.tap(find.text('学習'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    for (final label in ['課題提出', '勉強モード', '学習記録']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    await tester.tap(find.text('課題提出'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('数学プリント No.3'), findsOneWidget);

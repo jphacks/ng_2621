@@ -11,6 +11,7 @@ import '../shop/domain/shop_catalog.dart';
 import '../shop/domain/shop_repository.dart';
 
 import 'study_repository.dart';
+import 'study_detector/study_record.dart';
 export 'study_models.dart';
 
 /// Single-class local demo with optional device persistence, never cloud authority.
@@ -79,6 +80,7 @@ class DemoAssignmentStore extends StudyRepository
 
   Map<String, dynamic> _serialize() => {
     'schemaVersion': 1,
+    'studyRecords': _studyRecords.values.map((r) => r.toJson()).toList(),
     'sequence': _sequence,
     'knownAttachments': _knownAttachments.values
         .map((f) => f.toJson())
@@ -132,6 +134,12 @@ class DemoAssignmentStore extends StudyRepository
       throw const FormatException('Invalid demo identity');
     }
     _sequence = saved['sequence'] as int;
+    for (final raw in saved['studyRecords'] as List? ?? []) {
+      final record = StudyRecord.fromJson(
+        Map<String, dynamic>.from(raw as Map),
+      );
+      _studyRecords[record.id] = record;
+    }
     for (final raw in saved['knownAttachments'] as List? ?? []) {
       final file = StudyAttachment.fromJson(
         Map<String, dynamic>.from(raw as Map),
@@ -223,6 +231,25 @@ class DemoAssignmentStore extends StudyRepository
 
   final DateTime Function() _clock;
   final _game = MockGameRepository();
+  final _studyRecords = <String, StudyRecord>{};
+  @override
+  Future<List<StudyRecord>> loadStudyRecords() async =>
+      _studyRecords.values.toList()
+        ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+  @override
+  Future<void> saveStudyRecord(StudyRecord record) async {
+    record.validate();
+    final existing = _studyRecords[record.id];
+    if (existing != null &&
+        jsonEncode(existing.toJson()) != jsonEncode(record.toJson())) {
+      throw const StudyFailure('保存済みの学習記録と一致しません');
+    }
+    _studyRecords[record.id] = record;
+    _persist();
+    await flush();
+    if (!_disposed) notifyListeners();
+  }
+
   final _assignments = <DemoAssignment>[];
   final _submissions = <String, DemoSubmission>{};
   int _sequence = 0;

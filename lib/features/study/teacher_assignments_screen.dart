@@ -1,4 +1,5 @@
 import 'assignment_submissions_screen.dart';
+import 'study_detector/study_records_screen.dart';
 import '../../core/storage/draft_storage.dart';
 import '../../core/storage/request_id.dart';
 
@@ -129,6 +130,18 @@ class TeacherAssignmentsScreen extends StatelessWidget {
               label: const Text('課題を作成'),
             ),
             const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      StudyRecordsScreen(store: store, isTeacher: true),
+                ),
+              ),
+              icon: const Icon(Icons.insights_outlined),
+              label: const Text('生徒の学習記録'),
+            ),
+            const SizedBox(height: 16),
             DemoAssignmentList(store: store, isTeacher: true),
           ],
         ),

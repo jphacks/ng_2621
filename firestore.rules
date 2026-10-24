@@ -25,6 +25,10 @@ service cloud.firestore {
       allow read: if member(resource.data.classId, resource.data.organizationId)
         && (resource.data.studentId == request.auth.uid || teacher(resource.data.classId, resource.data.organizationId));
     }
+    match /studySessions/{sessionId} {
+      allow read: if member(resource.data.classId, resource.data.organizationId)
+        && (resource.data.studentId == request.auth.uid || teacher(resource.data.classId, resource.data.organizationId));
+    }
     match /zoos/{uid} { allow get: if signedIn() && request.auth.uid == uid; }
     match /rewardTransactions/{transactionId} {
       allow read: if signedIn() && resource.data.studentId == request.auth.uid
