@@ -12,6 +12,7 @@ import '../shop/domain/shop_repository.dart';
 
 import 'study_repository.dart';
 import 'study_detector/study_record.dart';
+import 'study_detector/study_reward.dart';
 export 'study_models.dart';
 
 /// Single-class local demo with optional device persistence, never cloud authority.
@@ -80,6 +81,8 @@ class DemoAssignmentStore extends StudyRepository
 
   Map<String, dynamic> _serialize() => {
     'schemaVersion': 1,
+    'studyDailyMs': _studyDailyMs,
+    'studyCoins': _studyCoins,
     'studyRecords': _studyRecords.values.map((r) => r.toJson()).toList(),
     'sequence': _sequence,
     'knownAttachments': _knownAttachments.values
@@ -134,6 +137,14 @@ class DemoAssignmentStore extends StudyRepository
       throw const FormatException('Invalid demo identity');
     }
     _sequence = saved['sequence'] as int;
+    _studyDailyMs.addAll(
+      Map<String, dynamic>.from(saved['studyDailyMs'] as Map? ?? {})
+          .map((k, v) => MapEntry(k, v as int)),
+    );
+    _studyCoins.addAll(
+      Map<String, dynamic>.from(saved['studyCoins'] as Map? ?? {})
+          .map((k, v) => MapEntry(k, v as int)),
+    );
     for (final raw in saved['studyRecords'] as List? ?? []) {
       final record = StudyRecord.fromJson(
         Map<String, dynamic>.from(raw as Map),
@@ -231,23 +242,51 @@ class DemoAssignmentStore extends StudyRepository
 
   final DateTime Function() _clock;
   final _game = MockGameRepository();
+  final _studyDailyMs = <String, int>{};
+  final _studyCoins = <String, int>{};
   final _studyRecords = <String, StudyRecord>{};
   @override
   Future<List<StudyRecord>> loadStudyRecords() async =>
-      _studyRecords.values.toList()
+      _studyRecords.values
+          .map(
+            (r) => StudyRecord.fromJson({
+              ...r.toJson(),
+              'rewardCoins': _studyCoins[r.id] ?? 0,
+            }),
+          )
+          .toList()
         ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
   @override
-  Future<void> saveStudyRecord(StudyRecord record) async {
+  Future<int> saveStudyRecord(StudyRecord record) async {
     record.validate();
     final existing = _studyRecords[record.id];
     if (existing != null &&
         jsonEncode(existing.toJson()) != jsonEncode(record.toJson())) {
       throw const StudyFailure('保存済みの学習記録と一致しません');
     }
+    var amount = _studyCoins[record.id] ?? 0;
+    if (existing == null) {
+      amount = 0;
+      for (final entry in record.rewardMsByDay.entries) {
+        final before = _studyDailyMs[entry.key] ?? 0;
+        final after = before + entry.value;
+        amount += studyCoinsFor(after) - studyCoinsFor(before);
+        _studyDailyMs[entry.key] = after;
+      }
+      _studyCoins[record.id] = amount;
+      if (amount > 0) {
+        final data = snapshot.toJson();
+        data['coins'] = snapshot.coins + amount;
+        data['revision'] = snapshot.revision + 1;
+        data['confirmedAt'] = _clock().toUtc().toIso8601String();
+        _game.receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
+      }
+    }
     _studyRecords[record.id] = record;
     _persist();
     await flush();
     if (!_disposed) notifyListeners();
+    return amount;
   }
 
   final _assignments = <DemoAssignment>[];

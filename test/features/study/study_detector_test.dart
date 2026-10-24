@@ -82,24 +82,21 @@ StudyRecord record({bool completed = true}) {
 }
 
 void main() {
-  test(
-    'automatic selection requires three stable unambiguous observations',
-    () {
-      final selector = AutomaticStudyMode();
-      for (var i = 0; i < 10; i++) {
-        expect(selector.observe(face: false, desk: false), isNull);
-      }
-      expect(selector.observe(face: true, desk: false), isNull);
-      expect(selector.observe(face: true, desk: true), isNull);
-      expect(selector.observe(face: false, desk: true), isNull);
-      expect(selector.observe(face: false, desk: true), isNull);
-      expect(selector.observe(face: false, desk: true), StudyMode.desk);
-      selector.reset();
-      selector.observe(face: true, desk: false);
-      selector.observe(face: true, desk: false);
-      expect(selector.observe(face: true, desk: false), StudyMode.face);
-    },
-  );
+  test('automatic selection requires three stable observations', () {
+    final selector = AutomaticStudyMode();
+    for (var i = 0; i < 10; i++) {
+      expect(selector.observe(face: false, desk: false), isNull);
+    }
+    expect(selector.observe(face: true, desk: false), isNull);
+    expect(selector.observe(face: false, desk: false), isNull);
+    expect(selector.observe(face: false, desk: true), isNull);
+    expect(selector.observe(face: false, desk: true), isNull);
+    expect(selector.observe(face: false, desk: true), StudyMode.desk);
+    selector.reset();
+    selector.observe(face: true, desk: false);
+    selector.observe(face: true, desk: false);
+    expect(selector.observe(face: true, desk: false), StudyMode.face);
+  });
   test(
     'stale observations and background are separate from estimated study',
     () {
@@ -237,7 +234,13 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('自動選択：顔モード'), findsOneWidget);
-      await tester.ensureVisible(find.text('勉強を開始'));
+      await tester.scrollUntilVisible(
+        find.text('勉強を開始'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.widgetWithText(FilledButton, '勉強を開始'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('勉強を開始'));
       await tester.pumpAndSettle();
       expect(find.text('勉強中'), findsOneWidget);

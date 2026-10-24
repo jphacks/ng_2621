@@ -307,18 +307,20 @@ class FirebaseStudyRepository extends StudyRepository {
         ...Map<String, dynamic>.from(data['record'] as Map),
         'studentId': data['studentId'],
         'studentName': data['studentName'],
+        'rewardCoins': data['rewardAmount'] ?? 0,
       });
     }).toList()..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return records;
   }
 
   @override
-  Future<void> saveStudyRecord(StudyRecord record) async {
+  Future<int> saveStudyRecord(StudyRecord record) async {
     if (isTeacher) throw const StudyFailure('生徒だけが学習記録を保存できます');
     record.validate();
-    await _call('saveStudySession', {
+    final result = await _call('saveStudySession', {
       'record': record.toJson(),
     }, requestId: record.id);
+    return result['rewardAmount'] as int? ?? 0;
   }
 
   Future<Map<String, dynamic>> _call(

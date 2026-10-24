@@ -5,9 +5,10 @@ class AutomaticStudyMode {
   StudyMode? _candidate;
   int _count = 0;
   StudyMode? observe({required bool face, required bool desk}) {
-    final next = desk && !face
+    // When both are visible, prefer the material-based desk observations.
+    final next = desk
         ? StudyMode.desk
-        : face && !desk
+        : face
         ? StudyMode.face
         : null;
     if (next == null) {
