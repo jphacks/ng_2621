@@ -1,3 +1,4 @@
+import 'zoo_navigation.dart';
 import '../../game/experience/game_experience.dart';
 import '../../game/experience/experience_widgets.dart';
 import '../../shop/domain/shop_catalog.dart';
@@ -78,6 +79,25 @@ class _ZooScreenState extends State<ZooScreen>
   Duration? _lastFrame;
   bool _failed = false;
   final _viewportKey = GlobalKey<ZooViewportState>();
+  final _contentKey = GlobalKey<NavigatorState>();
+  final _shopKey = GlobalKey<ShopScreenState>();
+  final _homeRevision = ValueNotifier(0);
+  late final _contentObserver = ZooContentObserver(_contentChanged);
+  BuildContext? _homeContext;
+  int _homeSection = 0;
+  bool _shopOpened = false,
+      _navUpdateScheduled = false,
+      _learningFeatureOpen = false;
+  String _shopQuery = '';
+  ShopItemKind _shopKind = ShopItemKind.animal;
+  VoidCallback? _deferredNavigation;
+  BuildContext get _navContext => _homeContext ?? context;
+  ZooMainTab get _mainTab => switch (_contentObserver.section) {
+    '/study' => ZooMainTab.study,
+    '/more' => ZooMainTab.more,
+    _ => ZooMainTab.home,
+  };
+  bool get _contentCanPop => _contentObserver.routes.length > 1;
 
   @override
   void initState() {
@@ -152,10 +172,8 @@ class _ZooScreenState extends State<ZooScreen>
           ownedFacilityIds: _game.snapshot?.ownedFacilityIds ?? {},
         ),
       );
-      if (WidgetsBinding.instance.lifecycleState == null ||
-          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-        _ticker.start();
-      }
+      _homeRevision.value++;
+      _syncGameTicker();
     } catch (error, stackTrace) {
       debugPrint('Zoo data could not be loaded: $error\n$stackTrace');
       if (mounted) setState(() => _failed = true);
@@ -163,6 +181,10 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _tick(Duration elapsed) {
+    if (_homeSection != 0 || _contentCanPop) {
+      _lastFrame = null;
+      return;
+    }
     final previous = _lastFrame;
     _lastFrame = elapsed;
     if (previous != null) {
@@ -184,6 +206,7 @@ class _ZooScreenState extends State<ZooScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
+    _homeRevision.dispose();
     _purchases.dispose();
     _layoutTransactions.dispose();
     _experience.removeListener(_experienceChanged);
@@ -211,7 +234,10 @@ class _ZooScreenState extends State<ZooScreen>
       final catalog = await (repository is ShopRepository
           ? (repository as ShopRepository).loadCatalog()
           : loadShopCatalog());
-      if (mounted) setState(() => _experienceCatalog = catalog);
+      if (mounted) {
+        setState(() => _experienceCatalog = catalog);
+        _homeRevision.value++;
+      }
     } catch (_) {
       if (mounted) setState(() => _experienceError = '商品を読み込めませんでした');
     }
@@ -257,7 +283,7 @@ class _ZooScreenState extends State<ZooScreen>
     final catalog = _experienceCatalog;
     final state = _game.snapshot;
     showZooSheet(
-      context,
+      _navContext,
       title: '目標の動物',
       children: [
         if (_experienceError != null) Text(_experienceError!),
@@ -266,7 +292,7 @@ class _ZooScreenState extends State<ZooScreen>
         if (catalog == null)
           OutlinedButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(_navContext);
               _loadExperienceCatalog().then((_) {
                 if (mounted) _showGoalPicker();
               });
@@ -277,7 +303,7 @@ class _ZooScreenState extends State<ZooScreen>
         if (state != null && !_experience.ready)
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(_navContext);
               _showGoalPicker();
             },
             child: const Text('ゲーム設定を再読み込み'),
@@ -301,13 +327,13 @@ class _ZooScreenState extends State<ZooScreen>
                   ? null
                   : () async {
                       await _experience.setGoal(item.targetId);
-                      if (mounted) Navigator.pop(context);
+                      if (mounted) Navigator.pop(_navContext);
                     },
             ),
           TextButton(
             onPressed: () async {
               await _experience.setGoal(null);
-              if (mounted) Navigator.pop(context);
+              if (mounted) Navigator.pop(_navContext);
             },
             child: const Text('目標を解除'),
           ),
@@ -327,7 +353,7 @@ class _ZooScreenState extends State<ZooScreen>
         .expand((animal) => animal.evolutionIds)
         .toSet();
     showZooSheet(
-      context,
+      _navContext,
       title: '研究所',
       children: [
         const Text('進化しても元の動物は残ります。解放条件と価格を確認できます。'),
@@ -342,7 +368,7 @@ class _ZooScreenState extends State<ZooScreen>
                   const Text('研究所を購入・配置すると利用できます'),
                   OutlinedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(_navContext);
                       _showShop(query: '研究所');
                     },
                     child: const Text('研究所をショップで見る'),
@@ -353,7 +379,7 @@ class _ZooScreenState extends State<ZooScreen>
             if (!state.layout.facilities.containsKey('laboratory')) {
               return OutlinedButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(_navContext);
                   _startPlacement('laboratory');
                 },
                 child: const Text('研究所を配置する'),
@@ -374,9 +400,9 @@ class _ZooScreenState extends State<ZooScreen>
                     onTap: item.isOwned(state)
                         ? null
                         : () {
-                            Navigator.pop(context);
+                            Navigator.pop(_navContext);
                             showZooSheet(
-                              this.context,
+                              _navContext,
                               title: item.name,
                               children: [
                                 ShopPanel(
@@ -384,7 +410,7 @@ class _ZooScreenState extends State<ZooScreen>
                                   purchases: _purchases,
                                   item: item,
                                   catalog: catalog,
-                                  onViewZoo: () => Navigator.pop(this.context),
+                                  onViewZoo: () => Navigator.pop(_navContext),
                                 ),
                               ],
                             );
@@ -402,7 +428,7 @@ class _ZooScreenState extends State<ZooScreen>
 
   void _showProfile() {
     showZooSheet(
-      context,
+      _navContext,
       title: 'プロフィール',
       children: const [
         SpriteTile(
@@ -417,57 +443,60 @@ class _ZooScreenState extends State<ZooScreen>
 
   void _showWallet() {
     showZooSheet(
-      context,
+      _navContext,
       title: '所持金',
       children: [GameStatus(session: _game, walletOnly: true)],
     );
   }
 
   void _showStudy() {
-    if (widget.isTeacher) {
-      _showAssignments();
+    if (widget.isTeacher && widget.assignmentStore != null) {
+      Navigator.of(_navContext).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(name: '/study'),
+          builder: (_) =>
+              TeacherAssignmentsScreen(store: widget.assignmentStore!),
+        ),
+      );
       return;
     }
-    showZooSheet(
-      context,
-      title: '学習',
-      children: [
-        StudentLearningMenu(
-          onStudyMode: () => _openLearningFeature(true),
-          onRecords: () => _openLearningFeature(false),
-          onAssignments: () {
-            Navigator.pop(context);
-            _showAssignments();
-          },
-        ),
-      ],
-    );
+    _showMenuPage('/study', '学習メニュー', [
+      StudentLearningMenu(
+        onStudyMode: () => _openLearningFeature(true),
+        onRecords: () => _openLearningFeature(false),
+        onAssignments: _showAssignments,
+      ),
+    ]);
   }
 
   Future<void> _openLearningFeature(bool mode) async {
-    Navigator.pop(context);
     final store = widget.assignmentStore;
     if (store == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('学習データに接続してください')));
       return;
     }
-    // History is read in the background; cosmetic effects must not delay study.
+    // The inner route retains the shared navigation and study's own PopScope.
+    _learningFeatureOpen = true;
     await Navigator.push(
-      context,
+      _navContext,
       MaterialPageRoute<void>(
         builder: (_) => mode
             ? StudyModeScreen(store: store)
             : StudyRecordsScreen(store: store),
       ),
     );
+    _learningFeatureOpen = false;
+    final deferred = _deferredNavigation;
+    _deferredNavigation = null;
+    if (mounted) deferred?.call();
     if (mounted) await _refreshStudyRewards();
   }
 
   void _showAssignments() {
     final store = widget.assignmentStore;
     if (widget.isTeacher && store != null) {
-      Navigator.of(context).push(
+      Navigator.of(_navContext).push(
         MaterialPageRoute<void>(
           builder: (_) => TeacherAssignmentsScreen(store: store),
         ),
@@ -475,7 +504,7 @@ class _ZooScreenState extends State<ZooScreen>
       return;
     }
     if (store != null && widget.gameRepository is StudyRepository) {
-      Navigator.of(context).push(
+      Navigator.of(_navContext).push(
         MaterialPageRoute<void>(
           builder: (_) => StudentAssignmentsScreen(store: store),
         ),
@@ -483,7 +512,7 @@ class _ZooScreenState extends State<ZooScreen>
       return;
     }
     showZooSheet(
-      context,
+      _navContext,
       title: '課題',
       children: [
         GameStatus(session: _game),
@@ -496,16 +525,17 @@ class _ZooScreenState extends State<ZooScreen>
     final controller = _controller;
     if (controller == null) return;
     showDialog<void>(
-      context: context,
+      context: _navContext,
+      useRootNavigator: false,
       builder: (_) => AnimalEncyclopedia(
         animals: controller.world.animals,
         ownedIds: controller.ownedAnimals,
         onChooseGoal: () {
-          Navigator.pop(context);
+          Navigator.pop(_navContext);
           _showGoalPicker();
         },
         onSelect: (animal) {
-          Navigator.pop(context);
+          Navigator.pop(_navContext);
           _showAnimal(animal);
         },
       ),
@@ -515,7 +545,7 @@ class _ZooScreenState extends State<ZooScreen>
   void _openEnclosures({bool create = false}) {
     final controller = _controller;
     if (controller == null) return;
-    Navigator.of(context).push<void>(
+    Navigator.of(_navContext).push<void>(
       MaterialPageRoute(
         builder: (_) => EnclosureScreen(
           controller: controller,
@@ -528,7 +558,7 @@ class _ZooScreenState extends State<ZooScreen>
 
   void _assignAnimal(AnimalDefinition animal) {
     showZooSheet(
-      context,
+      _navContext,
       title: '${animal.name}の配置',
       children: [
         AnimalEnclosurePicker(
@@ -544,7 +574,7 @@ class _ZooScreenState extends State<ZooScreen>
     setState(() => _reactionRevision++);
     final world = _controller?.world;
     showZooSheet(
-      context,
+      _navContext,
       title: animal.name,
       children: [
         SpriteTile(
@@ -558,7 +588,7 @@ class _ZooScreenState extends State<ZooScreen>
         ),
         FilledButton(
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pop(_navContext);
             _assignAnimal(animal);
           },
           child: const Text('囲いに配置する'),
@@ -581,7 +611,7 @@ class _ZooScreenState extends State<ZooScreen>
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pop(_navContext);
             _showShop();
           },
           icon: const ZooArtSprite(part: ZooArtPart.shop, scale: 2),
@@ -591,25 +621,25 @@ class _ZooScreenState extends State<ZooScreen>
     );
   }
 
-  void _showShop({String query = ''}) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => ShopScreen(
-          initialQuery: query,
-          session: _game,
-          purchases: _purchases,
-          onPlaceFacility: _startPlacement,
-          onCreateEnclosure: () => _openEnclosures(create: true),
-        ),
-      ),
-    );
+  Future<void> _showShop({String? query, ShopItemKind? kind}) async {
+    if (!await _leaveContent()) {
+      if (_learningFeatureOpen) {
+        _deferredNavigation = () => _showShop(query: query, kind: kind);
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (query != null) _shopQuery = query;
+    if (kind != null) _shopKind = kind;
+    _shopKey.currentState?.browse(query: query, kind: kind);
+    _setHomeSection(1);
   }
 
   void _showFacilities() {
     final controller = _controller;
     if (controller == null) return;
     showZooSheet(
-      context,
+      _navContext,
       title: '施設の配置・移動',
       children: [
         const Text('購入済みの施設を選んで、配置する場所を決めましょう。'),
@@ -623,7 +653,7 @@ class _ZooScreenState extends State<ZooScreen>
               ),
               trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(_navContext);
                 _startPlacement(definition.id);
               },
             ),
@@ -634,7 +664,7 @@ class _ZooScreenState extends State<ZooScreen>
           ),
         OutlinedButton(
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pop(_navContext);
             _showShop();
           },
           child: const Text('ショップを見る'),
@@ -653,7 +683,7 @@ class _ZooScreenState extends State<ZooScreen>
         .where((f) => f.id == facilityId)
         .firstOrNull;
     if (definition == null) return;
-    Navigator.of(context).push<void>(
+    Navigator.of(_navContext).push<void>(
       MaterialPageRoute(
         builder: (_) => FacilityPlacementScreen(
           controller: controller,
@@ -682,11 +712,11 @@ class _ZooScreenState extends State<ZooScreen>
     final state = snapshot.assignments.single.state;
     void receive(DemoScenario scenario) {
       repository.receiveDemoScenario(scenario);
-      Navigator.pop(context);
+      Navigator.pop(_navContext);
     }
 
     showZooSheet(
-      context,
+      _navContext,
       title: '連携デモ',
       children: [
         const Text('外部で確定した結果の受信を模擬します。実際の提出・講師承認・報酬付与ではありません。'),
@@ -714,7 +744,7 @@ class _ZooScreenState extends State<ZooScreen>
         OutlinedButton(
           onPressed: () {
             repository.receiveConfirmedSnapshot(snapshot);
-            Navigator.pop(context);
+            Navigator.pop(_navContext);
           },
           child: const Text('同じ確定結果を再受信'),
         ),
@@ -725,195 +755,339 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showMore() {
-    showZooSheet(
-      context,
-      title: 'その他',
-      patternedBackground: true,
+    _showMenuPage('/more', '設定・プロフィール', [
+      SpriteTile(
+        title: const Text('プロフィール'),
+        leading: const ZooUiSprite(part: ZooUiPart.smile, scale: 2),
+        onTap: _showProfile,
+      ),
+      SpriteTile(
+        leading: const Icon(Icons.badge_outlined),
+        title: Text(widget.isTeacher ? '先生として利用中' : '生徒として利用中'),
+      ),
+      if (kDebugMode &&
+          _game.repository is MockGameRepository &&
+          _game.snapshot != null)
+        SpriteTile(
+          title: const Text('連携デモ'),
+          subtitle: const Text('外部の確定結果を模擬受信'),
+          onTap: _showDemoResults,
+        ),
+      if (widget.onSignOut != null)
+        SpriteTile(
+          title: const Text('ログアウト'),
+          leading: const Icon(Icons.logout),
+          onTap: widget.onSignOut,
+        ),
+    ]);
+  }
+
+  void _contentChanged() {
+    if (_navUpdateScheduled) return;
+    _navUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navUpdateScheduled = false;
+      if (!mounted) return;
+      _lastFrame = null;
+      _syncGameTicker();
+      setState(() {});
+    });
+  }
+
+  void _syncGameTicker() {
+    final visible =
+        _homeSection == 0 &&
+        !_contentCanPop &&
+        _controller != null &&
+        (WidgetsBinding.instance.lifecycleState == null ||
+            WidgetsBinding.instance.lifecycleState ==
+                AppLifecycleState.resumed);
+    if (visible && !_ticker.isActive) _ticker.start();
+    if (!visible && _ticker.isActive) _ticker.stop();
+  }
+
+  Future<bool> _leaveContent() async {
+    final navigator = _contentKey.currentState;
+    if (navigator == null) return false;
+    while (_contentObserver.routes.length > 1) {
+      final before = _contentObserver.routes.last;
+      await navigator.maybePop();
+      if (!mounted) return false;
+      if (_contentObserver.routes.last == before) return false;
+    }
+    return true;
+  }
+
+  Future<void> _switchMain(ZooMainTab tab) async {
+    if (tab == _mainTab && tab != ZooMainTab.home) return;
+    if (!await _leaveContent()) {
+      if (_learningFeatureOpen) _deferredNavigation = () => _switchMain(tab);
+      return;
+    }
+    if (!mounted) return;
+    if (tab == ZooMainTab.home) {
+      _setHomeSection(0);
+    } else if (tab == ZooMainTab.study) {
+      _showStudy();
+    } else {
+      _showMore();
+    }
+  }
+
+  void _setHomeSection(int section) {
+    if (section == 1) _shopOpened = true;
+    _homeSection = section;
+    _lastFrame = null;
+    _syncGameTicker();
+    _homeRevision.value++;
+    setState(() {});
+  }
+
+  void _showMenuPage(String route, String title, List<Widget> children) {
+    Navigator.of(_navContext).push(
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: route),
+        builder: (_) => ZooMenuPage(title: title, children: children),
+      ),
+    );
+  }
+
+  Widget _buildConstructionMenu() => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      const Text(
+        '購入する',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      SpriteTile(
+        title: const Text('施設を購入'),
+        subtitle: const Text('池・研究所・ベンチなどをショップで選ぶ'),
+        leading: const ZooArtSprite(part: ZooArtPart.shop, scale: 2),
+        onTap: () => _showShop(kind: ShopItemKind.facility, query: ''),
+      ),
+      SpriteTile(
+        title: const Text('囲いの購入・拡張'),
+        subtitle: const Text('サイズと場所を決めて購入・拡張する'),
+        leading: const TerrainSprite(part: TerrainPart.fence),
+        onTap: _openEnclosures,
+      ),
+      const SizedBox(height: 12),
+      const Text(
+        '配置・育成する',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      SpriteTile(
+        title: const Text('施設の配置・移動'),
+        leading: const ZooArtSprite(part: ZooArtPart.pond, scale: 2),
+        onTap: _showFacilities,
+      ),
+      SpriteTile(
+        title: const Text('研究所'),
+        leading: const ZooBuildingSprite(
+          part: ZooBuildingPart.laboratory,
+          scale: 1,
+        ),
+        onTap: _showResearch,
+      ),
+      SpriteTile(
+        title: const Text('動物一覧'),
+        subtitle: const Text('図鑑・動物の配置'),
+        leading: const ZooUiSprite(part: ZooUiPart.encyclopediaRed, scale: 3),
+        onTap: _showAnimals,
+      ),
+      SpriteTile(
+        title: const Text('目標の動物'),
+        leading: const ZooUiSprite(part: ZooUiPart.check, scale: 2),
+        onTap: _showGoalPicker,
+      ),
+    ],
+  );
+
+  Widget _buildHomeContent() => LayoutBuilder(
+    builder: (context, constraints) => Column(
       children: [
-        if (kDebugMode &&
-            _game.repository is MockGameRepository &&
-            _game.snapshot != null)
-          SpriteTile(
-            leading: const Icon(Icons.science_outlined, color: zooGreen),
-            title: const Text('連携デモ'),
-            subtitle: const Text('外部の確定結果を模擬受信'),
-            onTap: () {
-              Navigator.pop(context);
-              _showDemoResults();
-            },
+        if (constraints.maxHeight >= 220)
+          ZooHomeTabs(selected: _homeSection, onSelect: _setHomeSection),
+        Expanded(
+          child: IndexedStack(
+            index: _homeSection,
+            children: [
+              _buildZooViewport(),
+              if (_shopOpened)
+                ShopScreen(
+                  key: _shopKey,
+                  session: _game,
+                  purchases: _purchases,
+                  embedded: true,
+                  initialQuery: _shopQuery,
+                  initialKind: _shopKind,
+                  onViewZoo: () => _setHomeSection(0),
+                  onPlaceFacility: _startPlacement,
+                  onCreateEnclosure: () => _openEnclosures(create: true),
+                )
+              else
+                const SizedBox.shrink(),
+              _buildConstructionMenu(),
+            ],
           ),
-        SpriteTile(
-          leading: const ZooUiSprite(part: ZooUiPart.encyclopediaRed, scale: 3),
-          title: const Text('動物一覧'),
-          subtitle: const Text('動物園にいる仲間を見る'),
-          trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
-          enabled: _controller != null,
-          onTap: () {
-            Navigator.pop(context);
-            _showAnimals();
-          },
         ),
-        SpriteTile(
-          leading: const ZooArtSprite(part: ZooArtPart.shop, scale: 2),
-          title: const Text('ショップ'),
-          subtitle: const Text('動物や施設を迎える'),
-          trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
-          onTap: () {
-            Navigator.pop(context);
-            _showShop();
-          },
-        ),
-        SpriteTile(
-          title: const Text('囲いの購入・拡張'),
-          leading: const TerrainSprite(part: TerrainPart.fence),
-          onTap: () {
-            Navigator.pop(context);
-            _openEnclosures();
-          },
-        ),
-        SpriteTile(
-          title: const Text('施設の配置・移動'),
-          leading: const ZooArtSprite(part: ZooArtPart.pond, scale: 2),
-          trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
-          enabled: _controller != null,
-          onTap: () {
-            Navigator.pop(context);
-            _showFacilities();
-          },
-        ),
-        SpriteTile(
-          title: const Text('目標の動物'),
-          leading: const ZooUiSprite(part: ZooUiPart.check, scale: 2),
-          onTap: () {
-            Navigator.pop(context);
-            _showGoalPicker();
-          },
-        ),
-        SpriteTile(
-          title: const Text('研究所'),
-          leading: const ZooBuildingSprite(
-            part: ZooBuildingPart.laboratory,
-            scale: 1,
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            _showResearch();
-          },
-        ),
-        SpriteTile(
-          leading: const Icon(Icons.badge_outlined),
-          title: Text(widget.isTeacher ? '先生として利用中' : '生徒として利用中'),
-        ),
-        if (widget.onSignOut != null)
-          SpriteTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('ログアウト'),
-            onTap: () async {
-              Navigator.of(context).pop();
-              await widget.onSignOut!();
-            },
-          ),
       ],
+    ),
+  );
+
+  Widget _buildZooViewport() {
+    final controller = _controller;
+    if (_failed) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('動物園データを読み込めませんでした'),
+            TextButton(onPressed: _load, child: const Text('再読み込み')),
+          ],
+        ),
+      );
+    }
+    if (controller == null) {
+      return const Center(child: CircularProgressIndicator(color: zooGreen));
+    }
+    return ZooViewport(
+      key: _viewportKey,
+      controller: controller,
+      onAnimals: _showAnimals,
+      onShop: _showShop,
+      reactionRevision: _reactionRevision,
+      onAnimalSelected: _showAnimal,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
-    return PixelUiTheme(
-      child: Scaffold(
-        backgroundColor: zooPaper,
-        body: Stack(
-          children: [
-            SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  ZooHeader(
-                    onProfile: _showProfile,
-                    onWallet: _showWallet,
-                    coins: _game.snapshot?.coins,
-                    connectionLabel: _game.failed
-                        ? '更新停止'
-                        : switch (_game.repository.connection) {
-                            GameConnection.demo => 'デモ',
-                            GameConnection.connected => '',
-                            GameConnection.disconnected => '未接続',
-                          },
-                  ),
-                  GameNoticeBanner(session: _game, onDetails: _showWallet),
-                  if (_experienceCatalog != null &&
-                      _game.snapshot != null &&
-                      _experience.goalId != null)
-                    ..._experienceCatalog!.items
-                        .where(
-                          (item) =>
-                              item.kind == ShopItemKind.animal &&
-                              item.targetId == _experience.goalId,
-                        )
-                        .map(
-                          (item) => GoalBanner(
-                            item: item,
-                            catalog: _experienceCatalog!,
-                            state: _game.snapshot!,
-                            onChange: _showGoalPicker,
-                            onShop: () => _showShop(query: item.name),
+    final showHomeInfo =
+        _mainTab == ZooMainTab.home && _homeSection == 0 && !_contentCanPop;
+    return PopScope(
+      canPop: !_contentCanPop && _homeSection == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          if (_contentCanPop) {
+            _contentKey.currentState?.maybePop();
+          } else {
+            _setHomeSection(0);
+          }
+        }
+      },
+      child: PixelUiTheme(
+        child: Scaffold(
+          backgroundColor: zooPaper,
+          body: Stack(
+            children: [
+              SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    if (showHomeInfo)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.sizeOf(context).height * .30,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ZooHeader(
+                                onProfile: _showProfile,
+                                onWallet: _showWallet,
+                                coins: _game.snapshot?.coins,
+                                connectionLabel: _game.failed
+                                    ? '更新停止'
+                                    : switch (_game.repository.connection) {
+                                        GameConnection.demo => 'デモ',
+                                        GameConnection.connected => '',
+                                        GameConnection.disconnected => '未接続',
+                                      },
+                              ),
+                              GameNoticeBanner(
+                                session: _game,
+                                onDetails: _showWallet,
+                              ),
+                              if (_experienceCatalog != null &&
+                                  _game.snapshot != null &&
+                                  _experience.goalId != null)
+                                ..._experienceCatalog!.items
+                                    .where(
+                                      (item) =>
+                                          item.kind == ShopItemKind.animal &&
+                                          item.targetId == _experience.goalId,
+                                    )
+                                    .map(
+                                      (item) => GoalBanner(
+                                        item: item,
+                                        catalog: _experienceCatalog!,
+                                        state: _game.snapshot!,
+                                        onChange: _showGoalPicker,
+                                        onShop: () =>
+                                            _showShop(query: item.name),
+                                      ),
+                                    ),
+                            ],
                           ),
                         ),
-                  Expanded(
-                    child: _failed
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('動物園データを読み込めませんでした'),
-                                TextButton(
-                                  onPressed: _load,
-                                  child: const Text('再読み込み'),
-                                ),
-                              ],
-                            ),
-                          )
-                        : controller == null
-                        ? const Center(
-                            child: CircularProgressIndicator(color: zooGreen),
-                          )
-                        : ZooViewport(
-                            key: _viewportKey,
-                            controller: controller,
-                            onAnimals: _showAnimals,
-                            onShop: _showShop,
-                            reactionRevision: _reactionRevision,
-                            onAnimalSelected: _showAnimal,
+                      ),
+                    Expanded(
+                      child: MediaQuery.removeViewInsets(
+                        context: context,
+                        removeBottom: true,
+                        child: Navigator(
+                          key: _contentKey,
+                          observers: [_contentObserver],
+                          onGenerateRoute: (_) => MaterialPageRoute<void>(
+                            settings: const RouteSettings(name: '/home'),
+                            builder: (routeContext) {
+                              _homeContext = routeContext;
+                              return AnimatedBuilder(
+                                animation: Listenable.merge([
+                                  _game,
+                                  _experience,
+                                  _homeRevision,
+                                ]),
+                                builder: (_, _) => _buildHomeContent(),
+                              );
+                            },
                           ),
-                  ),
-                  ZooBottomBar(
-                    onHome: () => _viewportKey.currentState?.resetView(),
-                    onStudy: _showStudy,
-                    studyLabel: widget.isTeacher ? '課題' : '学習',
-                    onMore: _showMore,
-                  ),
-                ],
-              ),
-            ),
-            if (!widget.isTeacher &&
-                _experience.reward != null &&
-                ModalRoute.of(context)?.isCurrent != false)
-              Positioned.fill(
-                child: RewardCelebration(
-                  reward: _experience.reward!,
-                  onClose: () => _experience.dismissReward(
-                    _experience.reward!.transactionId,
-                  ),
-                  onShop: () {
-                    _experience.dismissReward(
-                      _experience.reward!.transactionId,
-                    );
-                    _showShop();
-                  },
+                        ),
+                      ),
+                    ),
+                    ZooBottomBar(
+                      selectedTab: _mainTab,
+                      onHome: () => _switchMain(ZooMainTab.home),
+                      onStudy: () => _switchMain(ZooMainTab.study),
+                      studyLabel: widget.isTeacher ? '課題' : '学習',
+                      onMore: () => _switchMain(ZooMainTab.more),
+                    ),
+                  ],
                 ),
               ),
-          ],
+              if (!widget.isTeacher &&
+                  _experience.reward != null &&
+                  !_contentCanPop &&
+                  _homeSection == 0 &&
+                  ModalRoute.of(context)?.isCurrent != false)
+                Positioned.fill(
+                  child: RewardCelebration(
+                    reward: _experience.reward!,
+                    onClose: () => _experience.dismissReward(
+                      _experience.reward!.transactionId,
+                    ),
+                    onShop: () {
+                      _experience.dismissReward(
+                        _experience.reward!.transactionId,
+                      );
+                      _showShop();
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -47,6 +47,8 @@ void main() {
       await frames(tester);
       await tester.tap(find.byType(BackButton).hitTestable());
       await frames(tester);
+      await tester.tap(find.byKey(const ValueKey('main-tab-home')));
+      await frames(tester);
       expect(find.byType(RewardCelebration), findsOneWidget);
       expect(find.text('自習のごほうび +2コイン'), findsOneWidget);
       expect(store.coins, 2);
@@ -57,6 +59,8 @@ void main() {
       await tester.tap(find.text('学習記録'));
       await frames(tester);
       await tester.tap(find.byType(BackButton).hitTestable());
+      await frames(tester);
+      await tester.tap(find.byKey(const ValueKey('main-tab-home')));
       await frames(tester);
       expect(find.byType(RewardCelebration), findsNothing);
       expect(store.coins, 2);
@@ -135,7 +139,7 @@ void main() {
     final repository =
         tester.widget<ZooStudyApp>(find.byType(ZooStudyApp)).gameRepository!
             as MockGameRepository;
-    await tester.tap(find.text('その他'));
+    await tester.tap(find.byKey(const ValueKey('home-section-2')));
     await frames(tester);
     await tester.ensureVisible(find.text('研究所'));
     await tester.tap(find.text('研究所'));
@@ -168,7 +172,7 @@ void main() {
       };
       repository.receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
       await frames(tester);
-      await tester.tap(find.text('その他'));
+      await tester.tap(find.byKey(const ValueKey('home-section-2')));
       await frames(tester);
       await tester.ensureVisible(find.text('研究所'));
       await tester.tap(find.text('研究所'));

@@ -63,7 +63,7 @@ void main() {
           greaterThan(viewport.bottom),
         );
       }
-      expect(find.text('ショップ'), findsNothing);
+      expect(find.text('ショップ'), findsOneWidget);
       await tester.pump(const Duration(seconds: 3));
       expect(tester.takeException(), isNull);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
@@ -108,21 +108,23 @@ void main() {
     await tester.tap(find.text('その他'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    final moreHeader = find.ancestor(
-      of: find.text('その他').last,
-      matching: find.byType(WoodPanel),
-    );
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('設定・プロフィール'), findsOneWidget);
+    expect(find.text('ショップ'), findsNothing);
     expect(
-      tester
-          .getRect(moreHeader)
-          .overlaps(tester.getRect(find.byTooltip('閉じる'))),
-      isFalse,
+      find.byKey(const ValueKey('main-tab-home')).hitTestable(),
+      findsOneWidget,
     );
-    await tester.tap(find.text('ショップ'));
+    await tester.tap(find.byKey(const ValueKey('main-tab-home')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('home-section-1')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byKey(const ValueKey('shop-item-rabbit')), findsOneWidget);
-    await closeSheet(tester);
+    await tester.tap(find.byKey(const ValueKey('main-tab-home')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.byTooltip('動物一覧'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -143,35 +145,36 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('map zoom is bounded, dragging works and home resets view', (
-    tester,
-  ) async {
-    await loadZoo(tester);
-    final camera = tester
-        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
-        .transformationController!;
-    for (var i = 0; i < 4; i++) {
+  testWidgets(
+    'map zoom is bounded, dragging works and explicit reset restores view',
+    (tester) async {
+      await loadZoo(tester);
+      final camera = tester
+          .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+          .transformationController!;
+      for (var i = 0; i < 4; i++) {
+        await tester.tap(find.byTooltip('拡大'));
+        await tester.pump();
+      }
+      expect(camera.value.getMaxScaleOnAxis(), 4);
+      await tester.drag(find.byType(InteractiveViewer), const Offset(30, 30));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(camera.value.getTranslation().length, greaterThan(0));
+      await tester.tap(find.byTooltip('全体を表示'));
+      await tester.pump();
+      expect(camera.value, Matrix4.identity());
       await tester.tap(find.byTooltip('拡大'));
       await tester.pump();
-    }
-    expect(camera.value.getMaxScaleOnAxis(), 4);
-    await tester.drag(find.byType(InteractiveViewer), const Offset(30, 30));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(camera.value.getTranslation().length, greaterThan(0));
-    await tester.tap(find.text('ホーム'));
-    await tester.pump();
-    expect(camera.value, Matrix4.identity());
-    await tester.tap(find.byTooltip('拡大'));
-    await tester.pump();
-    await tester.tap(find.byTooltip('全体を表示'));
-    await tester.pump();
-    expect(camera.value, Matrix4.identity());
-    await tester.tap(find.byTooltip('縮小'));
-    await tester.pump();
-    expect(camera.value.getMaxScaleOnAxis(), 1);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      await tester.tap(find.byTooltip('全体を表示'));
+      await tester.pump();
+      expect(camera.value, Matrix4.identity());
+      await tester.tap(find.byTooltip('縮小'));
+      await tester.pump();
+      expect(camera.value.getMaxScaleOnAxis(), 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {
     testWidgets('layout fits $size without overflow', (tester) async {
@@ -202,9 +205,15 @@ void main() {
       await tester.tap(find.text('その他'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('ショップ').hitTestable(), findsOneWidget);
+      expect(find.text('設定・プロフィール'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('main-tab-home')).hitTestable(),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
-      await closeSheet(tester);
+      await tester.tap(find.byKey(const ValueKey('main-tab-home')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

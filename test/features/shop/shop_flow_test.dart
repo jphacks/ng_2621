@@ -30,9 +30,15 @@ Future<void> transition(WidgetTester tester) async {
 }
 
 Future<void> menu(WidgetTester tester, String name) async {
-  await tester.tap(find.text('その他'));
+  await tester.tap(find.byKey(const ValueKey('main-tab-home')));
   await transition(tester);
-  await tester.tap(find.text(name));
+  if (name == 'ショップ') {
+    await tester.tap(find.byKey(const ValueKey('home-section-1')));
+  } else {
+    await tester.tap(find.byKey(const ValueKey('main-tab-more')));
+    await transition(tester);
+    await tester.tap(find.text(name));
+  }
   await transition(tester);
 }
 
@@ -80,6 +86,8 @@ void main() {
       await menu(tester, '連携デモ');
       await tester.tap(find.text('初回提出の確定結果を受信'));
       await transition(tester);
+      await tester.tap(find.byKey(const ValueKey('main-tab-home')));
+      await transition(tester);
       expect(find.text('30'), findsOneWidget);
       await tester.tap(find.byTooltip('通知を閉じる'));
       await tester.pump();
@@ -93,10 +101,12 @@ void main() {
       );
       await tester.tap(find.byTooltip('商品一覧へ戻る'));
       await transition(tester);
-      await tester.tap(find.byTooltip('閉じる'));
+      await tester.tap(find.byKey(const ValueKey('main-tab-home')));
       await transition(tester);
       await menu(tester, '連携デモ');
       await tester.tap(find.text('承認の確定結果を受信'));
+      await transition(tester);
+      await tester.tap(find.byKey(const ValueKey('main-tab-home')));
       await transition(tester);
       expect(find.text('100'), findsOneWidget);
       await tester.tap(find.byTooltip('通知を閉じる'));

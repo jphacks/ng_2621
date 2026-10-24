@@ -49,8 +49,10 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.byType(SpriteTile), findsWidgets);
         await tester.ensureVisible(find.text('学習記録'));
+        await tester.pump();
         await tester.tap(find.text('学習記録'));
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.byType(StudyAppBar), findsOneWidget);
         expect(find.byType(TerrainTexture), findsWidgets);
@@ -78,6 +80,11 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.text('学習'), findsOneWidget);
         expect(find.byType(StudyAppBar), findsNothing);
+        expect(find.text('学習メニュー'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('main-tab-home')).hitTestable(),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       },

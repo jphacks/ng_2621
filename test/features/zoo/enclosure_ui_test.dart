@@ -67,8 +67,7 @@ void main() {
       });
       await frames(tester);
       expect(find.byKey(const ValueKey('rabbit-1')), findsNothing);
-      await tapVisible(tester, find.text('その他'));
-      await tapVisible(tester, find.text('ショップ'));
+      await tapVisible(tester, find.byKey(const ValueKey('home-section-1')));
       await tapVisible(tester, find.byKey(const ValueKey('shop-filter-施設')));
       await openShopItem(tester, 'enclosure');
       await tapVisible(tester, find.byKey(const ValueKey('buy-enclosure')));
@@ -80,6 +79,7 @@ void main() {
       expect(repository.currentSnapshot.coins, 820);
       final id = repository.currentSnapshot.layout.enclosures.keys.single;
       await tapVisible(tester, find.byTooltip('閉じる'));
+      await tapVisible(tester, find.byKey(const ValueKey('main-tab-home')));
       await tapVisible(tester, find.byTooltip('動物一覧'));
       await tapVisible(
         tester,
@@ -89,7 +89,7 @@ void main() {
       await tapVisible(tester, find.byKey(ValueKey('assign-$id')));
       expect(find.byKey(const ValueKey('rabbit-1')), findsOneWidget);
       expect(repository.currentSnapshot.layout.animalEnclosures['rabbit'], id);
-      await tapVisible(tester, find.text('その他'));
+      await tapVisible(tester, find.byKey(const ValueKey('home-section-2')));
       await tapVisible(tester, find.text('囲いの購入・拡張'));
       await tapVisible(tester, find.text('囲い 1'));
       await tapVisible(tester, find.byTooltip('幅を増やす'));

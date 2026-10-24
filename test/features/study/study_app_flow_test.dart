@@ -17,12 +17,20 @@ void main() {
       Future<void> frame() async {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
+        await tester.pump(const Duration(milliseconds: 400));
         await tester.pump();
       }
 
       Future<void> tap(String text) async {
         tester.testTextInput.hide();
         await frame();
+        if (find.text(text).evaluate().isEmpty) {
+          await tester.scrollUntilVisible(
+            find.text(text),
+            150,
+            scrollable: find.byType(Scrollable).last,
+          );
+        }
         await tester.ensureVisible(find.text(text));
         await frame();
         await tester.tap(find.text(text));
