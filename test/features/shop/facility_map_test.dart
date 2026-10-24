@@ -47,6 +47,12 @@ void main() {
           tester.element(find.byType(ZooMap)),
         ),
       );
+      await tester.runAsync(
+        () => precacheImage(
+          const AssetImage(ZooExtraSprite.assetPath),
+          tester.element(find.byType(ZooMap)),
+        ),
+      );
       await tester.pump();
       final grass = await sample(tester, 15, 12);
       final oldCorner = await sample(tester, 14, 14);
@@ -63,7 +69,7 @@ void main() {
       );
       await tester.pump();
       expect(await sample(tester, 14, 14), oldCorner);
-      expect(await sample(tester, 19, 10), [117, 244, 254, 255]);
+      expect(await sample(tester, 18, 10), [117, 244, 254, 255]);
       controller.synchronizeOwnership({}, {});
       await tester.pump();
       expect(await sample(tester, 15, 12), grass);

@@ -53,7 +53,7 @@ void main() {
             purchasableOnly: true,
           ),
         ),
-        ['pond'],
+        ['pond', 'enclosure'],
       );
       expect(
         ids(
@@ -111,7 +111,7 @@ void main() {
       expect(find.text('条件に合う商品はありません'), findsOneWidget);
       await tester.tap(find.text('検索・絞り込みをリセット'));
       await tester.pump();
-      expect(find.text('2件'), findsOneWidget);
+      expect(find.text('3件'), findsOneWidget);
       expect(find.byKey(const ValueKey('shop-item-pond')), findsOneWidget);
       expect(find.byKey(const ValueKey('shop-item-fox')), findsNothing);
       expect(repository.currentSnapshot.coins, 1000);

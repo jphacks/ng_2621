@@ -19,6 +19,7 @@ class ShopItemArt extends StatelessWidget {
       dimension: size,
       child: Center(
         child: switch (item.targetId) {
+          'enclosure' => const TerrainSprite(part: TerrainPart.fence, scale: 3),
           'pond' => const ZooArtSprite(part: ZooArtPart.pond, scale: 3),
           'forest' => const ZooArtSprite(part: ZooArtPart.tree, scale: 3),
           _ => const ZooUiSprite(part: ZooUiPart.lock, scale: 3),

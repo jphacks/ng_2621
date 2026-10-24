@@ -4,9 +4,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../../../core/ui/sprites/terrain_part.dart';
+import '../../../../core/ui/sprites/zoo_extra_part.dart';
+import '../../../game/domain/zoo_layout.dart';
 import '../../domain/zoo_world.dart';
 import '../../domain/facility_placement.dart';
 import 'terrain_selection.dart';
+import 'water_edges.dart';
 
 class ZooTerrainPainter extends CustomPainter {
   ZooTerrainPainter(
@@ -15,12 +18,16 @@ class ZooTerrainPainter extends CustomPainter {
     this.facilities,
     this.image, {
     this.placements = const {},
+    this.extraImage,
+    this.enclosures = const {},
   });
   final Map<String, FacilityPlacement> placements;
   final ZooWorld world;
   final List<AnimalDefinition> animals;
   final Set<String> facilities;
   final ui.Image? image;
+  final ui.Image? extraImage;
+  final Map<String, Enclosure> enclosures;
 
   String _at(int x, int y) {
     if (x < 0 || y < 0 || x >= world.columns || y >= world.rows) return '.';
@@ -53,15 +60,34 @@ class ZooTerrainPainter extends CustomPainter {
     int turns = 0,
     bool mirrorX = false,
   }) {
-    final image = this.image;
+    _imageSprite(
+      canvas,
+      image,
+      part.sourceRect,
+      destination,
+      turns: turns,
+      mirrorX: mirrorX,
+    );
+  }
+
+  void _imageSprite(
+    Canvas canvas,
+    ui.Image? image,
+    Rect source,
+    Rect destination, {
+    int turns = 0,
+    bool mirrorX = false,
+    bool mirrorY = false,
+  }) {
     if (image == null) return;
     canvas.save();
     canvas.translate(destination.center.dx, destination.center.dy);
     canvas.rotate(turns * math.pi / 2);
     if (mirrorX) canvas.scale(-1, 1);
+    if (mirrorY) canvas.scale(1, -1);
     canvas.drawImageRect(
       image,
-      part.sourceRect,
+      source,
       Rect.fromCenter(
         center: Offset.zero,
         width: destination.width,
@@ -72,6 +98,32 @@ class ZooTerrainPainter extends CustomPainter {
         ..isAntiAlias = false,
     );
     canvas.restore();
+  }
+
+  WaterEdge? _waterEdge(int x, int y) {
+    for (final facility in world.facilities) {
+      if (facility.tile != 'water' || !facilities.contains(facility.id)) {
+        continue;
+      }
+      final position =
+          placements[facility.id] ??
+          FacilityPlacement(
+            facilityId: facility.id,
+            left: facility.left,
+            top: facility.top,
+          );
+      if (position.contains(x, y, facility)) {
+        return waterEdgeAt(
+          x,
+          y,
+          left: position.left,
+          top: position.top,
+          width: facility.width,
+          height: facility.height,
+        );
+      }
+    }
+    return null;
   }
 
   @override
@@ -88,7 +140,20 @@ class ZooTerrainPainter extends CustomPainter {
             : const Color(0xFF238424);
         canvas.drawRect(rect, paint);
         final selection = selectTerrain(_at, x, y);
-        _sprite(canvas, selection.part, rect, turns: selection.quarterTurns);
+        final edge = type == '~' && extraImage != null
+            ? _waterEdge(x, y)
+            : null;
+        if (edge == null) {
+          _sprite(canvas, selection.part, rect, turns: selection.quarterTurns);
+        } else {
+          _imageSprite(
+            canvas,
+            extraImage,
+            edge.part.sourceRect,
+            rect,
+            turns: edge.quarterTurns,
+          );
+        }
         if (type == '^') {
           paint.color = const Color(0xFF315C3A);
           canvas.drawRect(
@@ -103,40 +168,43 @@ class ZooTerrainPainter extends CustomPainter {
         }
       }
     }
-    // Shared enclosures (e.g. original and evolved fox) get one fence pair.
-    final enclosures = <Rect>{};
-    for (final animal in animals) {
-      final a = animal.area;
-      enclosures.add(
-        Rect.fromLTRB(
-          (a.left - 0.5) * tile,
-          (a.top - 0.5) * tile,
-          (a.right + 0.5) * tile,
-          (a.bottom + 0.5) * tile,
-        ),
-      );
-    }
-    for (final rect in enclosures) {
-      final count = math.max(2, (rect.width / tile).ceil());
-      final segment = rect.width / count;
-      for (final bottom in [rect.top, rect.bottom]) {
-        for (var index = 0; index < count; index++) {
-          final part = index == 0 || index == count - 1
-              ? TerrainPart.fenceEnd
-              : index == count ~/ 2
-              ? TerrainPart.fenceGate
-              : TerrainPart.fence;
-          _sprite(
-            canvas,
-            part,
-            Rect.fromLTWH(
-              rect.left + index * segment,
-              bottom - tile + 1,
-              segment,
-              tile,
-            ),
-            mirrorX: index == count - 1,
+    for (final pen in enclosures.values) {
+      for (var y = 0; y < pen.height; y++) {
+        for (var x = 0; x < pen.width; x++) {
+          final sideX = x == 0 || x == pen.width - 1;
+          final sideY = y == 0 || y == pen.height - 1;
+          if (!sideX && !sideY) continue;
+          final rect = Rect.fromLTWH(
+            (pen.left + x) * tile,
+            (pen.top + y) * tile,
+            tile,
+            tile,
           );
+          if (sideX && sideY) {
+            _imageSprite(
+              canvas,
+              extraImage,
+              ZooExtraPart.fenceBottomLeft.sourceRect,
+              rect,
+              mirrorX: x == pen.width - 1,
+              mirrorY: y == 0,
+            );
+          } else if (sideX) {
+            _imageSprite(
+              canvas,
+              extraImage,
+              ZooExtraPart.fenceVertical.sourceRect,
+              rect,
+            );
+          } else {
+            _sprite(
+              canvas,
+              y == pen.height - 1 && x == pen.width ~/ 2
+                  ? TerrainPart.fenceGate
+                  : TerrainPart.fence,
+              rect,
+            );
+          }
         }
       }
     }
@@ -148,5 +216,7 @@ class ZooTerrainPainter extends CustomPainter {
       old.animals != animals ||
       old.facilities != facilities ||
       old.image != image ||
-      old.placements != placements;
+      old.extraImage != extraImage ||
+      old.placements != placements ||
+      old.enclosures != enclosures;
 }

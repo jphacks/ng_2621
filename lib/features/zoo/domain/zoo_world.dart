@@ -49,7 +49,9 @@ class AnimalDefinition {
     name: json['name'] as String,
     imagePath: json['imagePath'] as String?,
     speed: (json['speed'] as num).toDouble(),
-    area: MovementArea.fromJson(json['movementArea'] as Map<String, dynamic>),
+    area: json['movementArea'] == null
+        ? const MovementArea(0.5, 0.5, 0.5, 0.5)
+        : MovementArea.fromJson(json['movementArea'] as Map<String, dynamic>),
     placeholderColor: int.parse(json['placeholderColor'] as String, radix: 16),
     evolutionIds: List<String>.from(json['evolutionIds'] as List? ?? []),
   );

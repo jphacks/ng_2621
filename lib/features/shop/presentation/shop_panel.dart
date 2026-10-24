@@ -16,6 +16,7 @@ class ShopPanel extends StatefulWidget {
     required this.catalog,
     this.onViewZoo,
     this.onPlaceFacility,
+    this.onCreateEnclosure,
   });
   final GameSession session;
   final ShopPurchaseController purchases;
@@ -23,6 +24,7 @@ class ShopPanel extends StatefulWidget {
   final ShopCatalog catalog;
   final VoidCallback? onViewZoo;
   final VoidCallback? onPlaceFacility;
+  final VoidCallback? onCreateEnclosure;
   @override
   State<ShopPanel> createState() => _ShopPanelState();
 }
@@ -91,7 +93,7 @@ class _ShopPanelState extends State<ShopPanel> {
               const SizedBox(height: 12),
               Text(
                 item.kind == ShopItemKind.animal
-                    ? '購入後、動物園に自動で配置されます。'
+                    ? '購入後、動物一覧から囲いに配置してください。'
                     : '購入後、動物園で配置・移動できます。',
               ),
             ],
@@ -222,7 +224,7 @@ class _ShopPanelState extends State<ShopPanel> {
           snapshot != null;
       final owned = snapshot != null && item.isOwned(snapshot);
       final unlocked = snapshot != null && item.isUnlocked(snapshot);
-      final enough = snapshot != null && snapshot.coins >= item.price;
+      final enough = snapshot != null && snapshot.coins >= item.minimumPrice;
       final names = {for (final i in widget.catalog.items) i.targetId: i.name};
       final requirements = [
         ...item.requiredAnimalIds.map((id) => '${names[id] ?? id}を解放'),
@@ -253,7 +255,7 @@ class _ShopPanelState extends State<ShopPanel> {
                   Center(child: ShopItemArt(item: item, size: 64)),
                   const SizedBox(height: 12),
                   Text(item.name, style: const TextStyle(fontSize: 22)),
-                  Text('${item.price} コイン'),
+                  Text(item.priceLabel),
                   const SizedBox(height: 12),
                   const Text(
                     '解放条件',
@@ -264,8 +266,10 @@ class _ShopPanelState extends State<ShopPanel> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    item.kind == ShopItemKind.animal
-                        ? '購入後、動物園に自動で配置されます。'
+                    item.pricing == ShopPricing.area
+                        ? '面積1マス5コイン。3×3マス以上で購入し、後から拡張できます。'
+                        : item.kind == ShopItemKind.animal
+                        ? '購入後、動物一覧から任意の囲いに配置できます。'
                         : '購入後、動物園で配置・移動できます。',
                   ),
                   const SizedBox(height: 16),
@@ -273,10 +277,14 @@ class _ShopPanelState extends State<ShopPanel> {
                     key: ValueKey('buy-${item.id}'),
                     onPressed:
                         available && !owned && unlocked && enough && !blocked
-                        ? () => _confirmAndBuy(item)
+                        ? (item.pricing == ShopPricing.area
+                              ? widget.onCreateEnclosure
+                              : () => _confirmAndBuy(item))
                         : null,
                     child: Text(
-                      _purchases.busy && _purchases.item?.id == item.id
+                      item.pricing == ShopPricing.area
+                          ? 'サイズと場所を選ぶ'
+                          : _purchases.busy && _purchases.item?.id == item.id
                           ? '購入を確認中…'
                           : owned
                           ? '購入済み'

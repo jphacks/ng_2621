@@ -1,3 +1,5 @@
+import 'zoo_layout.dart';
+
 /// Game-facing DTOs. These do not implement assignment management or auth.
 enum AssignmentState {
   notSubmitted('not_submitted', '未提出'),
@@ -154,7 +156,9 @@ class GameSnapshot {
     Iterable<RewardReceipt> rewards = const [],
     Iterable<String> ownedAnimalIds = const [],
     Iterable<String> ownedFacilityIds = const [],
-  }) : classIds = Set.unmodifiable(classIds),
+    ZooLayout? layout,
+  }) : layout = layout ?? ZooLayout(),
+       classIds = Set.unmodifiable(classIds),
        assignments = List.unmodifiable(assignments),
        rewards = List.unmodifiable(rewards),
        ownedAnimalIds = Set.unmodifiable(ownedAnimalIds),
@@ -192,6 +196,7 @@ class GameSnapshot {
   final List<RewardReceipt> rewards;
   final Set<String> ownedAnimalIds;
   final Set<String> ownedFacilityIds;
+  final ZooLayout layout;
 
   factory GameSnapshot.fromJson(Map<String, dynamic> json) {
     if (json['schemaVersion'] != 1) {
@@ -212,6 +217,9 @@ class GameSnapshot {
       ),
       ownedAnimalIds: List<String>.from(json['ownedAnimalIds'] as List),
       ownedFacilityIds: List<String>.from(json['ownedFacilityIds'] as List),
+      layout: json['layout'] == null
+          ? null
+          : ZooLayout.fromJson(json['layout'] as Map<String, dynamic>),
     );
   }
 
@@ -227,5 +235,6 @@ class GameSnapshot {
     'rewards': rewards.map((r) => r.toJson()).toList(),
     'ownedAnimalIds': ownedAnimalIds.toList(),
     'ownedFacilityIds': ownedFacilityIds.toList(),
+    'layout': layout.toJson(),
   };
 }

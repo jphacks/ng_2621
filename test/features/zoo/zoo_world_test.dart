@@ -1,3 +1,5 @@
+import '../../support/layout_fixtures.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -48,6 +50,9 @@ void main() {
     () {
       final controller = ZooController(
         ZooWorld.fromJson(fixture()),
+        layout: testLayout(
+          ZooWorld.fromJson(fixture()).animals.map((a) => a.id),
+        ),
         random: Random(7),
       );
       addTearDown(controller.dispose);
@@ -56,7 +61,7 @@ void main() {
         controller.advance(30);
         for (var j = 0; j < controller.animals.length; j++) {
           final animal = controller.animals[j];
-          expect(animal.definition.area.contains(animal.position), isTrue);
+          expect(animal.movementArea.contains(animal.position), isTrue);
           expect(
             animal.position.distanceTo(before[j]),
             lessThanOrEqualTo(animal.definition.speed * 0.1 + 1e-9),

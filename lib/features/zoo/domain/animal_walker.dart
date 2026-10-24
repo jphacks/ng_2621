@@ -10,7 +10,8 @@ class AnimalWalker {
     required this.instanceId,
     required this.definition,
     required this.random,
-  }) {
+    MovementArea? area,
+  }) : _area = area ?? definition.area {
     position = _randomPoint();
     _waitRemaining = _nextWait();
   }
@@ -18,13 +19,32 @@ class AnimalWalker {
   final String instanceId;
   final AnimalDefinition definition;
   final Random random;
+  MovementArea _area;
+  MovementArea get movementArea => _area;
+  void setMovementArea(MovementArea area) {
+    if (_area.left == area.left &&
+        _area.top == area.top &&
+        _area.right == area.right &&
+        _area.bottom == area.bottom) {
+      return;
+    }
+    _area = area;
+    position = Point(
+      position.x.clamp(area.left, area.right),
+      position.y.clamp(area.top, area.bottom),
+    );
+    _target = null;
+    activity = AnimalActivity.waiting;
+    _waitRemaining = _nextWait();
+  }
+
   late Point<double> position;
   Point<double>? _target;
   late double _waitRemaining;
   AnimalActivity activity = AnimalActivity.waiting;
 
   Point<double> _randomPoint() {
-    final area = definition.area;
+    final area = _area;
     return Point(
       area.left + random.nextDouble() * (area.right - area.left),
       area.top + random.nextDouble() * (area.bottom - area.top),

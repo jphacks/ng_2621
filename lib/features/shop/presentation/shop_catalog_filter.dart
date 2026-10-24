@@ -31,7 +31,7 @@ class ShopCatalogFilter {
                   snapshot == null ||
                   owned ||
                   !item.isUnlocked(snapshot) ||
-                  snapshot.coins < item.price)) {
+                  snapshot.coins < item.minimumPrice)) {
             return false;
           }
           return true;

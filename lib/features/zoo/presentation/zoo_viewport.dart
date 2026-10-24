@@ -162,27 +162,37 @@ class ZooViewportState extends State<ZooViewport> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            '最初の仲間を迎えよう',
+                          Text(
+                            widget.controller.ownedAnimals.isEmpty
+                                ? '最初の仲間を迎えよう'
+                                : '動物を囲いに配置しよう',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: zooInk,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            '課題でコインを集めて、ショップへ。',
+                          Text(
+                            widget.controller.ownedAnimals.isEmpty
+                                ? '課題でコインを集めて、ショップへ。'
+                                : '囲いを購入し、動物一覧から配置できます。',
                             style: TextStyle(fontSize: 12, color: zooGreen),
                           ),
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
-                            onPressed: widget.onShop,
+                            onPressed: widget.controller.ownedAnimals.isEmpty
+                                ? widget.onShop
+                                : widget.onAnimals,
 
                             icon: const ZooArtSprite(
                               part: ZooArtPart.shop,
                               scale: 1,
                             ),
-                            label: const Text('ショップへ'),
+                            label: Text(
+                              widget.controller.ownedAnimals.isEmpty
+                                  ? 'ショップへ'
+                                  : '動物を配置',
+                            ),
                           ),
                         ],
                       ),

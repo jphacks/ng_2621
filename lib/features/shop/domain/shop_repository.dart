@@ -1,10 +1,16 @@
+import '../../game/domain/zoo_layout.dart';
 import 'shop_catalog.dart';
 
 /// Identity comes from the bound session. Price and balance are never inputs.
 class PurchaseRequest {
-  const PurchaseRequest({required this.requestId, required this.itemId});
+  const PurchaseRequest({
+    required this.requestId,
+    required this.itemId,
+    this.layoutEdit,
+  });
   final String requestId;
   final String itemId;
+  final LayoutEdit? layoutEdit;
 }
 
 class PurchaseReceipt {

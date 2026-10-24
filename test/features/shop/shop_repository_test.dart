@@ -1,3 +1,5 @@
+import '../../support/layout_fixtures.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -85,14 +87,16 @@ void main() {
           'pond': 200,
           'forest': 500,
           'evolved_fox': 800,
+          'enclosure': 5,
         },
       );
       final map = world();
       for (final item in data.items) {
         expect(
-          item.kind == ShopItemKind.animal
-              ? map.animals.any((a) => a.id == item.targetId)
-              : map.facilities.any((f) => f.id == item.targetId),
+          item.pricing == ShopPricing.area ||
+              (item.kind == ShopItemKind.animal
+                  ? map.animals.any((a) => a.id == item.targetId)
+                  : map.facilities.any((f) => f.id == item.targetId)),
           isTrue,
         );
       }
@@ -244,6 +248,7 @@ void main() {
     () {
       final controller = ZooController(
         world(),
+        layout: testLayout(['fox', 'evolved_fox']),
         ownedAnimalIds: {},
         ownedFacilityIds: {},
       );

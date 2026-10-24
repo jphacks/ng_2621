@@ -127,7 +127,8 @@ void main() {
     repository.receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
     await tester.pump();
     expect(find.text('最初の仲間を迎えよう'), findsNothing);
-    expect(find.text('1匹'), findsOneWidget);
+    expect(find.text('0匹'), findsOneWidget);
+    expect(find.text('動物を囲いに配置しよう'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

@@ -2,6 +2,8 @@ import '../../game/domain/game_snapshot.dart';
 
 enum ShopItemKind { animal, facility }
 
+enum ShopPricing { fixed, area }
+
 class ShopItem {
   ShopItem({
     required this.id,
@@ -11,6 +13,7 @@ class ShopItem {
     required this.price,
     Iterable<String> requiredAnimalIds = const [],
     this.minimumAnimalSpecies = 0,
+    this.pricing = ShopPricing.fixed,
   }) : requiredAnimalIds = Set.unmodifiable(requiredAnimalIds) {
     if (id.isEmpty ||
         name.isEmpty ||
@@ -25,10 +28,15 @@ class ShopItem {
   final ShopItemKind kind;
   final String targetId;
   final int price;
+  final ShopPricing pricing;
+  int get minimumPrice => pricing == ShopPricing.area ? price * 9 : price;
+  String get priceLabel =>
+      pricing == ShopPricing.area ? '1マス $price コイン' : '$price コイン';
   final Set<String> requiredAnimalIds;
   final int minimumAnimalSpecies;
 
   bool isOwned(GameSnapshot snapshot) =>
+      pricing == ShopPricing.fixed &&
       (kind == ShopItemKind.animal
               ? snapshot.ownedAnimalIds
               : snapshot.ownedFacilityIds)
@@ -47,6 +55,7 @@ class ShopItem {
       json['requiredAnimalIds'] as List? ?? [],
     ),
     minimumAnimalSpecies: json['minimumAnimalSpecies'] as int? ?? 0,
+    pricing: ShopPricing.values.byName(json['pricing'] as String? ?? 'fixed'),
   );
 }
 

@@ -19,10 +19,12 @@ class ShopScreen extends StatefulWidget {
     required this.session,
     this.purchases,
     this.onPlaceFacility,
+    this.onCreateEnclosure,
   });
   final GameSession session;
   final ShopPurchaseController? purchases;
   final ValueChanged<String>? onPlaceFacility;
+  final VoidCallback? onCreateEnclosure;
 
   @override
   State<ShopScreen> createState() => _ShopScreenState();
@@ -98,6 +100,15 @@ class _ShopScreenState extends State<ShopScreen> {
                   purchases: _purchases,
                   item: item,
                   catalog: _catalog!,
+                  onCreateEnclosure: widget.onCreateEnclosure == null
+                      ? null
+                      : () {
+                          Navigator.pop(detailContext);
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.pop(context);
+                          }
+                          widget.onCreateEnclosure!();
+                        },
                   onPlaceFacility: widget.onPlaceFacility == null
                       ? null
                       : () {

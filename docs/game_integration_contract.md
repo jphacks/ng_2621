@@ -349,3 +349,10 @@ C:\flutter\bin\flutter.bat run -d emulator-5554 --dart-define=ZOOSTUDY_DEMO=true
 元の指示書はフェーズ4までです。次は「本番接続・保存・端末での総合確認」を置けます。
 ゲーム側は認証済みセッションの GameRepository / ShopRepository 接続、取引結果の復旧、Androidでの確認を担当します。
 課題管理・認証・先生画面・サーバーでの報酬確定は共同開発者の担当として、無断で変更しません。
+
+## 購入式の囲い・配置更新の追加契約
+
+`GameSnapshot.layout` と `PurchaseRequest.layoutEdit` を追加した。
+`itemId: zoo_layout` で購入・差額拡張・無料移動・動物割り当て・施設配置を確定する。
+この経路のレシートのみ0コインを許可し、固定商品購入の正数チェックは維持する。
+データ形式・価格・冪等性・既存デモへの接続は [囲い仕様](enclosure_system.md) を参照。

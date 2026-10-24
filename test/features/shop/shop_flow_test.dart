@@ -1,3 +1,5 @@
+import 'package:zoo_study/features/game/domain/zoo_layout.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -40,11 +42,26 @@ void main() {
     (tester) async {
       final repository = MockGameRepository(
         catalogLoader: () async => fixture(),
+        bonusCoins: 80,
       );
       addTearDown(repository.dispose);
       await tester.runAsync(() async {
         await rootBundle.loadString('assets/zoo/world.json');
         await repository.loadCatalog();
+        await repository.purchase(
+          const PurchaseRequest(
+            requestId: 'fixture_pen',
+            itemId: 'zoo_layout',
+            layoutEdit: LayoutEdit(
+              kind: LayoutEditKind.enclosure,
+              id: 'flow_pen',
+              left: 0,
+              top: 0,
+              width: 4,
+              height: 4,
+            ),
+          ),
+        );
         await tester.pumpWidget(ZooStudyApp(gameRepository: repository));
         await tester.ensureVisible(find.text('生徒はこちら'));
         await tester.tap(find.text('生徒はこちら'));
@@ -101,6 +118,19 @@ void main() {
       );
       await tester.tap(find.text('動物園を見る'));
       await transition(tester);
+      expect(find.byKey(const ValueKey('rabbit-1')), findsNothing);
+      await tester.tap(find.byTooltip('動物一覧'));
+      await transition(tester);
+      await tester.tap(find.text('うさぎ'));
+      await transition(tester);
+      await tester.tap(find.text('囲いに配置する'));
+      await transition(tester);
+      await tester.tap(find.byKey(const ValueKey('assign-flow_pen')));
+      await transition(tester);
+      expect(
+        repository.currentSnapshot.layout.animalEnclosures,
+        containsPair('rabbit', 'flow_pen'),
+      );
       expect(find.byKey(const ValueKey('rabbit-1')), findsOneWidget);
       expect(find.byKey(const ValueKey('fox-1')), findsNothing);
       expect(find.text('1匹'), findsOneWidget);

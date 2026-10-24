@@ -1,3 +1,5 @@
+import '../../support/layout_fixtures.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zoo_study/features/zoo/domain/facility_placement.dart';
 import 'package:zoo_study/features/zoo/domain/zoo_world.dart';
@@ -63,7 +65,10 @@ void main() {
     expect(issue(1, 3), PlacementIssue.blockedTerrain);
     expect(issue(6, 6), PlacementIssue.overlapsFacility);
     expect(issue(6, 6, owned: {'pond'}), PlacementIssue.overlapsFacility);
-    expect(issue(2, 7), PlacementIssue.animalArea);
+    expect(
+      issue(2, 7),
+      isNull,
+    ); // Legacy animal definition areas no longer reserve map space.
     expect(issue(0, 0), isNull);
   });
 
@@ -73,6 +78,7 @@ void main() {
     final controller = ZooController(
       world,
       ownedAnimalIds: {'test'},
+      layout: testLayout(['test']),
       ownedFacilityIds: {'pond'},
     );
     addTearDown(controller.dispose);

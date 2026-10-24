@@ -2,6 +2,10 @@ import 'dart:async';
 
 import '../domain/game_repository.dart';
 import '../domain/game_snapshot.dart';
+import '../domain/zoo_layout.dart';
+import '../../zoo/data/zoo_repository.dart';
+import '../../zoo/domain/zoo_world.dart';
+import 'layout_mutation.dart';
 import '../../shop/domain/shop_repository.dart';
 import '../../shop/domain/shop_catalog.dart';
 import '../../shop/data/shop_catalog_loader.dart';
@@ -14,8 +18,10 @@ class MockGameRepository implements GameRepository, ShopRepository {
     DemoScenario scenario = DemoScenario.assigned,
     Future<ShopCatalog> Function()? catalogLoader,
     int bonusCoins = 0,
+    Future<ZooWorld> Function()? worldLoader,
   }) : _current = _initialSnapshot(scenario, bonusCoins),
-       _catalogLoader = catalogLoader ?? loadShopCatalog;
+       _catalogLoader = catalogLoader ?? loadShopCatalog,
+       _worldLoader = worldLoader ?? ZooRepository().load;
 
   static GameSnapshot _initialSnapshot(DemoScenario scenario, int bonusCoins) {
     if (bonusCoins < 0) throw ArgumentError.value(bonusCoins, 'bonusCoins');
@@ -31,6 +37,47 @@ class MockGameRepository implements GameRepository, ShopRepository {
   final Future<ShopCatalog> Function() _catalogLoader;
   ShopCatalog? _catalog;
   final _purchases = <String, PurchaseReceipt>{};
+  final _layoutEdits = <String, LayoutEdit>{};
+  final Future<ZooWorld> Function() _worldLoader;
+  ZooWorld? _loadedWorld;
+
+  Future<PurchaseReceipt> _editLayout(PurchaseRequest request) async {
+    final edit = request.layoutEdit!;
+    if (request.itemId != 'zoo_layout' ||
+        !RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(request.requestId)) {
+      throw const PurchaseFailure(PurchaseFailureCode.invalidRequest);
+    }
+    final world = _loadedWorld ??= await _worldLoader();
+    final prior = _purchases[request.requestId];
+    if (prior != null) {
+      if (_layoutEdits[request.requestId] != edit) {
+        throw const PurchaseFailure(PurchaseFailureCode.requestConflict);
+      }
+      return prior;
+    }
+    if (_changes.isClosed) {
+      throw const PurchaseFailure(PurchaseFailureCode.unavailable);
+    }
+    // Validation, pricing, debit and layout commit are synchronous after the await.
+    final result = applyLayoutEdit(_current, world, edit);
+    final data = _current.toJson();
+    data['coins'] = _current.coins - result.price;
+    data['layout'] = result.layout.toJson();
+    data['revision'] = _current.revision + 1;
+    data['confirmedAt'] = DateTime.now().toUtc().toIso8601String();
+    final next = GameSnapshot.fromJson(data);
+    final receipt = PurchaseReceipt(
+      requestId: request.requestId,
+      itemId: request.itemId,
+      price: result.price,
+      revision: next.revision,
+    );
+    _layoutEdits[request.requestId] = edit;
+    _purchases[request.requestId] = receipt;
+    _current = next;
+    _changes.add(next);
+    return receipt;
+  }
 
   @override
   Future<ShopCatalog> loadCatalog() async =>
@@ -38,6 +85,7 @@ class MockGameRepository implements GameRepository, ShopRepository {
 
   @override
   Future<PurchaseReceipt> purchase(PurchaseRequest request) async {
+    if (request.layoutEdit != null) return _editLayout(request);
     if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(request.requestId) ||
         request.itemId.isEmpty) {
       throw const PurchaseFailure(PurchaseFailureCode.invalidRequest);
@@ -46,7 +94,8 @@ class MockGameRepository implements GameRepository, ShopRepository {
     // No await between this check and the snapshot/receipt commit.
     final previous = _purchases[request.requestId];
     if (previous != null) {
-      if (previous.itemId != request.itemId) {
+      if (previous.itemId != request.itemId ||
+          _layoutEdits.containsKey(request.requestId)) {
         throw const PurchaseFailure(PurchaseFailureCode.requestConflict);
       }
       return previous;
@@ -57,6 +106,9 @@ class MockGameRepository implements GameRepository, ShopRepository {
     final item = catalog.items.where((i) => i.id == request.itemId).firstOrNull;
     if (item == null) {
       throw const PurchaseFailure(PurchaseFailureCode.unknownItem);
+    }
+    if (item.pricing != ShopPricing.fixed) {
+      throw const PurchaseFailure(PurchaseFailureCode.invalidRequest);
     }
     if (item.isOwned(_current)) {
       throw const PurchaseFailure(PurchaseFailureCode.alreadyOwned);
@@ -133,8 +185,17 @@ class MockGameRepository implements GameRepository, ShopRepository {
       throw const FormatException('Cannot change mock session identity');
     }
     if (snapshot.revision <= _current.revision) return;
-    _current = snapshot;
-    _changes.add(snapshot);
+    // Assignment projections do not own layout. Preserve it when they refresh
+    // rewards with an older DTO constructor; explicit nonempty test fixtures may seed it.
+    final incoming = snapshot.layout;
+    final data = snapshot.toJson();
+    if (incoming.enclosures.isEmpty &&
+        incoming.animalEnclosures.isEmpty &&
+        incoming.facilities.isEmpty) {
+      data['layout'] = _current.layout.toJson();
+    }
+    _current = GameSnapshot.fromJson(data);
+    _changes.add(_current);
   }
 
   Future<void> dispose() => _changes.close();

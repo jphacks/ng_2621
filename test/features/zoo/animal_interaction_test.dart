@@ -1,3 +1,5 @@
+import '../../support/layout_fixtures.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -18,6 +20,7 @@ void main() {
     );
     final controller = ZooController(
       world,
+      layout: testLayout(['rabbit']),
       random: Random(2),
       ownedAnimalIds: {'rabbit'},
       ownedFacilityIds: {},

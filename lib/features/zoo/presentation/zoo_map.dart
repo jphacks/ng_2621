@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../domain/zoo_world.dart';
 import '../domain/facility_placement.dart';
+import '../domain/animal_walker.dart';
+import '../../game/domain/zoo_layout.dart';
 import '../../animals/presentation/animal_art.dart';
 import 'zoo_controller.dart';
 import '../../../core/ui/zoo_ui.dart';
@@ -17,12 +19,38 @@ class ZooMap extends StatelessWidget {
     this.onTileSelected,
     this.placementsOverride,
     this.overlay,
+    this.enclosurePreview,
+    this.previewValid = true,
   });
 
   final ZooController controller;
   final void Function(int x, int y)? onTileSelected;
   final Map<String, FacilityPlacement>? placementsOverride;
   final Widget? overlay;
+  final Enclosure? enclosurePreview;
+  final bool previewValid;
+  Map<String, Enclosure> get _drawnEnclosures {
+    final result = {...controller.layout.enclosures};
+    final preview = enclosurePreview;
+    if (preview != null) result[preview.id] = preview;
+    return result;
+  }
+
+  Offset _animalPosition(AnimalWalker animal) {
+    var x = animal.position.x, y = animal.position.y;
+    final pen = enclosurePreview;
+    if (pen != null &&
+        controller.layout.animalEnclosures[animal.definition.id] == pen.id) {
+      final area = pen.movementArea;
+      x = x.clamp(area.left, area.right);
+      y = y.clamp(area.top, area.bottom);
+    }
+    return Offset(
+      x * controller.world.tileSize - 8,
+      y * controller.world.tileSize - 8,
+    );
+  }
+
   final ValueChanged<AnimalDefinition>? onAnimalSelected;
 
   @override
@@ -93,19 +121,25 @@ class ZooMap extends StatelessWidget {
                                 key: const ValueKey('zoo-terrain'),
                                 child: SpriteSheetImage(
                                   assetPath: TerrainSprite.assetPath,
-                                  builder: (context, image) => CustomPaint(
-                                    size: Size(width, height),
-                                    painter: ZooTerrainPainter(
-                                      world,
-                                      controller.animals
-                                          .map((a) => a.definition)
-                                          .toList(),
-                                      controller.ownedFacilities,
-                                      image,
-                                      placements:
-                                          placementsOverride ??
-                                          controller.placements,
-                                    ),
+                                  builder: (context, image) => SpriteSheetImage(
+                                    assetPath: ZooExtraSprite.assetPath,
+                                    builder: (context, extraImage) =>
+                                        CustomPaint(
+                                          size: Size(width, height),
+                                          painter: ZooTerrainPainter(
+                                            world,
+                                            controller.animals
+                                                .map((a) => a.definition)
+                                                .toList(),
+                                            controller.ownedFacilities,
+                                            image,
+                                            extraImage: extraImage,
+                                            enclosures: _drawnEnclosures,
+                                            placements:
+                                                placementsOverride ??
+                                                controller.placements,
+                                          ),
+                                        ),
                                   ),
                                 ),
                               ),
@@ -117,10 +151,9 @@ class ZooMap extends StatelessWidget {
                             for (final animal in controller.animals)
                               Positioned(
                                 key: ValueKey(animal.instanceId),
-                                left: (animal.position.x * world.tileSize - 8)
+                                left: _animalPosition(animal).dx
                                     .roundToDouble(),
-                                top: (animal.position.y * world.tileSize - 8)
-                                    .roundToDouble(),
+                                top: _animalPosition(animal).dy.roundToDouble(),
                                 width: 16,
                                 height: 16,
                                 child: Semantics(
@@ -134,6 +167,18 @@ class ZooMap extends StatelessWidget {
                                         ),
                                   child: _AnimalSprite(
                                     definition: animal.definition,
+                                  ),
+                                ),
+                              ),
+                            if (enclosurePreview != null)
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: CustomPaint(
+                                    painter: _EnclosureHighlight(
+                                      enclosurePreview!,
+                                      world.tileSize,
+                                      previewValid,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -213,4 +258,33 @@ class _AnimalPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_AnimalPainter oldDelegate) => oldDelegate.color != color;
+}
+
+class _EnclosureHighlight extends CustomPainter {
+  _EnclosureHighlight(this.pen, this.tile, this.valid);
+  final Enclosure pen;
+  final int tile;
+  final bool valid;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(
+      pen.left * tile.toDouble(),
+      pen.top * tile.toDouble(),
+      pen.width * tile.toDouble(),
+      pen.height * tile.toDouble(),
+    );
+    final paint = Paint()
+      ..isAntiAlias = false
+      ..color = valid ? const Color(0x3344AA44) : const Color(0x66FF3333);
+    canvas.drawRect(rect, paint);
+    paint
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = valid ? const Color(0xFF225522) : const Color(0xFFAA2222);
+    canvas.drawRect(rect.deflate(0.5), paint);
+  }
+
+  @override
+  bool shouldRepaint(_EnclosureHighlight old) =>
+      old.pen != pen || old.tile != tile || old.valid != valid;
 }

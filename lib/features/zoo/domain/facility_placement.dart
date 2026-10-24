@@ -45,7 +45,7 @@ enum PlacementIssue {
   outsideMap('施設全体がマップに入る場所を選んでください'),
   blockedTerrain('通路や元からある水辺には設置できません'),
   overlapsFacility('他の施設の配置・予約エリアと重なっています'),
-  animalArea('動物のエリアと重なっています');
+  animalArea('囲いの設置エリアと重なっています');
 
   const PlacementIssue(this.message);
   final String message;
@@ -57,6 +57,7 @@ PlacementIssue? validateFacilityPlacement({
   required FacilityPlacement placement,
   required Set<String> ownedFacilityIds,
   required Map<String, FacilityPlacement> placements,
+  List<MovementArea> animalAreas = const [],
 }) {
   final definition = world.facilities
       .where((f) => f.id == placement.facilityId)
@@ -105,8 +106,7 @@ PlacementIssue? validateFacilityPlacement({
   }
   // Forest is intentionally compatible with animal areas. Water is not.
   if (definition.blocksAnimalAreas) {
-    for (final animal in world.animals) {
-      final area = animal.area;
+    for (final area in animalAreas) {
       if (left < area.right + 0.5 &&
           right > area.left - 0.5 &&
           top < area.bottom + 0.5 &&

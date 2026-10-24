@@ -49,6 +49,14 @@
       "requiredAnimalIds": [
         "fox"
       ]
+    },
+    {
+      "id": "enclosure",
+      "name": "柵（囲い）",
+      "kind": "facility",
+      "targetId": "enclosure",
+      "price": 5,
+      "pricing": "area"
     }
   ]
 }

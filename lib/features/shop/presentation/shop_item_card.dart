@@ -31,7 +31,7 @@ class ShopItemCard extends StatelessWidget {
         ? '未接続'
         : !unlocked
         ? '未解放'
-        : state.coins < item.price
+        : state.coins < item.minimumPrice
         ? 'コイン不足'
         : '購入可';
     return Semantics(
@@ -57,7 +57,7 @@ class ShopItemCard extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const Spacer(),
-                  Text('${item.price} コイン'),
+                  Text(item.priceLabel),
                   Text(status, style: const TextStyle(fontSize: 12)),
                 ],
               ),
