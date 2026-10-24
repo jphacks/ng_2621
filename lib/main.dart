@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'features/auth/presentation/role_selection_screen.dart';
@@ -33,13 +34,15 @@ class _ZooStudyAppState extends State<ZooStudyApp> {
       title: 'ZooっとStudy',
       home: RoleSelectionScreen(
         teacherPageBuilder: (_) => ZooScreen(
-          gameRepository: widget.gameRepository,
+          gameRepository:
+              widget.gameRepository ?? (kDebugMode ? _assignments : null),
           isTeacher: true,
-          assignmentStore: _assignments,
+          assignmentStore: kDebugMode ? _assignments : null,
         ),
         studentPageBuilder: (_) => ZooScreen(
-          gameRepository: widget.gameRepository,
-          assignmentStore: _assignments,
+          gameRepository:
+              widget.gameRepository ?? (kDebugMode ? _assignments : null),
+          assignmentStore: kDebugMode ? _assignments : null,
         ),
       ),
     );

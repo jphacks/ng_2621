@@ -2,56 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zoo_study/core/ui/zoo_ui.dart';
-import 'package:zoo_study/features/game/data/mock_game_repository.dart';
 import 'package:zoo_study/main.dart';
-import 'package:zoo_study/features/game/presentation/game_status.dart';
 
 void main() {
-  testWidgets('real entry point opts into mock only with explicit demo flag', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await rootBundle.loadString('assets/zoo/world.json');
-      await tester.pumpWidget(const ZooStudyApp());
-      await tester.ensureVisible(find.text('生徒はこちら'));
-      await tester.tap(find.text('生徒はこちら'));
+  testWidgets(
+    'debug entry opens interactive study demo with no fixture rewards',
+    (tester) async {
+      await tester.runAsync(() async {
+        await rootBundle.loadString('assets/zoo/world.json');
+        await tester.pumpWidget(const ZooStudyApp());
+        await tester.ensureVisible(find.text('生徒はこちら'));
+        await tester.tap(find.text('生徒はこちら'));
+        await tester.pump();
+        await tester.ensureVisible(find.text('確定'));
+        await tester.tap(find.text('確定'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        await precacheImage(
+          const AssetImage(ZooUiSprite.assetPath),
+          tester.element(find.byType(ZooStudyApp)),
+        );
+      });
       await tester.pump();
-      await tester.ensureVisible(find.text('確定'));
-      await tester.tap(find.text('確定'));
+      expect(find.text('コイン・デモ'), findsOneWidget);
+      expect(find.text('0'), findsOneWidget);
+      await tester.tap(find.text('課題'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await precacheImage(
-        const AssetImage(ZooUiSprite.assetPath),
-        tester.element(find.byType(ZooStudyApp)),
-      );
-    });
-    await tester.pump();
-    const demoEnabled = bool.fromEnvironment('ZOOSTUDY_DEMO');
-    if (demoEnabled) {
-      const name = String.fromEnvironment(
-        'ZOOSTUDY_DEMO_SCENARIO',
-        defaultValue: 'assigned',
-      );
-      final snapshot = MockGameRepository.snapshotFor(
-        DemoScenario.values.byName(name),
-      );
-      expect(find.text('コイン・デモ'), findsOneWidget);
-      expect(find.text('${snapshot.coins}'), findsOneWidget);
-    } else {
-      expect(find.text('コイン・未接続'), findsOneWidget);
-      expect(find.text('—'), findsOneWidget);
-    }
-    await tester.tap(find.text('課題'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(
-      find.descendant(
-        of: find.byType(GameStatus),
-        matching: find.textContaining(demoEnabled ? 'デモデータ' : '未接続'),
-      ),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      expect(find.text('自分の課題'), findsOneWidget);
+      expect(find.text('追加された課題はありません'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 }
