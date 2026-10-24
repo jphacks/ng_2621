@@ -1,3 +1,4 @@
+import '../../study/student_assignments_screen.dart';
 import '../../study/demo_assignment_store.dart';
 import '../../study/teacher_assignments_screen.dart';
 
@@ -162,6 +163,14 @@ class _ZooScreenState extends State<ZooScreen>
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => TeacherAssignmentsScreen(store: store),
+        ),
+      );
+      return;
+    }
+    if (store != null && widget.gameRepository is DemoAssignmentStore) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => StudentAssignmentsScreen(store: store),
         ),
       );
       return;
@@ -364,6 +373,16 @@ class _ZooScreenState extends State<ZooScreen>
             _showShop();
           },
         ),
+        if (widget.assignmentStore != null && Navigator.of(context).canPop())
+          ListTile(
+            leading: const Icon(Icons.switch_account_outlined),
+            title: const Text('先生・生徒を選び直す'),
+            subtitle: Text(widget.isTeacher ? '現在：先生（デモ）' : '現在：生徒（デモ）'),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
+            },
+          ),
       ],
     );
   }

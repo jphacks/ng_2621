@@ -17,6 +17,9 @@ class MockGameRepository implements GameRepository, ShopRepository {
        _catalogLoader = catalogLoader ?? loadShopCatalog;
 
   GameSnapshot _current;
+
+  /// Read-only state for the local interactive demo adapter.
+  GameSnapshot get currentSnapshot => _current;
   final Future<ShopCatalog> Function() _catalogLoader;
   ShopCatalog? _catalog;
   final _purchases = <String, PurchaseReceipt>{};

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'demo_assignment_store.dart';
+import 'assignment_detail_screen.dart';
+import '../game/domain/game_snapshot.dart';
 
 class DemoAssignmentList extends StatelessWidget {
-  const DemoAssignmentList({super.key, required this.store});
+  final bool isTeacher;
+  const DemoAssignmentList({
+    super.key,
+    required this.store,
+    this.isTeacher = false,
+  });
   final DemoAssignmentStore store;
 
   @override
@@ -33,6 +40,36 @@ class DemoAssignmentList extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(assignment.description),
+                  if (isTeacher) ...[
+                    const SizedBox(height: 8),
+                    const Text('対象生徒：デモ生徒'),
+                    if (store.submissionFor(assignment.id) != null) ...[
+                      Text(
+                        '提出日時：${studyDate(store.submissionFor(assignment.id)!.submittedAt)}',
+                      ),
+                      Text(
+                        store.submissionFor(assignment.id)!.answerText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 8),
+                  Text(
+                    '状態：${store.submissionFor(assignment.id)?.status.label ?? AssignmentState.notSubmitted.label}',
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => AssignmentDetailScreen(
+                          store: store,
+                          assignmentId: assignment.id,
+                          isTeacher: isTeacher,
+                        ),
+                      ),
+                    ),
+                    child: Text(isTeacher ? '提出内容を確認' : '詳細・回答する'),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     '締切：${assignment.dueAt.year}/${assignment.dueAt.month}/${assignment.dueAt.day} 23:59',
@@ -69,7 +106,7 @@ class TeacherAssignmentsScreen extends StatelessWidget {
               label: const Text('課題を作成'),
             ),
             const SizedBox(height: 24),
-            DemoAssignmentList(store: store),
+            DemoAssignmentList(store: store, isTeacher: true),
           ],
         ),
       ),
