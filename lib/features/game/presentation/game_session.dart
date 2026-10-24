@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/game_repository.dart';
 import '../domain/game_snapshot.dart';
+import '../domain/game_notice.dart';
 
 class GameSession extends ChangeNotifier {
   GameSession(this.repository) {
@@ -17,6 +18,17 @@ class GameSession extends ChangeNotifier {
   StreamSubscription<GameSnapshot>? _subscription;
   int _generation = 0;
   bool _disposed = false;
+  final _noticeTracker = GameNoticeTracker();
+  final _notices = <GameNotice>[];
+
+  List<GameNotice> get pendingNotices => List.unmodifiable(_notices);
+  GameNotice? get currentNotice => _notices.isEmpty ? null : _notices.first;
+
+  void dismissNotice(String id) {
+    if (_notices.isEmpty || _notices.first.id != id) return;
+    _notices.removeAt(0);
+    notifyListeners();
+  }
 
   void refresh() {
     final generation = ++_generation;
@@ -49,6 +61,7 @@ class GameSession extends ChangeNotifier {
               return;
             }
           }
+          _notices.addAll(_noticeTracker.receive(incoming));
           snapshot = incoming;
           loading = false;
           failed = false;

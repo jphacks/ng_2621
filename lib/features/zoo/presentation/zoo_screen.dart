@@ -7,6 +7,8 @@ import '../../game/data/mock_game_repository.dart';
 import '../../game/domain/game_repository.dart';
 import '../../game/presentation/game_session.dart';
 import '../../game/presentation/game_status.dart';
+import '../../game/domain/game_snapshot.dart';
+import '../../game/presentation/game_notice_banner.dart';
 import 'zoo_controller.dart';
 import '../../../core/ui/zoo_ui.dart';
 import 'zoo_chrome.dart';
@@ -159,11 +161,80 @@ class _ZooScreenState extends State<ZooScreen>
     );
   }
 
+  void _showDemoResults() {
+    final repository = _game.repository;
+    final snapshot = _game.snapshot;
+    if (!kDebugMode || repository is! MockGameRepository || snapshot == null) {
+      return;
+    }
+    final state = snapshot.assignments.single.state;
+    void receive(DemoScenario scenario) {
+      repository.receiveConfirmedSnapshot(
+        MockGameRepository.snapshotFor(
+          scenario,
+          revision: snapshot.revision + 1,
+        ),
+      );
+      Navigator.pop(context);
+    }
+
+    showZooSheet(
+      context,
+      title: '連携デモ',
+      children: [
+        const Text('外部で確定した結果の受信を模擬します。実際の提出・講師承認・報酬付与ではありません。'),
+        const SizedBox(height: 12),
+        if (state == AssignmentState.notSubmitted)
+          FilledButton(
+            onPressed: () => receive(DemoScenario.submitted),
+            child: const Text('初回提出の確定結果を受信'),
+          ),
+        if (state == AssignmentState.pendingReview) ...[
+          FilledButton(
+            onPressed: () => receive(DemoScenario.approved),
+            child: const Text('承認の確定結果を受信'),
+          ),
+          OutlinedButton(
+            onPressed: () => receive(DemoScenario.needsRevision),
+            child: const Text('再提出依頼を受信'),
+          ),
+        ],
+        if (state == AssignmentState.needsRevision)
+          FilledButton(
+            onPressed: () => receive(DemoScenario.resubmitted),
+            child: const Text('再提出の確定結果を受信'),
+          ),
+        OutlinedButton(
+          onPressed: () {
+            repository.receiveConfirmedSnapshot(snapshot);
+            Navigator.pop(context);
+          },
+          child: const Text('同じ確定結果を再受信'),
+        ),
+        if (state == AssignmentState.approved)
+          const Text('この課題は承認済みです。デモを最初から見る場合はアプリを再起動してください。'),
+      ],
+    );
+  }
+
   void _showMore() {
     showZooSheet(
       context,
       title: 'その他',
       children: [
+        if (kDebugMode &&
+            _game.repository is MockGameRepository &&
+            _game.snapshot != null)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.science_outlined, color: zooGreen),
+            title: const Text('連携デモ'),
+            subtitle: const Text('外部の確定結果を模擬受信'),
+            onTap: () {
+              Navigator.pop(context);
+              _showDemoResults();
+            },
+          ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const ZooUiSprite(part: ZooUiPart.encyclopediaRed, scale: 3),
@@ -220,6 +291,7 @@ class _ZooScreenState extends State<ZooScreen>
                       GameConnection.disconnected => '未接続',
                     },
             ),
+            GameNoticeBanner(session: _game, onDetails: _showWallet),
             Expanded(
               child: _failed
                   ? Center(
