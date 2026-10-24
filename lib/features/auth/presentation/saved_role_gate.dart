@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/storage/draft_storage.dart';
 import 'role_selection_screen.dart';
 
-/// Remembers only a UI preference. Firebase still validates the account's role.
+/// Shows role selection on startup unless persistence is explicitly enabled.
 class SavedRoleGate extends StatefulWidget {
   const SavedRoleGate({
     super.key,
@@ -11,10 +11,12 @@ class SavedRoleGate extends StatefulWidget {
     required this.studentPageBuilder,
     this.storage,
     this.storageDescription,
+    this.rememberRole = false,
   });
   final WidgetBuilder teacherPageBuilder;
   final WidgetBuilder studentPageBuilder;
   final DraftStorage? storage;
+  final bool rememberRole;
   final String? storageDescription;
   static const storageKey = 'selected-role';
   @override
@@ -28,7 +30,7 @@ class _SavedRoleGateState extends State<SavedRoleGate> {
   @override
   void initState() {
     super.initState();
-    if (widget.storage != null) {
+    if (widget.rememberRole && widget.storage != null) {
       _loading = true;
       _restore();
     }
@@ -82,7 +84,7 @@ class _SavedRoleGateState extends State<SavedRoleGate> {
       teacherPageBuilder: widget.teacherPageBuilder,
       studentPageBuilder: widget.studentPageBuilder,
       storageDescription: widget.storageDescription,
-      onConfirmed: widget.storage == null
+      onConfirmed: !widget.rememberRole || widget.storage == null
           ? null
           : (teacher) => widget.storage!.write(SavedRoleGate.storageKey, {
               'role': teacher ? 'teacher' : 'student',

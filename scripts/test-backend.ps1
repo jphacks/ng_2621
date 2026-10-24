@@ -6,5 +6,5 @@ if (Test-Path -LiteralPath "$bundledJava\bin\java.exe") { $env:JAVA_HOME = $bund
 $env:XDG_CONFIG_HOME = Join-Path $repoPath 'build/firebase-config'
 $env:FIREBASE_EMULATORS_PATH = Join-Path $repoPath 'build/firebase-emulators'
 $env:CI = 'true'
-& node functions/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore,functions --project demo-zoostudy-test 'node --test functions/test/backend.test.js'
+& node functions/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore,functions,storage --project demo-zoostudy-test 'node --test functions/test/backend.test.js'
 exit $LASTEXITCODE

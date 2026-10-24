@@ -1,3 +1,4 @@
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,6 +16,7 @@ Future<void> initializeStudyFirebase() async {
   const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
   const appId = String.fromEnvironment('FIREBASE_APP_ID');
   const sender = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
+  const bucket = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
   if (!emulator && [project, apiKey, appId, sender].any((s) => s.isEmpty)) {
     throw StateError(
       'Firebaseの接続設定がありません。config/firebase.example.jsonを参考に設定してください。',
@@ -27,12 +29,20 @@ Future<void> initializeStudyFirebase() async {
         appId: emulator ? '1:1234567890:android:1234567890abcdef' : appId,
         messagingSenderId: emulator ? '1234567890' : sender,
         projectId: emulator ? 'demo-zoostudy' : project,
+        storageBucket: emulator
+            ? 'demo-zoostudy.appspot.com'
+            : (bucket.isEmpty ? null : bucket),
         authDomain: emulator
             ? 'demo-zoostudy.firebaseapp.com'
             : '$project.firebaseapp.com',
       ),
     );
   }
+  FirebaseStorage.instance.setMaxUploadRetryTime(const Duration(seconds: 45));
+  FirebaseStorage.instance.setMaxDownloadRetryTime(const Duration(seconds: 30));
+  FirebaseStorage.instance.setMaxOperationRetryTime(
+    const Duration(seconds: 20),
+  );
   if (emulator) {
     final defaultHost =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android
@@ -41,6 +51,7 @@ Future<void> initializeStudyFirebase() async {
     const suppliedHost = String.fromEnvironment('FIREBASE_EMULATOR_HOST');
     final host = suppliedHost.isEmpty ? defaultHost : suppliedHost;
     await FirebaseAuth.instance.useAuthEmulator(host, 9099);
+    await FirebaseStorage.instance.useStorageEmulator(host, 9199);
     FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: false,

@@ -1,3 +1,4 @@
+import 'attachments/study_attachment.dart';
 import '../game/domain/game_snapshot.dart';
 
 enum AssignmentSubject {
@@ -48,12 +49,14 @@ class DemoSubmission {
     this.studentId = 'demo_student',
     this.studentName = 'デモ生徒',
     this.version = 0,
+    this.attachments = const [],
   });
   final String assignmentId;
   String get id => '${assignmentId}_$studentId';
   final String studentId;
   final String studentName;
   final int version;
+  final List<StudyAttachment> attachments;
   final String answerText;
   final AssignmentState status;
   final DateTime submittedAt;

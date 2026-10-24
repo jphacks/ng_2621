@@ -1,3 +1,6 @@
+import 'attachments/study_file_picker.dart';
+import 'attachments/attachment_preview_screen.dart';
+
 import 'dart:async';
 
 import '../../core/storage/draft_storage.dart';
@@ -20,11 +23,15 @@ class AssignmentDetailScreen extends StatefulWidget {
     required this.assignmentId,
     required this.isTeacher,
     this.studentId,
+    this.pickFiles,
+    this.pickPhotos,
   });
   final StudyRepository store;
   final String assignmentId;
   final bool isTeacher;
   final String? studentId;
+  final Future<List<PickedStudyFile>> Function()? pickFiles;
+  final Future<List<PickedStudyFile>> Function()? pickPhotos;
   @override
   State<AssignmentDetailScreen> createState() => _AssignmentDetailScreenState();
 }
@@ -38,6 +45,73 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   String? _draftError;
   late final DraftSession _draft;
   bool _draftLoading = true;
+  bool _selectingFiles = false;
+  final _files = <StudyAttachment>[];
+
+  void _saveAnswerDraft() => _draft.save({
+    'answer': _answer.text,
+    'attachments': _files.map((f) => f.toJson()).toList(),
+  });
+
+  Future<void> _selectFiles({bool photos = false}) async {
+    if (_selectingFiles || _busy) return;
+    setState(() {
+      _selectingFiles = true;
+      _message = null;
+    });
+    try {
+      final picker = photos
+          ? (widget.pickPhotos ?? pickStudyPhotos)
+          : (widget.pickFiles ?? pickStudyFiles);
+      final picked = await picker();
+      if (!mounted) return;
+      if (_files.length + picked.length > maxStudyAttachments) {
+        throw const StudyFailure('添付は最大3件までにしてください');
+      }
+      for (final pickedFile in picked) {
+        final file = await widget.store.addAttachment(
+          widget.assignmentId,
+          pickedFile.name,
+          pickedFile.bytes,
+        );
+        if (!mounted) return;
+        if (!_files.any((f) => f.id == file.id)) _files.add(file);
+        _saveAnswerDraft();
+      }
+    } on StudyFailure catch (error) {
+      _message = error.message;
+    } catch (_) {
+      _message = 'ファイルを保存・アップロードできませんでした。もう一度選択してください。';
+    } finally {
+      if (mounted) setState(() => _selectingFiles = false);
+    }
+  }
+
+  Widget _fileTile(StudyAttachment file, {bool removable = false}) => ListTile(
+    leading: Icon(
+      file.isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined,
+    ),
+    title: Text(file.name),
+    subtitle: Text(file.sizeLabel),
+    onTap: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            AttachmentPreviewScreen(store: widget.store, file: file),
+      ),
+    ),
+    trailing: removable
+        ? IconButton(
+            tooltip: '添付を外す',
+            icon: const Icon(Icons.close),
+            onPressed: _busy || _selectingFiles
+                ? null
+                : () {
+                    setState(() => _files.remove(file));
+                    _saveAnswerDraft();
+                  },
+          )
+        : const Icon(Icons.open_in_new),
+  );
 
   @override
   void initState() {
@@ -47,6 +121,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       studentId: widget.studentId,
     );
     _answer = TextEditingController(text: submission?.answerText ?? '');
+    _files.addAll(submission?.attachments ?? []);
     _feedback = TextEditingController(text: submission?.feedback ?? '');
     _draft = DraftSession(
       widget.store.drafts,
@@ -69,6 +144,16 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
           _feedback.text = data['feedback'] as String? ?? _feedback.text;
         } else {
           _answer.text = data['answer'] as String? ?? _answer.text;
+          if (data['attachments'] != null) {
+            _files.clear();
+            _files.addAll(
+              (data['attachments'] as List).map(
+                (f) => StudyAttachment.fromJson(
+                  Map<String, dynamic>.from(f as Map),
+                ),
+              ),
+            );
+          }
         }
       }
     } catch (_) {
@@ -159,7 +244,10 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                             Text('確認日時：${studyDate(submission.reviewedAt!)}'),
                           const SizedBox(height: 8),
                           const Text('提出した回答'),
-                          SelectableText(submission.answerText),
+                          if (submission.answerText.isNotEmpty)
+                            SelectableText(submission.answerText),
+                          for (final file in submission.attachments)
+                            _fileTile(file),
                           if (submission.feedback.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             Text('先生から：${submission.feedback}'),
@@ -230,26 +318,52 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                           const SizedBox(height: 16),
                           if (DateTime.now().isAfter(assignment.dueAt))
                             const Text('期限を過ぎていますが、提出できます。報酬は変わりません。'),
+                          const Text('画像・PDFで提出できます（最大3件・1件10MB）。回答文は任意です。'),
+                          OutlinedButton.icon(
+                            onPressed: _busy || _selectingFiles
+                                ? null
+                                : () => _selectFiles(photos: true),
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('フォトから選ぶ'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _busy || _selectingFiles
+                                ? null
+                                : () => _selectFiles(),
+                            icon: const Icon(Icons.attach_file),
+                            label: const Text('画像・PDFを添付'),
+                          ),
+                          if (_selectingFiles)
+                            const Column(
+                              children: [
+                                LinearProgressIndicator(),
+                                Text('ファイルを準備しています…'),
+                              ],
+                            ),
+                          for (final file in _files)
+                            _fileTile(file, removable: true),
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller: _answer,
-                            onChanged: (_) =>
-                                _draft.save({'answer': _answer.text}),
+                            enabled: !_busy && !_selectingFiles,
+                            onChanged: (_) => _saveAnswerDraft(),
                             maxLength: 5000,
                             minLines: 5,
                             maxLines: 12,
                             decoration: const InputDecoration(
-                              labelText: '回答',
+                              labelText: '回答・補足（添付がある場合は任意）',
                               hintText: '取り組んだ内容や答えを入力してください',
                               border: OutlineInputBorder(),
                             ),
                             validator: (value) =>
-                                value == null || value.trim().isEmpty
-                                ? '回答を入力してください'
+                                (value == null || value.trim().isEmpty) &&
+                                    _files.isEmpty
+                                ? '回答を入力するか画像・PDFを添付してください'
                                 : null,
                           ),
                           const SizedBox(height: 16),
                           FilledButton(
-                            onPressed: _busy
+                            onPressed: _busy || _selectingFiles
                                 ? null
                                 : () {
                                     if (!_formKey.currentState!.validate()) {
@@ -260,6 +374,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                                         widget.assignmentId,
                                         _answer.text,
                                         role: DemoStudyRole.student,
+                                        attachments: List.of(_files),
                                       );
                                       return amount == 30
                                           ? '課題を提出！ +30コイン'

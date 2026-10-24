@@ -39,7 +39,13 @@ dependencies:
   cloud_firestore: ^7.1.0
   cloud_functions: ^7.0.1
   shared_preferences: ^2.5.6
-
+  file_selector: ^1.1.0
+  firebase_storage: ^14.0.1
+  path_provider: ^2.1.6
+  idb_shim: ^2.10.1+1
+  pdfrx: ^2.10.1
+  crypto: ^3.0.7
+  image_picker: ^1.2.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

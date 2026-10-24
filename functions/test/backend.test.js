@@ -2,6 +2,8 @@
 const {test, before, beforeEach, after} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const {createHash} = require('node:crypto');
+const {getStorage} = require('firebase-admin/storage');
 const path = require('node:path');
 const {initializeTestEnvironment, assertFails, assertSucceeds} = require('@firebase/rules-unit-testing');
 const {doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs} = require('firebase/firestore');
@@ -19,10 +21,10 @@ const denied = error => ['permission-denied', 'unauthenticated', 'failed-precond
 
 before(async () => {
   const [host, port] = process.env.FIRESTORE_EMULATOR_HOST.split(':');
-  env = await initializeTestEnvironment({projectId, firestore: {host, port: Number(port), rules: fs.readFileSync(path.join(__dirname, '../../firestore.rules'), 'utf8')}});
+  env = await initializeTestEnvironment({projectId, firestore: {host, port: Number(port), rules: fs.readFileSync(path.join(__dirname, '../../firestore.rules'), 'utf8')}, storage: {host: '127.0.0.1', port: 9199, rules: fs.readFileSync(path.join(__dirname, '../../storage.rules'), 'utf8')}});
   await seed(); db = getFirestore(); service = require('../service').createService(db);
 });
-beforeEach(async () => { await env.clearFirestore(); await seed(); });
+beforeEach(async () => { await env.clearFirestore(); await env.clearStorage(); await seed(); });
 after(async () => { await env.cleanup(); });
 
 test('concurrent submit and approval grant exactly 30 then 70; replay cannot reopen reviewed work', async () => {
@@ -129,3 +131,47 @@ test('real callable endpoint binds Firebase Auth token to server membership', as
   assert.equal(deniedResponse.status, 401);
 });
 
+
+test('file-only submission, immutable uploads, teacher access and peer isolation', async () => {
+  const assignmentId = await create('file-task');
+  const bytes = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF');
+  const hash = createHash('sha256').update(bytes).digest('hex');
+  const storagePath = `submissionFiles/org_a/class_a/${assignmentId}/student_a/${hash}.pdf`;
+  const owner = env.authenticatedContext('student_a').storage(`gs://${projectId}.appspot.com`).ref(storagePath);
+  await assertSucceeds(owner.put(bytes, {contentType: 'application/pdf'}));
+  const metadata = await owner.getMetadata();
+  const attachment = {id: hash, name: 'homework.pdf', size: bytes.length, contentType: 'application/pdf', storagePath, generation: metadata.generation};
+  const input = request('student_a', {assignmentId, requestId: 'files-only', answerText: '', attachments: [attachment]});
+  await Promise.all([service.submitAssignment(input), service.submitAssignment(input)]);
+  assert.equal((await db.doc('zoos/student_a').get()).data().coins, 30);
+  const saved = (await db.doc(`submissions/${assignmentId}_student_a`).get()).data();
+  assert.equal(saved.attachments[0].storagePath, storagePath);
+  assert.equal(saved.answerText, '');
+  await assertSucceeds(env.authenticatedContext('teacher_a').storage(`gs://${projectId}.appspot.com`).ref(storagePath).getMetadata());
+  await assertFails(env.authenticatedContext('student_b').storage(`gs://${projectId}.appspot.com`).ref(storagePath).getMetadata());
+  await assertFails(env.authenticatedContext('teacher_other').storage(`gs://${projectId}.appspot.com`).ref(storagePath).getMetadata());
+  await assertFails(owner.put(bytes, {contentType: 'application/pdf'}));
+  await assertFails(owner.delete());
+  await review(assignmentId);
+  assert.equal((await db.doc('zoos/student_a').get()).data().coins, 100);
+});
+
+test('unuploaded, forged, oversized and cross-user files cannot earn a reward', async () => {
+  const assignmentId = await create('bad-file-task');
+  const bytes = Buffer.from('%PDF-1.4\n%%EOF');
+  const hash = createHash('sha256').update(bytes).digest('hex');
+  const storagePath = `submissionFiles/org_a/class_a/${assignmentId}/student_a/${hash}.pdf`;
+  const attachment = {id: hash, name: 'homework.pdf', size: bytes.length, contentType: 'application/pdf', storagePath};
+  const send = (file, key) => service.submitAssignment(request('student_a', {assignmentId, requestId: key, answerText: '', attachments: [file]}));
+  await assert.rejects(send(attachment, 'missing-file'), denied);
+  await assert.rejects(send({...attachment, storagePath: storagePath.replace('/student_a/', '/student_b/')}, 'stolen-file'), denied);
+  await assert.rejects(send({...attachment, size: 10 * 1024 * 1024 + 1}, 'huge-file'), denied);
+  const owner = env.authenticatedContext('student_a').storage(`gs://${projectId}.appspot.com`).ref(storagePath);
+  await assertFails(owner.put(Buffer.alloc(10 * 1024 * 1024 + 1), {contentType: 'application/pdf'}));
+  await assertFails(owner.put(bytes, {contentType: 'application/javascript'}));
+  // A client can lie about MIME; the trusted submission function checks actual bytes and hash.
+  await owner.put(Buffer.from('NOT A PDF'), {contentType: 'application/pdf'});
+  await assert.rejects(send({...attachment, size: 9}, 'forged-content'), denied);
+  assert.equal((await db.doc('zoos/student_a').get()).data().coins, 0);
+  assert.equal((await db.collection('submissions').get()).size, 0);
+});

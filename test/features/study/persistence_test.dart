@@ -176,7 +176,8 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await open();
       expect(find.text('途中まで書いた回答'), findsOneWidget);
-      await tester.ensureVisible(find.text('課題を提出する'));
+      await tester.ensureVisible(find.widgetWithText(FilledButton, '課題を提出する'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('課題を提出する'));
       await tester.pumpAndSettle();
       expect(store.submissionFor('answer-draft')!.answerText, '途中まで書いた回答');

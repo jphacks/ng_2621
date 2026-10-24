@@ -9,7 +9,7 @@ async function seed() {
       !/^(127\.0\.0\.1|localhost):\d+$/.test(process.env.FIREBASE_AUTH_EMULATOR_HOST || '')) {
     throw new Error('Seeding is permitted only for localhost emulators and demo-* projects.');
   }
-  if (!getApps().length) initializeApp({projectId});
+  if (!getApps().length) initializeApp({projectId, storageBucket: `${projectId}.appspot.com`});
   const db = getFirestore(), auth = getAuth();
   const users = [
     {uid: 'teacher_a', email: 'teacher@example.test', displayName: 'デモ先生', organizationId: 'org_a', classId: 'class_a', role: 'teacher'},
@@ -33,4 +33,3 @@ async function seed() {
 }
 module.exports = {seed};
 if (require.main === module) seed().then(() => console.log('Emulator demo accounts ready. No production data was changed.')).catch(error => { console.error(error.message); process.exitCode = 1; });
-

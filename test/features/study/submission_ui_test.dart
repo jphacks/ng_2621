@@ -48,6 +48,11 @@ void main() {
       }
 
       await open(false);
+      await tester.scrollUntilVisible(
+        find.byType(TextFormField),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.enterText(find.byType(TextFormField), '最初の回答');
       await tap('課題を提出する');
       expect(store.coins, 30);
@@ -55,12 +60,22 @@ void main() {
       expect(find.text('課題を提出する'), findsNothing);
       await open(true);
       expect(find.text('最初の回答'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byType(TextFormField),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.enterText(find.byType(TextFormField), 'もう一度確認してね');
       await tap('再提出を依頼');
       expect(store.coins, 30);
       expect(store.submissionFor(id)!.status, AssignmentState.needsRevision);
       await open(false);
       expect(find.text('先生から：もう一度確認してね'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byType(TextFormField),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.enterText(find.byType(TextFormField), '修正した回答');
       await tap('再提出する');
       expect(store.coins, 30);
