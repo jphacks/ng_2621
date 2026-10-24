@@ -116,33 +116,91 @@ class ZooMap extends StatelessWidget {
                         animation: controller,
                         child: ValueListenableBuilder<int>(
                           valueListenable: controller.sceneryRevision,
-                          builder: (context, revision, child) =>
-                              RepaintBoundary(
-                                key: const ValueKey('zoo-terrain'),
-                                child: SpriteSheetImage(
-                                  assetPath: TerrainSprite.assetPath,
-                                  builder: (context, image) => SpriteSheetImage(
-                                    assetPath: ZooExtraSprite.assetPath,
-                                    builder: (context, extraImage) =>
-                                        CustomPaint(
-                                          size: Size(width, height),
-                                          painter: ZooTerrainPainter(
-                                            world,
-                                            controller.animals
-                                                .map((a) => a.definition)
-                                                .toList(),
-                                            controller.ownedFacilities,
-                                            image,
-                                            extraImage: extraImage,
-                                            enclosures: _drawnEnclosures,
-                                            placements:
-                                                placementsOverride ??
-                                                controller.placements,
-                                          ),
+                          builder: (context, revision, child) => RepaintBoundary(
+                            key: const ValueKey('zoo-terrain'),
+                            child: SpriteSheetImage(
+                              assetPath: TerrainSprite.assetPath,
+                              builder: (context, image) => SpriteSheetImage(
+                                assetPath: ZooExtraSprite.assetPath,
+                                builder: (context, extraImage) => SizedBox(
+                                  width: width,
+                                  height: height,
+                                  child: Stack(
+                                    children: [
+                                      CustomPaint(
+                                        size: Size(width, height),
+                                        painter: ZooTerrainPainter(
+                                          world,
+                                          controller.animals
+                                              .map((a) => a.definition)
+                                              .toList(),
+                                          controller.ownedFacilities,
+                                          image,
+                                          extraImage: extraImage,
+                                          enclosures: _drawnEnclosures,
+                                          placements:
+                                              placementsOverride ??
+                                              controller.placements,
                                         ),
+                                      ),
+                                      for (final facility in world.facilities)
+                                        if (facility.tile == 'sprite' &&
+                                            (placementsOverride ??
+                                                    controller.placements)
+                                                .containsKey(facility.id) &&
+                                            controller.ownedFacilities.contains(
+                                              facility.id,
+                                            ))
+                                          Positioned(
+                                            key: ValueKey(
+                                              'facility-${facility.id}',
+                                            ),
+                                            left:
+                                                ((placementsOverride ??
+                                                            controller
+                                                                .placements)[facility
+                                                            .id]
+                                                        ?.left ??
+                                                    facility.left) *
+                                                world.tileSize.toDouble(),
+                                            top:
+                                                ((placementsOverride ??
+                                                            controller
+                                                                .placements)[facility
+                                                            .id]
+                                                        ?.top ??
+                                                    facility.top) *
+                                                world.tileSize.toDouble(),
+                                            width:
+                                                facility.width *
+                                                world.tileSize.toDouble(),
+                                            height:
+                                                facility.height *
+                                                world.tileSize.toDouble(),
+                                            child:
+                                                ZooBuildingPart.forId(
+                                                      facility.spriteId,
+                                                    ) !=
+                                                    null
+                                                ? FittedBox(
+                                                    child: ZooBuildingSprite(
+                                                      part:
+                                                          ZooBuildingPart.forId(
+                                                            facility.spriteId,
+                                                          )!,
+                                                      scale: 1,
+                                                      semanticLabel:
+                                                          facility.displayName,
+                                                    ),
+                                                  )
+                                                : const SizedBox.shrink(),
+                                          ),
+                                    ],
                                   ),
                                 ),
                               ),
+                            ),
+                          ),
                         ),
                         builder: (context, background) => Stack(
                           clipBehavior: Clip.hardEdge,

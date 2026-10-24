@@ -88,6 +88,11 @@ void main() {
           'forest': 500,
           'evolved_fox': 800,
           'enclosure': 5,
+          'laboratory': 400,
+          'bench': 100,
+          'topiary': 120,
+          'fountain': 300,
+          'flowerArch': 250,
         },
       );
       final map = world();

@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import '../sprites/sprite_sheet_image.dart';
 import '../sprites/zoo_extra_sprite.dart';
 import '../sprites/zoo_extra_part.dart';
+import '../sprites/zoo_building_sprite.dart';
 import '../zoo_font.dart';
 
-enum SpritePanelStyle { wood, cream, gray, lime, roundGray, brick }
+enum SpritePanelStyle { wood, cream, creamRound, gray, lime, roundGray, brick }
 
 /// Nine-slice frames from the supplied sheet. Edges and fill are tiled at 2x;
 /// corners keep their original shape rather than being stretched with content.
@@ -23,7 +24,9 @@ class SpritePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SpriteSheetImage(
-    assetPath: ZooExtraSprite.assetPath,
+    assetPath: style == SpritePanelStyle.creamRound
+        ? ZooBuildingSprite.assetPath
+        : ZooExtraSprite.assetPath,
     builder: (context, image) =>
         CustomPaint(painter: _PanelPainter(image, style), child: child),
   );
@@ -40,6 +43,7 @@ class _PanelPainter extends CustomPainter {
         ZooExtraPart.woodenButtonRight.sourceRect,
       ),
     SpritePanelStyle.cream => ZooExtraPart.creamSquareButton.sourceRect,
+    SpritePanelStyle.creamRound => ZooBuildingPart.creamRoundFrame.sourceRect,
     SpritePanelStyle.gray => ZooExtraPart.graySquareButton.sourceRect,
     SpritePanelStyle.lime =>
       ZooExtraPart.limeButtonLeft.sourceRect.expandToInclude(
@@ -257,6 +261,7 @@ class SpriteAlertDialog extends StatelessWidget {
     insetPadding: const EdgeInsets.all(24),
     constraints: const BoxConstraints(maxWidth: 560),
     child: SpritePanel(
+      style: SpritePanelStyle.creamRound,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

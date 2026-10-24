@@ -107,6 +107,16 @@ void main() {
     await tester.tap(find.text('その他'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    final moreHeader = find.ancestor(
+      of: find.text('その他').last,
+      matching: find.byType(WoodPanel),
+    );
+    expect(
+      tester
+          .getRect(moreHeader)
+          .overlaps(tester.getRect(find.byTooltip('閉じる'))),
+      isFalse,
+    );
     await tester.tap(find.text('ショップ'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -116,6 +126,16 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('まだ動物はいません。ショップから仲間を迎えましょう。'), findsOneWidget);
+    final animalHeader = find.ancestor(
+      of: find.text('動物一覧'),
+      matching: find.byType(WoodPanel),
+    );
+    expect(
+      tester
+          .getRect(animalHeader)
+          .overlaps(tester.getRect(find.byTooltip('閉じる'))),
+      isFalse,
+    );
     await closeSheet(tester);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

@@ -391,12 +391,14 @@ class _ZooScreenState extends State<ZooScreen>
       title: '施設の配置・移動',
       children: [
         const Text('購入済みの施設を選んで、配置する場所を決めましょう。'),
-        const Text('配置は起動中だけ保持されます。', style: TextStyle(fontSize: 12)),
+        const Text('建築物は購入後にここから配置できます。', style: TextStyle(fontSize: 12)),
         for (final definition in controller.world.facilities)
           if (controller.ownedFacilities.contains(definition.id))
             SpriteTile(
               title: Text(definition.displayName),
-              subtitle: Text('${definition.width}×${definition.height}マス'),
+              subtitle: Text(
+                '${definition.width}×${definition.height}マス${definition.tile == 'sprite' && !controller.placements.containsKey(definition.id) ? '・未配置' : ''}',
+              ),
               trailing: const ZooUiSprite(part: ZooUiPart.arrowRight, scale: 2),
               onTap: () {
                 Navigator.pop(context);

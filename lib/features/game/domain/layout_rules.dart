@@ -21,7 +21,8 @@ String? validateEnclosure(
   }
   final previous = layout.enclosures[candidate.id];
   if (previous != null &&
-      (candidate.width < previous.width || candidate.height < previous.height)) {
+      (candidate.width < previous.width ||
+          candidate.height < previous.height)) {
     return '囲いは縮小できません';
   }
   bool overlaps(int left, int top, int width, int height) =>
@@ -46,6 +47,10 @@ String? validateEnclosure(
   }
   for (final facility in world.facilities) {
     if (facility.tile == 'forest') continue;
+    if (facility.tile == 'sprite' &&
+        !layout.facilities.containsKey(facility.id)) {
+      continue;
+    }
     final position =
         layout.facilities[facility.id] ??
         FacilityPlacement(
@@ -53,7 +58,12 @@ String? validateEnclosure(
           left: facility.left,
           top: facility.top,
         );
-    if (overlaps(position.left, position.top, facility.width, facility.height)) {
+    if (overlaps(
+      position.left,
+      position.top,
+      facility.width,
+      facility.height,
+    )) {
       return '施設と重なっています';
     }
   }

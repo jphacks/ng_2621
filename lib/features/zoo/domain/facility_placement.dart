@@ -90,6 +90,9 @@ PlacementIssue? validateFacilityPlacement({
     if (other.id == definition.id) {
       continue;
     }
+    // New buildings stay in inventory until explicitly placed. Their suggested
+    // positions must not reserve land in an existing player's zoo.
+    if (other.tile == 'sprite' && !placements.containsKey(other.id)) continue;
     final position =
         placements[other.id] ??
         FacilityPlacement(

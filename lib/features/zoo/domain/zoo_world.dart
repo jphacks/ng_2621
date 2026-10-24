@@ -66,11 +66,13 @@ class FacilityDefinition {
     required this.width,
     required this.height,
     this.name,
+    this.spriteId,
     bool? blocksAnimalAreas,
   }) : blocksAnimalAreas = blocksAnimalAreas ?? (tile == 'water');
   final String id;
   final String tile;
   final String? name;
+  final String? spriteId;
   final bool blocksAnimalAreas;
   String get displayName => name ?? id;
   final int left, top, width, height;
@@ -85,6 +87,7 @@ class FacilityDefinition {
         width: json['width'] as int,
         height: json['height'] as int,
         name: json['name'] as String?,
+        spriteId: json['spriteId'] as String?,
         blocksAnimalAreas: json['blocksAnimalAreas'] as bool?,
       );
 }
@@ -115,7 +118,9 @@ class ZooWorld {
         this.facilities.any(
           (f) =>
               f.id.isEmpty ||
-              !['water', 'forest'].contains(f.tile) ||
+              !['water', 'forest', 'sprite'].contains(f.tile) ||
+              (f.tile == 'sprite' &&
+                  (f.spriteId == null || f.spriteId!.isEmpty)) ||
               f.left < 0 ||
               f.top < 0 ||
               f.width <= 0 ||

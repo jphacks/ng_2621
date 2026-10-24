@@ -296,15 +296,15 @@ Future<void> showZooSheet(
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                child: WoodPanel(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 2,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: WoodPanel(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 2,
+                          ),
                           child: Text(
                             title,
                             style: const TextStyle(
@@ -314,17 +314,15 @@ Future<void> showZooSheet(
                             ),
                           ),
                         ),
-                        IconButton(
-                          tooltip: '閉じる',
-                          onPressed: () => Navigator.pop(context),
-                          icon: const ZooUiSprite(
-                            part: ZooUiPart.cross,
-                            scale: 2,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: '閉じる',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const ZooUiSprite(part: ZooUiPart.cross, scale: 2),
+                    ),
+                  ],
                 ),
               ),
               Flexible(

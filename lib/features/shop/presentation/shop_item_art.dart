@@ -15,6 +15,13 @@ class ShopItemArt extends StatelessWidget {
     if (item.kind == ShopItemKind.animal) {
       return AnimalArt(animalId: item.targetId, size: size);
     }
+    final building = ZooBuildingPart.forId(item.targetId);
+    if (building != null) {
+      return SizedBox.square(
+        dimension: size,
+        child: FittedBox(child: ZooBuildingSprite(part: building, scale: 1)),
+      );
+    }
     return SizedBox.square(
       dimension: size,
       child: Center(

@@ -38,7 +38,9 @@ class ZooTerrainPainter extends CustomPainter {
       }
     }
     for (final facility in world.facilities) {
-      if (!facilities.contains(facility.id)) continue;
+      if (!facilities.contains(facility.id) || facility.tile == 'sprite') {
+        continue;
+      }
       final position =
           placements[facility.id] ??
           FacilityPlacement(
