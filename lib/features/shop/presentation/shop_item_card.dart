@@ -46,21 +46,26 @@ class ShopItemCard extends StatelessWidget {
               key: ValueKey('shop-item-${item.id}'),
               onTap: onTap,
               child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    ShopItemArt(item: item),
-                    const SizedBox(height: 8),
-                    Text(
-                      item.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                    const Spacer(),
-                    Text(item.priceLabel),
-                    Text(status, style: const TextStyle(fontSize: 12)),
-                  ],
+                padding: const EdgeInsets.all(8),
+                child: Tooltip(
+                  message: '${item.name}・${item.priceLabel}・$status',
+                  excludeFromSemantics: true,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: FittedBox(child: ShopItemArt(item: item)),
+                      ),
+                      if (owned || !unlocked)
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: ZooUiSprite(
+                            part: owned ? ZooUiPart.check : ZooUiPart.lock,
+                            scale: 1,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

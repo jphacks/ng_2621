@@ -48,6 +48,12 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.byType(SpriteTile), findsWidgets);
+        expect(
+          tester
+              .widgetList<SpriteTile>(find.byType(SpriteTile))
+              .every((tile) => tile.panelStyle == SpritePanelStyle.cream),
+          isTrue,
+        );
         await tester.ensureVisible(find.text('学習記録'));
         await tester.pump();
         await tester.tap(find.text('学習記録'));

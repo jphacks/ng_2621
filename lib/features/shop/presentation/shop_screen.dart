@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_ui.dart';
-import '../../game/domain/game_repository.dart';
 import '../../game/presentation/game_session.dart';
 import '../data/shop_catalog_loader.dart';
 import '../domain/shop_catalog.dart';
@@ -45,6 +44,7 @@ class ShopScreenState extends State<ShopScreen> {
   final _scroll = {
     for (final kind in ShopItemKind.values) kind: ScrollController(),
   };
+  late final _pages = PageController(initialPage: _kind.index);
   ShopCatalog? _catalog;
   bool _failed = false, _purchasableOnly = false, _hideOwned = false;
   late ShopItemKind _kind = widget.initialKind;
@@ -62,7 +62,10 @@ class ShopScreenState extends State<ShopScreen> {
       final catalog = await (repo is ShopRepository
           ? (repo as ShopRepository).loadCatalog()
           : loadShopCatalog());
-      if (mounted) setState(() => _catalog = catalog);
+      if (mounted) {
+        setState(() => _catalog = catalog);
+        _syncPage();
+      }
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     }
@@ -71,6 +74,7 @@ class ShopScreenState extends State<ShopScreen> {
   @override
   void dispose() {
     _search.dispose();
+    _pages.dispose();
     for (final controller in _scroll.values) {
       controller.dispose();
     }
@@ -155,6 +159,24 @@ class ShopScreenState extends State<ShopScreen> {
       if (query != null) _search.text = query;
       if (kind != null) _kind = kind;
     });
+    if (kind != null) _syncPage();
+  }
+
+  void _selectKind(ShopItemKind kind) {
+    setState(() => _kind = kind);
+    _syncPage();
+  }
+
+  void _syncPage() {
+    void apply() {
+      if (mounted && _pages.hasClients) _pages.jumpToPage(_kind.index);
+    }
+
+    if (_pages.hasClients) {
+      apply();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    }
   }
 
   Future<void> _showFilters() => showModalBottomSheet<void>(
@@ -244,80 +266,135 @@ class ShopScreenState extends State<ShopScreen> {
     ),
   );
 
+  Widget _catalogPage(ShopItemKind kind, bool available) {
+    final items = ShopCatalogFilter(
+      kind: kind,
+      query: _search.text,
+      purchasableOnly: _purchasableOnly,
+      hideOwned: _hideOwned,
+    ).apply(_catalog!, widget.session.snapshot, connected: available);
+    return CustomScrollView(
+      key: PageStorageKey(kind),
+      controller: _scroll[kind],
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${items.length}件',
+                  key: kind == _kind
+                      ? const ValueKey('shop-result-count')
+                      : null,
+                ),
+                if (!available) ...[
+                  const Text('購入先に未接続、または更新停止中です'),
+                  if (widget.session.failed)
+                    TextButton(
+                      onPressed: widget.session.refresh,
+                      child: const Text('残高を再読み込み'),
+                    ),
+                ],
+                if (_purchases.item != null &&
+                    _purchases.status != PurchaseStatus.idle)
+                  OutlinedButton(
+                    key: const ValueKey('resume-purchase'),
+                    onPressed: () => _openItem(_purchases.item!),
+                    child: const Text('前回の購入結果を確認'),
+                  ),
+                if (items.isEmpty) ...[
+                  const Text('条件に合う商品はありません'),
+                  TextButton(
+                    onPressed: () => _updateFilters(() {
+                      _search.clear();
+                      _purchasableOnly = false;
+                      _hideOwned = false;
+                    }),
+                    child: const Text('検索・絞り込みをリセット'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = items[index];
+              return ShopItemCard(
+                item: item,
+                snapshot: widget.session.snapshot,
+                available: available,
+                onTap: () => _openItem(item),
+              );
+            }, childCount: items.length),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static const _title = WoodPanel(
+    child: Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Text('ショップで仲間を迎える', style: TextStyle(fontSize: 13)),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => PixelUiTheme(
     child: AnimatedBuilder(
       animation: Listenable.merge([widget.session, _purchases]),
       builder: (context, child) {
-        final snapshot = widget.session.snapshot;
         final available =
             widget.session.repository is ShopRepository &&
-            snapshot != null &&
+            widget.session.snapshot != null &&
             !widget.session.loading &&
             !widget.session.failed;
-        final catalog = _catalog;
-        final items = catalog == null
-            ? <ShopItem>[]
-            : ShopCatalogFilter(
-                kind: _kind,
-                query: _search.text,
-                purchasableOnly: _purchasableOnly,
-                hideOwned: _hideOwned,
-              ).apply(catalog, snapshot, connected: available);
         return LayoutBuilder(
           builder: (context, space) => Scaffold(
             backgroundColor: const Color(0xFFFAF9F0),
-            appBar: space.maxHeight < 260
+            appBar: widget.embedded || space.maxHeight < 260
                 ? null
                 : AppBar(
+                    toolbarHeight: 48,
                     backgroundColor: const Color(0xFFFAF9F0),
                     surfaceTintColor: Colors.transparent,
-                    title: const WoodPanel(
-                      child: Padding(
-                        padding: EdgeInsets.all(8),
-                        child: Text('ショップで仲間を迎える'),
-                      ),
-                    ),
-                    automaticallyImplyLeading: !widget.embedded,
-                    leading: widget.embedded
-                        ? null
-                        : IconButton(
-                            tooltip: '閉じる',
+                    title: _title,
+                    automaticallyImplyLeading: false,
+                    leading: Navigator.of(context).canPop()
+                        ? IconButton(
+                            tooltip: '戻る',
                             onPressed: () => Navigator.maybePop(context),
                             icon: const ZooUiSprite(
                               part: ZooUiPart.back,
                               scale: 2,
                             ),
-                          ),
+                          )
+                        : null,
                   ),
             body: SafeArea(
               top: false,
               child: Column(
                 children: [
-                  if (space.maxHeight >= 260)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          children: [
-                            const ZooArtSprite(
-                              part: ZooArtPart.coins,
-                              scale: 2,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                '${snapshot?.coins ?? '—'} コイン',
-                                key: const ValueKey('shop-balance'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                  if (widget.embedded && space.maxHeight >= 260)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2, bottom: 2),
+                      child: _title,
                     ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
                     child: Row(
                       children: [
                         for (final kind in ShopItemKind.values)
@@ -329,7 +406,7 @@ class ShopScreenState extends State<ShopScreen> {
                               child: _toggle(
                                 kind == ShopItemKind.animal ? '動物' : '施設',
                                 _kind == kind,
-                                () => setState(() => _kind = kind),
+                                () => _selectKind(kind),
                                 key: ValueKey(
                                   'shop-filter-${kind == ShopItemKind.animal ? '動物' : '施設'}',
                                 ),
@@ -353,189 +430,81 @@ class ShopScreenState extends State<ShopScreen> {
                               ],
                             ),
                           )
-                        : catalog == null
+                        : _catalog == null
                         ? const Center(child: CircularProgressIndicator())
-                        : LayoutBuilder(
-                            builder: (context, constraints) {
-                              final textScale =
-                                  MediaQuery.textScalerOf(context).scale(16) /
-                                  16;
-                              final columns =
-                                  textScale > 1.3 || constraints.maxWidth < 360
-                                  ? 1
-                                  : (constraints.maxWidth / 180).floor().clamp(
-                                      2,
-                                      4,
-                                    );
-                              return CustomScrollView(
-                                key: PageStorageKey(_kind),
-                                controller: _scroll[_kind],
-                                slivers: [
-                                  SliverPadding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      0,
-                                      16,
-                                      12,
-                                    ),
-                                    sliver: SliverToBoxAdapter(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 2,
+                        : Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        key: const ValueKey('shop-search'),
+                                        controller: _search,
+                                        onChanged: (_) => _updateFilters(() {}),
+                                        textInputAction: TextInputAction.search,
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          labelText: '名前で検索',
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          border: const OutlineInputBorder(
+                                            borderRadius: BorderRadius.zero,
+                                          ),
+                                          prefixIcon: const Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: ZooExtraSprite(
+                                              part:
+                                                  ZooExtraPart.magnifyingGlass,
+                                              scale: 1,
                                             ),
-                                            child: TextField(
-                                              key: const ValueKey(
-                                                'shop-search',
-                                              ),
-                                              controller: _search,
-                                              onChanged: (_) =>
-                                                  _updateFilters(() {}),
-                                              textInputAction:
-                                                  TextInputAction.search,
-                                              decoration: InputDecoration(
-                                                labelText: '名前で検索',
-                                                filled: true,
-                                                fillColor: Colors.white,
-                                                border:
-                                                    const OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.zero,
-                                                    ),
-                                                prefixIcon: const Padding(
-                                                  padding: EdgeInsets.all(8),
-                                                  child: ZooExtraSprite(
-                                                    part: ZooExtraPart
-                                                        .magnifyingGlass,
-                                                    scale: 1.5,
+                                          ),
+                                          suffixIcon: _search.text.isEmpty
+                                              ? null
+                                              : IconButton(
+                                                  tooltip: '検索をクリア',
+                                                  onPressed: () =>
+                                                      _updateFilters(
+                                                        _search.clear,
+                                                      ),
+                                                  icon: const ZooUiSprite(
+                                                    part: ZooUiPart.cross,
+                                                    scale: 1,
                                                   ),
                                                 ),
-                                                suffixIcon: _search.text.isEmpty
-                                                    ? null
-                                                    : IconButton(
-                                                        tooltip: '検索をクリア',
-                                                        onPressed: () =>
-                                                            _updateFilters(
-                                                              _search.clear,
-                                                            ),
-                                                        icon: const ZooUiSprite(
-                                                          part: ZooUiPart.cross,
-                                                          scale: 1,
-                                                        ),
-                                                      ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child: TextButton(
-                                              key: const ValueKey(
-                                                'shop-open-filters',
-                                              ),
-                                              onPressed: _showFilters,
-                                              child: Text(
-                                                '絞り込み${_purchasableOnly || _hideOwned ? '（${(_purchasableOnly ? 1 : 0) + (_hideOwned ? 1 : 0)}）' : ''}',
-                                              ),
-                                            ),
-                                          ),
-                                          if (widget
-                                                  .session
-                                                  .repository
-                                                  .connection ==
-                                              GameConnection.demo)
-                                            const Padding(
-                                              padding: EdgeInsets.only(top: 8),
-                                              child: Text(
-                                                'デモショップ',
-                                                style: TextStyle(fontSize: 12),
-                                              ),
-                                            ),
-                                          if (!available) ...[
-                                            const Text('購入先に未接続、または更新停止中です'),
-                                            if (widget.session.failed)
-                                              TextButton(
-                                                onPressed:
-                                                    widget.session.refresh,
-                                                child: const Text('残高を再読み込み'),
-                                              ),
-                                          ],
-                                          if (_purchases.item != null &&
-                                              _purchases.status !=
-                                                  PurchaseStatus.idle)
-                                            OutlinedButton(
-                                              key: const ValueKey(
-                                                'resume-purchase',
-                                              ),
-                                              onPressed: () =>
-                                                  _openItem(_purchases.item!),
-                                              child: const Text('前回の購入結果を確認'),
-                                            ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            '${items.length}件',
-                                            key: const ValueKey(
-                                              'shop-result-count',
-                                            ),
-                                          ),
-                                          if (items.isEmpty) ...[
-                                            const Padding(
-                                              padding: EdgeInsets.symmetric(
-                                                vertical: 24,
-                                              ),
-                                              child: Text('条件に合う商品はありません'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  _updateFilters(() {
-                                                    _search.clear();
-                                                    _purchasableOnly = false;
-                                                    _hideOwned = false;
-                                                  }),
-                                              child: const Text('検索・絞り込みをリセット'),
-                                            ),
-                                          ],
-                                        ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  SliverPadding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      0,
-                                      16,
-                                      24,
+                                    const SizedBox(width: 8),
+                                    TextButton(
+                                      key: const ValueKey('shop-open-filters'),
+                                      onPressed: _showFilters,
+                                      child: Text(
+                                        '絞り込み${_purchasableOnly || _hideOwned ? '（${(_purchasableOnly ? 1 : 0) + (_hideOwned ? 1 : 0)}）' : ''}',
+                                      ),
                                     ),
-                                    sliver: SliverGrid(
-                                      gridDelegate:
-                                          SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: columns,
-                                            mainAxisSpacing: 12,
-                                            crossAxisSpacing: 12,
-                                            mainAxisExtent:
-                                                120 + 80 * textScale,
-                                          ),
-                                      delegate: SliverChildBuilderDelegate((
-                                        context,
-                                        index,
-                                      ) {
-                                        final item = items[index];
-                                        return ShopItemCard(
-                                          item: item,
-                                          snapshot: snapshot,
-                                          available: available,
-                                          onTap: () => _openItem(item),
-                                        );
-                                      }, childCount: items.length),
-                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: PageView.builder(
+                                  key: const ValueKey('shop-catalog-pages'),
+                                  controller: _pages,
+                                  itemCount: ShopItemKind.values.length,
+                                  onPageChanged: (index) => setState(
+                                    () => _kind = ShopItemKind.values[index],
                                   ),
-                                ],
-                              );
-                            },
+                                  itemBuilder: (context, index) => _catalogPage(
+                                    ShopItemKind.values[index],
+                                    available,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                   ),
                 ],

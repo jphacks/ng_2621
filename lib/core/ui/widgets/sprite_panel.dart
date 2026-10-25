@@ -163,6 +163,19 @@ class PixelUiTheme extends StatelessWidget {
         SpritePanelStyle.creamRound => ButtonPalette.yellow,
         _ => ButtonPalette.white,
       });
+
+  /// Fixed legacy frame for immediate navigation and small icon controls.
+  static ButtonStyle legacyButtonStyle(SpritePanelStyle style) =>
+      colorfulButtonStyle(ButtonPalette.white).copyWith(
+        foregroundColor: const WidgetStatePropertyAll(PixelTextOutline.ink),
+        backgroundBuilder: (context, states, child) => SpritePanel(
+          style: states.contains(WidgetState.disabled)
+              ? SpritePanelStyle.gray
+              : style,
+          child: PixelTextOutline(child: child ?? const SizedBox.shrink()),
+        ),
+      );
+
   static ButtonStyle colorfulButtonStyle(ButtonPalette palette) => ButtonStyle(
     minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
     padding: const WidgetStatePropertyAll(
@@ -212,7 +225,7 @@ class PixelUiTheme extends StatelessWidget {
           style: colorfulButtonStyle(ButtonPalette.white),
         ),
         iconButtonTheme: IconButtonThemeData(
-          style: buttonStyle(SpritePanelStyle.gray),
+          style: legacyButtonStyle(SpritePanelStyle.gray),
         ),
         listTileTheme: base.listTileTheme.copyWith(
           shape: const RoundedRectangleBorder(),

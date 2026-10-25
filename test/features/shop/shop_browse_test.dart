@@ -130,6 +130,51 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+  testWidgets('four-column icons keep browsing space and swipe between kinds', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repository = MockGameRepository(bonusCoins: 1000);
+    final session = GameSession(repository);
+    addTearDown(() {
+      session.dispose();
+      repository.dispose();
+    });
+    await tester.runAsync(repository.loadCatalog);
+    await tester.pumpWidget(MaterialApp(home: ShopScreen(session: session)));
+    await tester.pumpAndSettle();
+    final pages = find.byKey(const ValueKey('shop-catalog-pages'));
+    expect(tester.getSize(pages).height, greaterThan(844 * .65));
+    expect(find.byKey(const ValueKey('shop-balance')), findsNothing);
+    final grid = tester.widget<SliverGrid>(find.byType(SliverGrid));
+    expect(
+      (grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
+          .crossAxisCount,
+      4,
+    );
+    final cards = find.byType(ShopItemCard);
+    final first = tester.getRect(cards.at(0));
+    for (var index = 1; index < 4; index++) {
+      expect(tester.getRect(cards.at(index)).top, first.top);
+    }
+    expect(first.width, first.height);
+    expect(first.width, greaterThanOrEqualTo(48));
+    await tester.drag(pages, const Offset(-330, 0));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('shop-item-pond')), findsOneWidget);
+    await tester.drag(pages, const Offset(330, 0));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('shop-item-rabbit')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('shop-filter-施設')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('shop-item-pond')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets(
     'large catalog stays lazy and search locates a late item directly',
     (tester) async {
@@ -204,7 +249,7 @@ void main() {
     expect(
       (grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
           .crossAxisCount,
-      1,
+      4,
     );
     await openShopItem(tester, 'rabbit');
     await tester.ensureVisible(find.byKey(const ValueKey('buy-rabbit')));

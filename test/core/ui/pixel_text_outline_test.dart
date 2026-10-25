@@ -3,6 +3,41 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zoo_study/core/ui/zoo_ui.dart';
 
 void main() {
+  testWidgets('small immediate controls keep static legacy gray frames', (
+    tester,
+  ) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PixelUiTheme(
+          child: Scaffold(
+            body: IconButton(
+              onPressed: () => taps++,
+              icon: const ZooUiSprite(part: ZooUiPart.cross),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final button = find.byType(IconButton);
+    final panel = find.descendant(
+      of: button,
+      matching: find.byType(SpritePanel),
+    );
+    expect(tester.widget<SpritePanel>(panel).style, SpritePanelStyle.gray);
+    expect(
+      find.descendant(of: button, matching: find.byType(ColorButtonPanel)),
+      findsNothing,
+    );
+    final gesture = await tester.startGesture(tester.getCenter(button));
+    await tester.pump();
+    expect(tester.widget<SpritePanel>(panel).style, SpritePanelStyle.gray);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(taps, 1);
+  });
+
   testWidgets(
     'wood headings and action labels inherit crisp contrast outlines',
     (tester) async {

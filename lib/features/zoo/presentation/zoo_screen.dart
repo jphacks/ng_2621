@@ -778,11 +778,13 @@ class _ZooScreenState extends State<ZooScreen>
   void _showMore() {
     _showMenuPage('/more', '設定・プロフィール', [
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         title: const Text('プロフィール'),
         leading: const ZooUiSprite(part: ZooUiPart.smile, scale: 2),
         onTap: _showProfile,
       ),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         leading: const Icon(Icons.badge_outlined),
         title: Text(widget.isTeacher ? '先生として利用中' : '生徒として利用中'),
       ),
@@ -790,12 +792,14 @@ class _ZooScreenState extends State<ZooScreen>
           _game.repository is MockGameRepository &&
           _game.snapshot != null)
         SpriteTile(
+          panelStyle: SpritePanelStyle.cream,
           title: const Text('連携デモ'),
           subtitle: const Text('外部の確定結果を模擬受信'),
           onTap: _showDemoResults,
         ),
       if (widget.onSignOut != null)
         SpriteTile(
+          panelStyle: SpritePanelStyle.cream,
           title: const Text('ログアウト'),
           leading: const Icon(Icons.logout),
           onTap: widget.onSignOut,

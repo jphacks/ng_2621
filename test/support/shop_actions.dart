@@ -7,7 +7,14 @@ Future<void> openShopItem(WidgetTester tester, String id) async {
   await tester.scrollUntilVisible(
     card,
     240,
-    scrollable: find.byType(Scrollable).first,
+    scrollable: find
+        .byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        )
+        .hitTestable()
+        .last,
   );
   await tester.pump();
   await tester.tap(card);

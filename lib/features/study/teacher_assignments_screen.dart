@@ -77,6 +77,9 @@ class DemoAssignmentList extends StatelessWidget {
                     '状態：${store.submissionFor(assignment.id)?.status.label ?? AssignmentState.notSubmitted.label}',
                   ),
                   TextButton(
+                    style: PixelUiTheme.legacyButtonStyle(
+                      SpritePanelStyle.cream,
+                    ),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => isTeacher && store.students.length > 1

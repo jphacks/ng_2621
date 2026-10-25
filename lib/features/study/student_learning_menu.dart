@@ -18,6 +18,7 @@ class StudentLearningMenu extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         leading: const ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
         title: const Text('課題提出'),
         subtitle: const Text('課題を確認して、回答や画像・PDFを提出する'),
@@ -26,6 +27,7 @@ class StudentLearningMenu extends StatelessWidget {
       ),
       const SizedBox(height: 4),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         onTap: onStudyMode,
         leading: const Icon(Icons.timer_outlined),
         title: const Text('勉強モード'),
@@ -34,6 +36,7 @@ class StudentLearningMenu extends StatelessWidget {
       ),
       const SizedBox(height: 4),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         onTap: onRecords,
         leading: const Icon(Icons.insights_outlined),
         title: const Text('学習記録'),
