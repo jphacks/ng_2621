@@ -57,6 +57,8 @@ class _ZooStudyAppState extends State<ZooStudyApp> {
         storage: widget.roleStorage,
         storageDescription: _assignments.storageLabel,
         teacherPageBuilder: (context) => ZooScreen(
+          schoolAccountApi: _schoolAccounts,
+          schoolStorage: widget.roleStorage,
           onManageAccounts: () async {
             await Navigator.of(context).push<void>(
               MaterialPageRoute(
