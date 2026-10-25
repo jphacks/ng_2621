@@ -28,10 +28,23 @@ void main() {
           FocusManager.instance.primaryFocus?.unfocus();
           await frame();
           if (find.text(text).evaluate().isEmpty) {
+            final scroll = find
+                .descendant(
+                  of: find.byType(ListView).last,
+                  matching: find.byType(Scrollable),
+                )
+                .first;
+            tester.state<ScrollableState>(scroll).position.jumpTo(0);
+            await frame();
             await tester.scrollUntilVisible(
               find.text(text),
               160,
-              scrollable: find.byType(Scrollable).first,
+              scrollable: find
+                  .descendant(
+                    of: find.byType(ListView).last,
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
             );
             await frame();
           }
@@ -43,16 +56,14 @@ void main() {
           await frame();
         }
 
-        await tap('課題配布を体験する');
+        await tap('課題');
         expect(find.byType(TeacherAssignmentsScreen), findsOneWidget);
         await tap('課題を作成');
         expect(find.text(PresentationScenario.title), findsOneWidget);
-        expect(find.text(PresentationScenario.description), findsOneWidget);
+
         await tap('課題を配布する');
-        expect(find.text('状態：確認待ち'), findsOneWidget);
-        await tester.tap(find.byType(BackButton).hitTestable().last);
-        await frame();
-        await tap('提出を確認・承認する');
+
+        await tap('提出内容を確認');
         expect(find.byType(AssignmentDetailScreen), findsOneWidget);
         if (find
             .widgetWithText(SelectableText, PresentationScenario.answer)
@@ -61,7 +72,12 @@ void main() {
           await tester.scrollUntilVisible(
             find.widgetWithText(SelectableText, PresentationScenario.answer),
             150,
-            scrollable: find.byType(Scrollable).first,
+            scrollable: find
+                .descendant(
+                  of: find.byType(ListView).last,
+                  matching: find.byType(Scrollable),
+                )
+                .first,
           );
           await frame();
         }
@@ -76,7 +92,8 @@ void main() {
         expect(store.coins, 100);
         await tester.tap(find.byType(BackButton).hitTestable().last);
         await frame();
-        await tap('学習記録とアドバイスを見る');
+        await tap('課題');
+        await tap('生徒の学習記録');
         expect(find.byType(StudyRecordsScreen), findsOneWidget);
         await tap('アドバイス案を作成');
         expect(find.text(PresentationScenario.advice), findsOneWidget);
@@ -87,7 +104,7 @@ void main() {
         expect((await store.loadStudyRecords()).single.studentName, 'デモ生徒');
         await tester.tap(find.byType(BackButton).hitTestable().last);
         await frame();
-        expect(find.text('最初から体験する'), findsOneWidget);
+        expect(find.text('先生の発表デモ・完了'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       },

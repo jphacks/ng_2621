@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/storage/draft_storage.dart';
 import '../../../core/ui/zoo_ui.dart';
-import '../../study/assignment_detail_screen.dart';
-import '../../study/study_detector/study_records_screen.dart';
+import '../../auth/data/school_account_api.dart';
+import '../../zoo/presentation/zoo_screen.dart';
 import '../../study/study_detector/study_record.dart';
 import '../../study/study_detector/study_session.dart';
 import '../domain/game_snapshot.dart';
@@ -20,192 +20,189 @@ class TeacherDemoScreen extends StatefulWidget {
 }
 
 class _TeacherDemoScreenState extends State<TeacherDemoScreen> {
-  late final _store = TeacherPresentationStore();
+  late final _store = TeacherPresentationStore()..onProgress = _progress;
+  final _accounts = LocalSchoolAccountApi(null);
+  late final Future<void> _ready = _prepare();
   int _step = 0;
-  bool _complete = false;
-  bool _opening = false;
-  late final Future<void> _ready = _seed();
 
-  Future<void> _seed() => _store
-      .saveStudyRecord(
-        StudyRecord.fromReport(
-          'teacher-demo-study',
-          SessionReport(
-            DateTime.now().subtract(const Duration(minutes: 30)),
-            const Duration(minutes: 20),
-            [
-              const StudySegment(
-                Duration.zero,
-                Duration(minutes: 20),
-                StudyDecision(StudyState.material, '教材で学習'),
-              ),
-            ],
-          ),
-          subject: '算数',
-          samples: 120,
-          completed: true,
-        ),
-      )
-      .then((_) {});
-
-  Future<void> _open() async {
-    if (_opening) return;
-    setState(() => _opening = true);
-    try {
-      await _ready;
-      if (!mounted) return;
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          builder: (_) => switch (_step) {
-            0 => TeacherAssignmentsScreen(store: _store),
-            1 => AssignmentDetailScreen(
-              store: _store,
-              assignmentId: _store.assignments.last.id,
-              isTeacher: true,
-              studentId: _store.studentId,
+  Future<void> _prepare() async {
+    await _accounts.call('createManagedClass', {'name': 'ひまわり組'});
+    await _store.saveStudyRecord(
+      StudyRecord.fromReport(
+        'teacher-demo-study',
+        SessionReport(
+          DateTime.now().subtract(const Duration(minutes: 30)),
+          const Duration(minutes: 20),
+          [
+            const StudySegment(
+              Duration.zero,
+              Duration(minutes: 20),
+              StudyDecision(StudyState.material, '教材で学習'),
             ),
-            _ => StudyRecordsScreen(store: _store, isTeacher: true),
-          },
+          ],
         ),
-      );
-      if (!mounted) return;
-      if (_step == 0 && _store.assignments.isNotEmpty) {
-        setState(() => _step = 1);
-      } else if (_step == 1 &&
-          _store.submissionFor(_store.assignments.last.id)?.status ==
-              AssignmentState.approved) {
-        setState(() => _step = 2);
-      } else if (_step == 2) {
-        final advice = await _store.loadStudyAdvice(teacher: true);
-        if (mounted && advice.any((a) => a.published)) {
-          setState(() => _complete = true);
-        }
-      }
-    } finally {
-      if (mounted) setState(() => _opening = false);
-    }
+        subject: '算数',
+        samples: 120,
+        completed: true,
+      ),
+    );
   }
 
+  void _progress() {
+    if (!mounted) return;
+    setState(() {
+      _step = _store.adviceSent
+          ? 3
+          : _store.assignments.any(
+              (a) =>
+                  _store.submissionFor(a.id)?.status ==
+                  AssignmentState.approved,
+            )
+          ? 2
+          : _store.assignments.isNotEmpty
+          ? 1
+          : 0;
+    });
+  }
+
+  void _restart() => Navigator.of(context).pushReplacement(
+    MaterialPageRoute<void>(builder: (_) => const TeacherDemoScreen()),
+  );
   @override
   void dispose() {
+    _store.onProgress = null;
     _store.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('先生の発表デモ')),
-    body: TerrainTexture(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: SpritePanel(
-              style: SpritePanelStyle.creamRound,
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Center(
-                      child: ZooUiSprite(
-                        part: ZooUiPart.encyclopediaRed,
-                        scale: 4,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      '先生として学びをサポート',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('課題を配り、提出を確認し、学習記録をもとにメッセージを届ける流れを体験します。'),
-                    const SizedBox(height: 16),
-                    for (final entry in [
-                      '課題配布',
-                      '提出の承認',
-                      '学習記録・アドバイス',
-                    ].asMap().entries)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          children: [
-                            Icon(
-                              entry.key < _step || _complete
-                                  ? Icons.check_circle
-                                  : entry.key == _step
-                                  ? Icons.play_circle_outline
-                                  : Icons.circle_outlined,
-                              color: const Color(0xFF79664F),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                entry.value,
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: entry.key == _step
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _complete
-                          ? '先生のデモは完了です。生徒の頑張りを確認し、アドバイスを届けられました。'
-                          : switch (_step) {
-                              0 =>
-                                '「課題を作成」から、入力済みの例を確認して配布します。配布後はこの案内へ戻ってください。',
-                              1 => '生徒の回答例を確認し、承認します。承認後はこの案内へ戻ってください。',
-                              _ => 'サンプルの学習記録を確認し、「アドバイス案を作成」から文章を確認して生徒へ送ります。送信後はこの案内へ戻ってください。',
-                            },
-                      style: const TextStyle(height: 1.7),
-                    ),
-                    const SizedBox(height: 16),
-                    if (!_complete)
-                      FilledButton(
-                        onPressed: _opening ? null : _open,
-                        child: Text(
-                          _opening
-                              ? '準備中…'
-                              : switch (_step) {
-                                  0 => '課題配布を体験する',
-                                  1 => '提出を確認・承認する',
-                                  _ => '学習記録とアドバイスを見る',
-                                },
-                        ),
-                      ),
-                    if (_complete)
-                      OutlinedButton(
-                        onPressed: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const TeacherDemoScreen(),
-                          ),
-                        ),
-                        child: const Text('最初から体験する'),
-                      ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '発表用のサンプルです。生徒の回答・学習記録はデモ用で、別端末とは通信しません。通常データには保存しません。',
-                      style: TextStyle(fontSize: 12, height: 1.5),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+  Widget _assignments(BuildContext context) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(12),
+        child: DropdownButtonFormField<String>(
+          initialValue: 'demo-class',
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: '課題・学習記録の対象クラス',
+            border: OutlineInputBorder(),
           ),
+          items: const [
+            DropdownMenuItem(value: 'demo-class', child: Text('ひまわり組')),
+          ],
+          onChanged: (_) {},
         ),
       ),
-    ),
+      Expanded(child: TeacherAssignmentsScreen(store: _store)),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<void>(
+    future: _ready,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      if (snapshot.hasError) {
+        return Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: _restart,
+              child: const Text('デモを準備し直す'),
+            ),
+          ),
+        );
+      }
+      return Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * .18,
+                ),
+                child: SingleChildScrollView(
+                  child: WoodPanel(
+                    originalSheet: true,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _step == 3
+                                ? '先生の発表デモ・完了'
+                                : '先生の発表デモ ${_step + 1}/3',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          Text(
+                            [
+                              '① 課題を配布する',
+                              '② 提出を確認して承認する',
+                              '③ 学習記録を見てアドバイスを送る',
+                              '先生のサポートを体験できました',
+                            ][_step],
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            [
+                              '下の「課題」→ クラスを選択 →「課題を作成」。例文を確認して配布しましょう。',
+                              '配布した課題の「提出内容を確認」から、回答例を読んで承認しましょう。',
+                              '「課題」→「生徒の学習記録」から記録を確認し、アドバイス案を編集・送信しましょう。',
+                              '通常データには保存していません。下の画面はそのまま操作できます。',
+                            ][_step],
+                            style: const TextStyle(fontSize: 11, height: 1.5),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (_step == 3)
+                                TextButton(
+                                  onPressed: _restart,
+                                  child: const Text('最初から'),
+                                ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).maybePop(),
+                                child: const Text('デモを終了'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ZooScreen(
+                  isTeacher: true,
+                  gameRepository: _store,
+                  assignmentStore: _store,
+                  schoolAccountApi: _accounts,
+                  teacherAssignmentsBuilder: _assignments,
+                  accountName: 'デモ先生',
+                  accountClassName: 'ひまわり組',
+                  accountStorageDescription:
+                      '発表用の回答・学習記録です。別端末とは通信せず、保存データには影響しません。',
+                  onSignOut: () async {
+                    await Navigator.of(context).maybePop();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -214,6 +211,8 @@ class TeacherPresentationStore extends DemoAssignmentStore {
   TeacherPresentationStore()
     : super(studentId: 'presentation_student', studentName: 'デモ生徒');
   final _drafts = _PresentationDrafts();
+  VoidCallback? onProgress;
+  bool adviceSent = false;
   @override
   DraftStorage get drafts => _drafts;
   @override
@@ -234,6 +233,35 @@ class TeacherPresentationStore extends DemoAssignmentStore {
         role: DemoStudyRole.student,
       );
     }
+    onProgress?.call();
+  }
+
+  @override
+  int review(
+    String id, {
+    required DemoStudyRole role,
+    required bool approve,
+    String feedback = '',
+    String? studentId,
+    int? expectedVersion,
+  }) {
+    final result = super.review(
+      id,
+      role: role,
+      approve: approve,
+      feedback: feedback,
+      studentId: studentId,
+      expectedVersion: expectedVersion,
+    );
+    onProgress?.call();
+    return result;
+  }
+
+  @override
+  Future<void> publishStudyAdvice(String id, String message) async {
+    await super.publishStudyAdvice(id, message);
+    adviceSent = true;
+    onProgress?.call();
   }
 
   @override
