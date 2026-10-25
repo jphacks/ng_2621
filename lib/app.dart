@@ -66,6 +66,8 @@ class _ZooStudyAppState extends State<ZooStudyApp> {
                   legacyStore: _assignments,
                 )
               : null,
+          schoolAccountApi: _schoolAccounts,
+          schoolStorage: widget.roleStorage,
           onManageAccounts: () async {
             await Navigator.of(context).push<void>(
               MaterialPageRoute(
