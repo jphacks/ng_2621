@@ -25,6 +25,14 @@ service cloud.firestore {
       allow read: if member(resource.data.classId, resource.data.organizationId)
         && (resource.data.studentId == request.auth.uid || teacher(resource.data.classId, resource.data.organizationId));
     }
+    match /studyAdviceDrafts/{adviceId} {
+      allow read: if teacher(resource.data.classId, resource.data.organizationId);
+    }
+    match /studyAdvice/{adviceId} {
+      allow read: if resource.data.status == 'published'
+        && member(resource.data.classId, resource.data.organizationId)
+        && (resource.data.studentId == request.auth.uid || teacher(resource.data.classId, resource.data.organizationId));
+    }
     match /studySessions/{sessionId} {
       allow read: if member(resource.data.classId, resource.data.organizationId)
         && (resource.data.studentId == request.auth.uid || teacher(resource.data.classId, resource.data.organizationId));

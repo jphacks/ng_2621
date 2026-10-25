@@ -61,8 +61,9 @@ function wallet(data, context) {
   return data;
 }
 
-function createService(db = getFirestore()) {
+function createService(db = getFirestore(), adviceOptions = {}) {
   return {
+    ...require('./study_advice').createAdviceService(db, {session, uidOf}, adviceOptions),
     async sessionInfo(request) {
       const uid = uidOf(request);
       const context = await db.runTransaction(tx => session(tx, db, uid));

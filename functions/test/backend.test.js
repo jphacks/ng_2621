@@ -257,3 +257,35 @@ test('reward bucket forgery and rewards without fresh samples are rejected', asy
   const client=env.authenticatedContext('student_a').firestore();
   await assertFails(setDoc(doc(client,'studyDailyRewards','student_a_fake'),{eligibleMs:999999999,coinsGranted:30}));
 });
+
+
+test('advice drafts remain teacher-only; approved message is scoped and immutable', async () => {
+  const calls = [];
+  const adviceService = require('../service').createService(db, {
+    generateAdvice: async data => { calls.push(data); return {summary:'記録不足です',teacherNote:'本人に確認してください',message:'こまったことはあるかな？'}; }
+  });
+  const data = {studentId:'student_a',requestId:'advice-one'};
+  await assert.rejects(adviceService.generateStudyAdvice(request('student_a',data)),denied);
+  await assert.rejects(adviceService.generateStudyAdvice(request('teacher_other',data)),denied);
+  const {advice:a} = await adviceService.generateStudyAdvice(request('teacher_a',data));
+  await adviceService.generateStudyAdvice(request('teacher_a',data));
+  assert.equal(calls.length,1);
+  assert.equal((await db.collection('studyAdvice').get()).size,0);
+  const owner=env.authenticatedContext('student_a').firestore();
+  const peer=env.authenticatedContext('student_b').firestore();
+  const teacher=env.authenticatedContext('teacher_a').firestore();
+  await assertFails(getDoc(doc(owner,'studyAdviceDrafts',a.id)));
+  await assertSucceeds(getDoc(doc(teacher,'studyAdviceDrafts',a.id)));
+  const send={adviceId:a.id,message:'編集した文章'};
+  await assert.rejects(adviceService.publishStudyAdvice(request('student_a',send)),denied);
+  await assert.rejects(adviceService.publishStudyAdvice(request('teacher_other',send)),denied);
+  await adviceService.publishStudyAdvice(request('teacher_a',send));
+  await adviceService.publishStudyAdvice(request('teacher_a',send));
+  await assert.rejects(adviceService.publishStudyAdvice(request('teacher_a',{...send,message:'変更'})),denied);
+  const publicDoc=(await assertSucceeds(getDoc(doc(owner,'studyAdvice',a.id)))).data();
+  assert.equal(publicDoc.message,'編集した文章'); assert.equal(publicDoc.teacherNote,''); assert.ok(!publicDoc.aggregate);
+  await assertSucceeds(getDocs(query(collection(owner,'studyAdvice'),where('classId','==','class_a'),where('organizationId','==','org_a'),where('studentId','==','student_a'),where('status','==','published'))));
+  await assertFails(getDoc(doc(peer,'studyAdvice',a.id)));
+  await assertFails(setDoc(doc(owner,'studyAdvice','forged'),publicDoc));
+  await assertFails(updateDoc(doc(teacher,'studyAdviceDrafts',a.id),{status:'published'}));
+});

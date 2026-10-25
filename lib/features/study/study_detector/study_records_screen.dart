@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../study_repository.dart';
+import '../advice/study_advice_panel.dart';
 import 'study_mode_screen.dart' show recoverStudyRecord;
 import 'study_record.dart';
 import 'study_session.dart';
@@ -61,6 +62,12 @@ class _StudyRecordsScreenState extends State<StudyRecordsScreen> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
+                StudyAdvicePanel(
+                  key: ValueKey(_records),
+                  store: widget.store,
+                  teacher: widget.isTeacher,
+                ),
+                const SizedBox(height: 16),
                 Text(widget.store.storageExplanation),
                 const SizedBox(height: 12),
                 if (widget.isTeacher)
