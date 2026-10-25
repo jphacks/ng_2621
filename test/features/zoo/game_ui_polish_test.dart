@@ -117,6 +117,18 @@ void main() {
   ) async {
     final repository = await openGame(tester);
     expect(find.text('1.0×'), findsOneWidget);
+    for (final label in ['拡大', '縮小', '全体を表示']) {
+      final button = find.byTooltip(label);
+      final panels = find.descendant(
+        of: button,
+        matching: find.byType(SpritePanel),
+      );
+      expect(tester.widget<SpritePanel>(panels).style, SpritePanelStyle.gray);
+      expect(
+        find.descendant(of: button, matching: find.byType(ColorButtonPanel)),
+        findsNothing,
+      );
+    }
     await tester.tap(find.byTooltip('拡大'));
     await tester.pump();
     expect(find.text('2.0×'), findsOneWidget);

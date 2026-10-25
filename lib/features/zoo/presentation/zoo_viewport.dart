@@ -292,7 +292,7 @@ class _MapButton extends StatelessWidget {
     child: IconButton(
       tooltip: label,
       onPressed: onPressed,
-      style: PixelUiTheme.buttonStyle(SpritePanelStyle.roundGray),
+      style: PixelUiTheme.legacyButtonStyle(SpritePanelStyle.gray),
       icon: part != null
           ? ZooUiSprite(part: part!, scale: 2)
           : ZooExtraSprite(part: extraPart!, scale: 1.5),
