@@ -177,6 +177,43 @@ class ZooHeader extends StatelessWidget {
   }
 }
 
+/// Teachers manage classes and do not have a personal coin balance.
+class TeacherZooHeader extends StatelessWidget {
+  const TeacherZooHeader({
+    super.key,
+    required this.displayName,
+    required this.className,
+    required this.onProfile,
+  });
+  final String displayName;
+  final String? className;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      color: zooPaper,
+      border: Border(bottom: BorderSide(color: zooLine)),
+    ),
+    child: ListTile(
+      leading: const Icon(Icons.school_outlined, color: zooGreen),
+      title: Text(
+        displayName,
+        style: const TextStyle(fontWeight: FontWeight.w800, color: zooInk),
+      ),
+      subtitle: Text(
+        className ?? 'クラス未選択',
+        style: const TextStyle(color: zooGreen),
+      ),
+      trailing: IconButton(
+        tooltip: 'プロフィール',
+        onPressed: onProfile,
+        icon: const Icon(Icons.account_circle_outlined),
+      ),
+    ),
+  );
+}
+
 enum ZooMainTab { home, study, more }
 
 class ZooBottomBar extends StatelessWidget {

@@ -11,6 +11,8 @@ import '../../game/demo/demo_guide_panel.dart';
 import '../../game/demo/demo_tutorial_screen.dart';
 import '../../../core/storage/draft_storage.dart';
 import 'zoo_navigation.dart';
+import '../../auth/data/school_account_api.dart';
+import 'teacher_class_home.dart';
 import '../../game/experience/game_experience.dart';
 import '../../game/experience/experience_widgets.dart';
 import '../../shop/domain/shop_catalog.dart';
@@ -54,8 +56,11 @@ class ZooScreen extends StatefulWidget {
   const ZooScreen({
     super.key,
     this.gameRepository,
+    this.schoolAccountApi,
+    this.schoolStorage,
     this.isTeacher = false,
     this.assignmentStore,
+    this.teacherAssignmentsBuilder,
     this.placementRepository,
     this.onSignOut,
     this.onManageAccounts,
@@ -68,8 +73,12 @@ class ZooScreen extends StatefulWidget {
     this.onDemoRestart,
   });
 
+  final SchoolAccountApi? schoolAccountApi;
+  final DraftStorage? schoolStorage;
+
   final DemoTutorialController? presentation;
   final VoidCallback? onDemoRestart;
+
   final DraftStorage? gamePreferences;
   final String? accountName,
       accountEmail,
@@ -81,6 +90,7 @@ class ZooScreen extends StatefulWidget {
   final GameRepository? gameRepository;
   final bool isTeacher;
   final StudyRepository? assignmentStore;
+  final WidgetBuilder? teacherAssignmentsBuilder;
   final Future<void> Function()? onSignOut;
   final Future<void> Function()? onManageAccounts;
   final FacilityPlacementRepository? placementRepository;
@@ -113,6 +123,7 @@ class _ZooScreenState extends State<ZooScreen>
   final _contentKey = GlobalKey<NavigatorState>();
   final _shopKey = GlobalKey<ShopScreenState>();
   final _homeRevision = ValueNotifier(0);
+  final _teacherClassName = ValueNotifier<String?>(null);
   late final _contentObserver = ZooContentObserver(_contentChanged);
   BuildContext? _homeContext;
   int _homeSection = 0;
@@ -242,6 +253,7 @@ class _ZooScreenState extends State<ZooScreen>
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
     _homeRevision.dispose();
+    _teacherClassName.dispose();
     _purchases.dispose();
     _layoutTransactions.dispose();
     _experience.removeListener(_experienceChanged);
@@ -519,6 +531,7 @@ class _ZooScreenState extends State<ZooScreen>
         MaterialPageRoute<void>(
           settings: const RouteSettings(name: '/study'),
           builder: (_) =>
+              widget.teacherAssignmentsBuilder?.call(context) ??
               TeacherAssignmentsScreen(store: widget.assignmentStore!),
         ),
       );
@@ -571,7 +584,9 @@ class _ZooScreenState extends State<ZooScreen>
     if (widget.isTeacher && store != null) {
       Navigator.of(_navContext).push(
         MaterialPageRoute<void>(
-          builder: (_) => TeacherAssignmentsScreen(store: store),
+          builder: (context) =>
+              widget.teacherAssignmentsBuilder?.call(context) ??
+              TeacherAssignmentsScreen(store: store),
         ),
       );
       return;
@@ -1284,49 +1299,59 @@ class _ZooScreenState extends State<ZooScreen>
     ],
   );
 
-  Widget _buildHomeContent() => LayoutBuilder(
-    builder: (context, constraints) => Column(
-      children: [
-        if (constraints.maxHeight >= 220)
-          ZooHomeTabs(
-            selected: _homeSection,
-            onSelect: _setHomeSection,
-            highlightIndex:
-                widget.presentation?.shopTargetId != null && _homeSection != 1
-                ? 1
-                : widget.presentation?.needsConstruction == true &&
-                      _homeSection != 2
-                ? 2
-                : null,
-          ),
-        Expanded(
-          child: IndexedStack(
-            index: _homeSection,
+  Widget _buildHomeContent() => widget.isTeacher
+      ? TeacherClassHome(
+          api:
+              widget.schoolAccountApi ??
+              LocalSchoolAccountApi(widget.schoolStorage),
+          storage: widget.schoolStorage,
+          onManage: widget.onManageAccounts,
+          onClassChanged: (name) => _teacherClassName.value = name,
+        )
+      : LayoutBuilder(
+          builder: (context, constraints) => Column(
             children: [
-              _buildZooViewport(),
-              if (_shopOpened)
-                ShopScreen(
-                  key: _shopKey,
-                  session: _game,
-                  purchases: _purchases,
-                  embedded: true,
-                  highlightedItemId: widget.presentation?.shopTargetId,
-                  bottomPadding: widget.presentation == null ? 24 : 160,
-                  initialQuery: _shopQuery,
-                  initialKind: _shopKind,
-                  onViewZoo: () => _setHomeSection(0),
-                  onPlaceFacility: _startPlacement,
-                  onCreateEnclosure: () => _openEnclosures(create: true),
-                )
-              else
-                const SizedBox.shrink(),
-              _buildConstructionMenu(),
+              if (constraints.maxHeight >= 220)
+                ZooHomeTabs(
+                  selected: _homeSection,
+                  onSelect: _setHomeSection,
+                  highlightIndex:
+                      widget.presentation?.shopTargetId != null &&
+                          _homeSection != 1
+                      ? 1
+                      : widget.presentation?.needsConstruction == true &&
+                            _homeSection != 2
+                      ? 2
+                      : null,
+                ),
+              Expanded(
+                child: IndexedStack(
+                  index: _homeSection,
+                  children: [
+                    _buildZooViewport(),
+                    if (_shopOpened)
+                      ShopScreen(
+                        key: _shopKey,
+                        session: _game,
+                        purchases: _purchases,
+                        embedded: true,
+                        highlightedItemId: widget.presentation?.shopTargetId,
+                        bottomPadding: widget.presentation == null ? 24 : 160,
+                        initialQuery: _shopQuery,
+                        initialKind: _shopKind,
+                        onViewZoo: () => _setHomeSection(0),
+                        onPlaceFacility: _startPlacement,
+                        onCreateEnclosure: () => _openEnclosures(create: true),
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    _buildConstructionMenu(),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
-      ],
-    ),
-  );
+        );
 
   Widget _buildZooViewport() {
     final controller = _controller;
@@ -1359,7 +1384,10 @@ class _ZooScreenState extends State<ZooScreen>
   @override
   Widget build(BuildContext context) {
     final showHomeInfo =
-        _mainTab == ZooMainTab.home && _homeSection == 0 && !_contentCanPop;
+        !widget.isTeacher &&
+        _mainTab == ZooMainTab.home &&
+        _homeSection == 0 &&
+        !_contentCanPop;
     return PopScope(
       canPop: !_contentCanPop && _homeSection == 0,
       onPopInvokedWithResult: (didPop, _) {
@@ -1393,19 +1421,30 @@ class _ZooScreenState extends State<ZooScreen>
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              ZooHeader(
-                                displayName: widget.displayName,
-                                onProfile: _showProfile,
-                                onWallet: _showWallet,
-                                coins: _game.snapshot?.coins,
-                                connectionLabel: _game.failed
-                                    ? '更新停止'
-                                    : switch (_game.repository.connection) {
-                                        GameConnection.demo => 'デモ',
-                                        GameConnection.connected => '',
-                                        GameConnection.disconnected => '未接続',
-                                      },
-                              ),
+                              if (widget.isTeacher)
+                                ValueListenableBuilder<String?>(
+                                  valueListenable: _teacherClassName,
+                                  builder: (context, name, _) =>
+                                      TeacherZooHeader(
+                                        displayName: widget.displayName,
+                                        className: name,
+                                        onProfile: _showProfile,
+                                      ),
+                                )
+                              else
+                                ZooHeader(
+                                  displayName: widget.displayName,
+                                  onProfile: _showProfile,
+                                  onWallet: _showWallet,
+                                  coins: _game.snapshot?.coins,
+                                  connectionLabel: _game.failed
+                                      ? '更新停止'
+                                      : switch (_game.repository.connection) {
+                                          GameConnection.demo => 'デモ',
+                                          GameConnection.connected => '',
+                                          GameConnection.disconnected => '未接続',
+                                        },
+                                ),
                               if (showHomeInfo &&
                                   _experienceCatalog != null &&
                                   _game.snapshot != null &&
@@ -1503,7 +1542,9 @@ class _ZooScreenState extends State<ZooScreen>
                   ],
                 ),
               ),
-              if (widget.presentation == null && _game.currentNotice != null)
+              if (!widget.isTeacher &&
+                  widget.presentation == null &&
+                  _game.currentNotice != null)
                 Positioned(
                   top: MediaQuery.paddingOf(context).top + 8,
                   left: 8,
@@ -1516,7 +1557,8 @@ class _ZooScreenState extends State<ZooScreen>
                     ),
                   ),
                 ),
-              if (widget.presentation == null &&
+              if (!widget.isTeacher &&
+                  widget.presentation == null &&
                   _game.currentNotice == null &&
                   _experience.reward?.source == '自習')
                 Positioned(

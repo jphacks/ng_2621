@@ -18,10 +18,14 @@ class ZooViewport extends StatefulWidget {
     this.onLaboratorySelected,
     this.onShop,
     this.reactionRevision = 0,
+    this.title = 'マイ動物園',
+    this.showAnimalList = true,
   });
 
   final ValueChanged<Enclosure>? onEnclosureSelected;
   final VoidCallback? onLaboratorySelected;
+  final String title;
+  final bool showAnimalList;
   final int reactionRevision;
   final ZooController controller;
   final VoidCallback onAnimals;
@@ -105,7 +109,7 @@ class ZooViewportState extends State<ZooViewport> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'マイ動物園',
+                            widget.title,
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -122,40 +126,41 @@ class ZooViewportState extends State<ZooViewport> {
                         ],
                       ),
                     ),
-                    Tooltip(
-                      message: '動物一覧',
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                        child: InkWell(
-                          onTap: widget.onAnimals,
+                    if (widget.showAnimalList)
+                      Tooltip(
+                        message: '動物一覧',
+                        child: Material(
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.circular(14),
-                          child: ColorActionPanel(
-                            palette: ButtonPalette.yellow,
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const ZooUiSprite(
-                                    part: ZooUiPart.encyclopediaRed,
-                                    scale: 3,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${widget.controller.animals.length}匹',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: zooInk,
+                          child: InkWell(
+                            onTap: widget.onAnimals,
+                            borderRadius: BorderRadius.circular(14),
+                            child: ColorActionPanel(
+                              palette: ButtonPalette.yellow,
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const ZooUiSprite(
+                                      part: ZooUiPart.encyclopediaRed,
+                                      scale: 3,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${widget.controller.animals.length}匹',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: zooInk,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
