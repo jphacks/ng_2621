@@ -1,3 +1,4 @@
+import 'core/ui/zoo_ui.dart';
 import 'core/ui/zoo_font.dart';
 import 'core/storage/attachments/platform_attachment_vault.dart';
 
@@ -41,6 +42,8 @@ class _AppBootstrapState extends State<AppBootstrap> {
     }
     await initializeStudyFirebase();
     return MaterialApp(
+      builder: (context, child) =>
+          PixelUiTheme(child: child ?? const SizedBox.shrink()),
       theme: ThemeData(fontFamily: ZooFont.family),
       title: 'ZooっとStudy',
       home: FirebaseLoginScreen(
@@ -56,6 +59,8 @@ class _AppBootstrapState extends State<AppBootstrap> {
     builder: (context, snapshot) {
       if (snapshot.hasData) return snapshot.data!;
       return MaterialApp(
+        builder: (context, child) =>
+            PixelUiTheme(child: child ?? const SizedBox.shrink()),
         theme: ThemeData(fontFamily: ZooFont.family),
         home: Scaffold(
           body: Center(

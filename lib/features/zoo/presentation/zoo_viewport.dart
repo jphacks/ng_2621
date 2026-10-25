@@ -122,7 +122,8 @@ class ZooViewportState extends State<ZooViewport> {
                         child: InkWell(
                           onTap: widget.onAnimals,
                           borderRadius: BorderRadius.circular(14),
-                          child: WoodPanel(
+                          child: ColorActionPanel(
+                            palette: ButtonPalette.yellow,
                             child: Padding(
                               padding: const EdgeInsets.all(10),
                               child: Row(

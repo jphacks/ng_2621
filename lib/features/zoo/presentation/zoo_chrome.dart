@@ -39,7 +39,8 @@ class ZooHeader extends StatelessWidget {
               flex: 3,
               child: Tooltip(
                 message: 'プロフィール',
-                child: SpritePanel(
+                child: ColorActionPanel(
+                  palette: ButtonPalette.yellow,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -112,7 +113,8 @@ class ZooHeader extends StatelessWidget {
               flex: 2,
               child: Tooltip(
                 message: '所持金の詳細',
-                child: SpritePanel(
+                child: ColorActionPanel(
+                  palette: ButtonPalette.yellow,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -243,8 +245,8 @@ class ZooBottomBar extends StatelessWidget {
       selected: selectedTab == tab,
       child: TextButton(
         key: ValueKey('main-tab-${tab.name}'),
-        style: PixelUiTheme.buttonStyle(
-          selectedTab == tab ? SpritePanelStyle.cream : SpritePanelStyle.wood,
+        style: PixelUiTheme.colorfulButtonStyle(
+          selectedTab == tab ? ButtonPalette.green : ButtonPalette.cyan,
         ),
         onPressed: onTap,
         child: compact

@@ -48,28 +48,34 @@ class GoalBanner extends StatelessWidget {
           AnimalArt(animalId: item.targetId, size: 32),
           const SizedBox(width: 8),
           Expanded(
-            child: InkWell(
-              onTap: onChange,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '目標：${item.name}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+            child: ColorActionPanel(
+              palette: ButtonPalette.yellow,
+              child: InkWell(
+                onTap: onChange,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '目標：${item.name}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        item.isOwned(state)
+                            ? '目標達成！動物を迎えました'
+                            : 'あと${math.max(0, item.price - state.coins)}コイン',
+                        key: const ValueKey('goal-progress'),
+                      ),
+                      if (!item.isUnlocked(state))
+                        Text(
+                          unlockDescription(item, catalog, state),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                    ],
                   ),
-                  Text(
-                    item.isOwned(state)
-                        ? '目標達成！動物を迎えました'
-                        : 'あと${math.max(0, item.price - state.coins)}コイン',
-                    key: const ValueKey('goal-progress'),
-                  ),
-                  if (!item.isUnlocked(state))
-                    Text(
-                      unlockDescription(item, catalog, state),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                ],
+                ),
               ),
             ),
           ),

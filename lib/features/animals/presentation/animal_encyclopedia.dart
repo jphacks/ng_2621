@@ -193,7 +193,8 @@ class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
           'No.${number.toString().padLeft(2, '0')} ${animal.name}${owned ? '' : ' 未所持'}',
       button: true,
       enabled: owned,
-      child: SpritePanel(
+      child: ColorActionPanel(
+        enabled: owned,
         child: Material(
           color: Colors.transparent,
           child: InkWell(

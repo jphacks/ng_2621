@@ -92,7 +92,12 @@ class ShopScreenState extends State<ShopScreen> {
             backgroundColor: const Color(0xFFFAF9F0),
             appBar: AppBar(
               backgroundColor: const Color(0xFFFAF9F0),
-              title: Text(item.name),
+              title: WoodPanel(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(item.name),
+                ),
+              ),
               leading: IconButton(
                 tooltip: '商品一覧へ戻る',
                 onPressed: () => Navigator.pop(detailContext),
@@ -227,13 +232,8 @@ class ShopScreenState extends State<ShopScreen> {
     child: OutlinedButton(
       key: key,
       onPressed: onPressed,
-      style: PixelUiTheme.buttonStyle(SpritePanelStyle.wood).copyWith(
-        backgroundBuilder: (context, states, child) => selected
-            ? SpritePanel(
-                style: SpritePanelStyle.wood,
-                child: child ?? const SizedBox.shrink(),
-              )
-            : child ?? const SizedBox.shrink(),
+      style: PixelUiTheme.colorfulButtonStyle(
+        selected ? ButtonPalette.green : ButtonPalette.cyan,
       ),
       child: Text(
         label,
@@ -272,7 +272,12 @@ class ShopScreenState extends State<ShopScreen> {
                 : AppBar(
                     backgroundColor: const Color(0xFFFAF9F0),
                     surfaceTintColor: Colors.transparent,
-                    title: const Text('ショップで仲間を迎える'),
+                    title: const WoodPanel(
+                      child: Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Text('ショップで仲間を迎える'),
+                      ),
+                    ),
                     automaticallyImplyLeading: !widget.embedded,
                     leading: widget.embedded
                         ? null
@@ -431,12 +436,6 @@ class ShopScreenState extends State<ShopScreen> {
                                             child: TextButton(
                                               key: const ValueKey(
                                                 'shop-open-filters',
-                                              ),
-                                              style: ButtonStyle(
-                                                backgroundBuilder:
-                                                    (context, states, child) =>
-                                                        child ??
-                                                        const SizedBox.shrink(),
                                               ),
                                               onPressed: _showFilters,
                                               child: Text(

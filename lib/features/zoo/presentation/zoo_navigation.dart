@@ -59,7 +59,15 @@ class ZooMenuPage extends StatelessWidget {
         child: Scaffold(
           backgroundColor: const Color(0xFFFAF9F0),
           appBar: AppBar(
-            title: Text(title),
+            title: WoodPanel(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: Text(title),
+              ),
+            ),
             backgroundColor: const Color(0xFFFAF9F0),
             surfaceTintColor: Colors.transparent,
           ),
@@ -99,10 +107,10 @@ class ZooHomeTabs extends StatelessWidget {
                 selected: selected == index,
                 child: TextButton(
                   key: ValueKey('home-section-$index'),
-                  style: PixelUiTheme.buttonStyle(
+                  style: PixelUiTheme.colorfulButtonStyle(
                     selected == index
-                        ? SpritePanelStyle.wood
-                        : SpritePanelStyle.cream,
+                        ? ButtonPalette.green
+                        : ButtonPalette.cyan,
                   ),
                   onPressed: () => onSelect(index),
                   child: Text(

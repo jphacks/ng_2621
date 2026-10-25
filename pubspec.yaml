@@ -78,6 +78,7 @@ flutter:
     - assets/sprites/20261023.png
     - assets/sprites/20261024_3.png
     - assets/sprites/zoo_buildings.png
+    - assets/sprites/color_buttons.png
     - assets/fonts/OFL-DotGothic16.txt
 
   fonts:
