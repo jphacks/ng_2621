@@ -19,6 +19,8 @@ class ZooMap extends StatelessWidget {
     super.key,
     required this.controller,
     this.onAnimalSelected,
+    this.decorativeArches = const [],
+    this.tileOverrides = const {},
     this.onTileSelected,
     this.draggableTileArea,
     this.onTileDragged,
@@ -33,6 +35,8 @@ class ZooMap extends StatelessWidget {
   });
 
   final ZooController controller;
+  final List<Rect> decorativeArches;
+  final Map<(int, int), String> tileOverrides;
   final void Function(int x, int y)? onTileSelected;
   final Rect? draggableTileArea;
   final void Function(int x, int y)? onTileDragged;
@@ -157,13 +161,16 @@ class ZooMap extends StatelessWidget {
                                           previewEnclosureId:
                                               enclosurePreview?.id,
                                           enclosures: _drawnEnclosures,
+                                          tileOverrides: tileOverrides,
                                           placements:
                                               placementsOverride ??
                                               controller.placements,
                                         ),
                                       ),
                                       for (final facility in world.facilities)
-                                        if (facility.tile == 'sprite' &&
+                                        if (!(facility.id == 'flowerArch' &&
+                                                decorativeArches.isNotEmpty) &&
+                                            facility.tile == 'sprite' &&
                                             (placementsOverride ??
                                                     controller.placements)
                                                 .containsKey(facility.id) &&
@@ -221,6 +228,22 @@ class ZooMap extends StatelessWidget {
                                                   )
                                                 : const SizedBox.shrink(),
                                           ),
+                                      for (final arch in decorativeArches)
+                                        Positioned.fromRect(
+                                          rect: Rect.fromLTWH(
+                                            arch.left * world.tileSize,
+                                            arch.top * world.tileSize,
+                                            arch.width * world.tileSize,
+                                            arch.height * world.tileSize,
+                                          ),
+                                          child: const FittedBox(
+                                            child: ZooBuildingSprite(
+                                              part: ZooBuildingPart.flowerArch,
+                                              scale: 1,
+                                              semanticLabel: 'デモ用フラワーアーチ',
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),

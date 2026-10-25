@@ -6,14 +6,55 @@ class TerrainSelection {
   final int quarterTurns;
 }
 
-/// Select existing artwork only; never synthesize a missing vertical fence.
+const _directions = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
+/// Direction in which the material points away from a different path surface.
+int? _pathCap(String Function(int, int) at, int x, int y) {
+  final type = at(x, y);
+  if (type != '=' && type != '#') return null;
+  final other = type == '=' ? '#' : '=';
+  final touching = [
+    for (var i = 0; i < 4; i++)
+      if (at(x + _directions[i].$1, y + _directions[i].$2) == other) i,
+  ];
+  return touching.length == 1 ? (touching.single + 2) % 4 : null;
+}
+
+TerrainSelection _half(String surface, int direction) => TerrainSelection(
+  surface == '=' ? TerrainPart.grassHalfDirt : TerrainPart.grassHalfStone,
+  (direction - (surface == '=' ? 2 : 3) + 4) % 4,
+);
+
+/// Keep supplied half/quarter edges around path junctions as a grass buffer.
 TerrainSelection selectTerrain(String Function(int, int) at, int x, int y) {
   final type = at(x, y);
-  if (type == '=') return const TerrainSelection(TerrainPart.dirt);
-  if (type == '#') return const TerrainSelection(TerrainPart.stone);
+  if (type == '=' || type == '#') {
+    final cap = _pathCap(at, x, y);
+    if (cap != null) return _half(type, cap);
+    return TerrainSelection(type == '=' ? TerrainPart.dirt : TerrainPart.stone);
+  }
   if (type == '~') return const TerrainSelection(TerrainPart.water);
   const cardinal = [(0, -1), (1, 0), (0, 1), (-1, 0)]; // N E S W, clockwise.
   const diagonal = [(1, -1), (1, 1), (-1, 1), (-1, -1)]; // NE SE SW NW.
+  // Neighbors of a half-ended path need matching quarter corners, rather
+  // than extending a full half-material stripe toward the crossing.
+  for (var side = 0; side < 4; side++) {
+    final neighbor = cardinal[side];
+    final cap = _pathCap(at, x + neighbor.$1, y + neighbor.$2);
+    if (cap == null || cap % 2 == side % 2) continue;
+    final surface = at(x + neighbor.$1, y + neighbor.$2);
+    final direction = cardinal[cap];
+    final corner = diagonal.indexOf((
+      neighbor.$1 + direction.$1,
+      neighbor.$2 + direction.$2,
+    ));
+    return TerrainSelection(
+      surface == '='
+          ? TerrainPart.grassQuarterDirt
+          : TerrainPart.grassQuarterStone,
+      (corner - (surface == '=' ? 1 : 2) + 4) % 4,
+    );
+  }
   for (final surface in ['=', '#']) {
     final sides = [
       for (var i = 0; i < 4; i++)
