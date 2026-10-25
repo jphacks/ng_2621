@@ -22,6 +22,7 @@ class DemoAssignmentStore extends StudyRepository
   DemoAssignmentStore({
     DateTime Function()? clock,
     this.storage,
+    this.assignmentSource,
     this.studentId = 'demo_student',
     this.studentName = 'デモ生徒',
     AttachmentVault? attachmentVault,
@@ -52,6 +53,7 @@ class DemoAssignmentStore extends StudyRepository
   @override
   List<StudyStudent> get students => [StudyStudent(studentId, studentName)];
   final DraftStorage? storage;
+  final DraftStorage? assignmentSource;
   final AttachmentVault _attachmentVault;
   final _knownAttachments = <String, StudyAttachment>{};
   Future<void> _saveQueue = Future.value();
@@ -74,18 +76,20 @@ class DemoAssignmentStore extends StudyRepository
       ? super.storageExplanation
       : studentId == 'demo_student'
       ? 'この端末に保存します。先生と生徒は同じデモデータを共有します。クラウド同期はありません。'
-      : 'この生徒のデータを端末内に保存します。別端末や先生の課題とは自動同期しません。';
+      : 'この生徒のデータを端末内に保存します。同じ端末の先生からクラスの課題を受け取れます。別端末との同期はありません。';
   @override
   String? get storageError => _saveError;
 
   static Future<DemoAssignmentStore> open(
     DraftStorage storage, {
     AttachmentVault? attachmentVault,
+    DraftStorage? assignmentSource,
     String studentId = 'demo_student',
     String studentName = 'デモ生徒',
   }) async {
     final store = DemoAssignmentStore(
       storage: storage,
+      assignmentSource: assignmentSource,
       studentId: studentId,
       studentName: studentName,
       attachmentVault: attachmentVault,
@@ -93,6 +97,7 @@ class DemoAssignmentStore extends StudyRepository
     try {
       final saved = await storage.read('study-state');
       if (saved != null) store._restore(saved);
+      await store.syncClassAssignments();
       return store;
     } catch (_) {
       store.dispose();
@@ -264,8 +269,27 @@ class DemoAssignmentStore extends StudyRepository
     if (_saveError != null) throw StudyFailure(_saveError!);
   }
 
+  Future<void> syncClassAssignments() async {
+    if (assignmentSource == null) return;
+    final source = await assignmentSource!.read('study-state');
+    for (final raw in source?['assignments'] as List? ?? []) {
+      final a = Map<String, dynamic>.from(raw as Map);
+      publish(
+        DemoAssignment(
+          id: a['id'] as String,
+          subject: AssignmentSubject.values.byName(a['subject'] as String),
+          title: a['title'] as String,
+          description: a['description'] as String,
+          dueAt: DateTime.parse(a['dueAt'] as String),
+        ),
+      );
+    }
+    await flush();
+  }
+
   @override
   Future<void> refresh() async {
+    await syncClassAssignments();
     _persist();
     await flush();
   }

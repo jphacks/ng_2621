@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'features/auth/presentation/saved_role_gate.dart';
 import 'core/storage/draft_storage.dart';
 import 'features/study/demo_assignment_store.dart';
+import 'features/study/local_teacher_classes_screen.dart';
 import 'features/study/study_repository.dart';
 import 'features/game/domain/game_repository.dart';
 import 'features/zoo/presentation/zoo_screen.dart';
@@ -57,6 +58,14 @@ class _ZooStudyAppState extends State<ZooStudyApp> {
         storage: widget.roleStorage,
         storageDescription: _assignments.storageLabel,
         teacherPageBuilder: (context) => ZooScreen(
+          teacherAssignmentsBuilder:
+              widget.enableStudentCodes && widget.roleStorage != null
+              ? (_) => LocalTeacherClassesScreen(
+                  api: _schoolAccounts,
+                  storage: widget.roleStorage!,
+                  legacyStore: _assignments,
+                )
+              : null,
           onManageAccounts: () async {
             await Navigator.of(context).push<void>(
               MaterialPageRoute(
