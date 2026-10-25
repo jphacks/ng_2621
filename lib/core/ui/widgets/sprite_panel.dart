@@ -233,15 +233,22 @@ class SpriteTile extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.enabled = true,
+    this.panelStyle,
   });
   final Widget? leading, title, subtitle, trailing;
   final VoidCallback? onTap;
   final bool enabled;
+  final SpritePanelStyle? panelStyle;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
-    child: onTap != null
+    child: panelStyle != null
+        ? SpritePanel(
+            style: panelStyle!,
+            child: PixelTextOutline(child: _tile()),
+          )
+        : onTap != null
         ? ColorActionPanel(enabled: enabled, child: _tile())
         : SpritePanel(child: _tile()),
   );

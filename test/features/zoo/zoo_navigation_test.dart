@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zoo_study/core/ui/zoo_ui.dart';
 import 'package:zoo_study/features/zoo/presentation/zoo_screen.dart';
 import 'package:zoo_study/features/zoo/presentation/zoo_chrome.dart';
 
@@ -18,6 +19,9 @@ void expectNavigation(WidgetTester tester, ZooMainTab selected) {
     tester.widget<ZooBottomBar>(find.byType(ZooBottomBar)).selectedTab,
     selected,
   );
+  if (selected == ZooMainTab.home) {
+    expect(find.byType(ZooHeader).hitTestable(), findsOneWidget);
+  }
   for (final tab in ['home', 'study', 'more']) {
     expect(find.byKey(ValueKey('main-tab-$tab')).hitTestable(), findsOneWidget);
   }
@@ -93,6 +97,13 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('home-section-2')));
       await frames(tester);
       expect(find.text('囲いの購入・拡張').hitTestable(), findsOneWidget);
+      expect(find.byType(ZooHeader).hitTestable(), findsOneWidget);
+      final menus = tester.widgetList<SpriteTile>(find.byType(SpriteTile));
+      expect(menus, isNotEmpty);
+      expect(
+        menus.every((tile) => tile.panelStyle == SpritePanelStyle.cream),
+        isTrue,
+      );
       expect(find.text('施設を購入').hitTestable(), findsOneWidget);
       await tester.tap(find.text('施設を購入'));
       await frames(tester);

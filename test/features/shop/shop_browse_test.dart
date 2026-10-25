@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:zoo_study/core/ui/zoo_ui.dart';
 import 'package:zoo_study/features/shop/presentation/shop_item_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zoo_study/features/game/data/mock_game_repository.dart';
@@ -88,6 +89,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: ShopScreen(session: session)));
       await tester.pump();
       expect(find.byKey(const ValueKey('shop-filter-すべて')), findsNothing);
+      final card = find.byType(ShopItemCard).first;
+      final frame = tester.widget<SpritePanel>(
+        find.descendant(of: card, matching: find.byType(SpritePanel)),
+      );
+      expect(frame.style, SpritePanelStyle.cream);
+      expect(
+        find.descendant(of: card, matching: find.byType(ColorActionPanel)),
+        findsNothing,
+      );
       await tester.enterText(find.byKey(const ValueKey('shop-search')), 'キツネ');
       await tester.pump();
       tester.testTextInput.hide();

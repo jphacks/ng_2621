@@ -38,6 +38,18 @@ void main() {
         final first = find.byKey(const ValueKey('encyclopedia-animal0'));
         final locked = find.byKey(const ValueKey('encyclopedia-animal1'));
         expect(tester.getSize(first).width, tester.getSize(first).height);
+        final frame = tester.widget<SpritePanel>(
+          find.ancestor(of: first, matching: find.byType(SpritePanel)).first,
+        );
+        expect(frame.style, SpritePanelStyle.cream);
+        expect(
+          find.ancestor(of: locked, matching: find.byType(ColorActionPanel)),
+          findsNothing,
+        );
+        expect(
+          tester.getTopLeft(find.text('No.01')).dy,
+          greaterThan(tester.getTopLeft(first).dy),
+        );
         expect(find.text('名前0'), findsNothing);
         expect(find.text('ロック中'), findsNothing);
         final lock = find.descendant(

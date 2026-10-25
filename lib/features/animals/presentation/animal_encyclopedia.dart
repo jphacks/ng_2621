@@ -193,29 +193,30 @@ class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
           'No.${number.toString().padLeft(2, '0')} ${animal.name}${owned ? '' : ' 未所持'}',
       button: true,
       enabled: owned,
-      child: ColorActionPanel(
-        enabled: owned,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: ValueKey('encyclopedia-${animal.id}'),
-            onTap: owned ? () => widget.onSelect(animal) : null,
-            child: Stack(
-              children: [
-                Center(child: AnimalArt(animalId: animal.id, size: 48)),
-                Positioned(
-                  left: 6,
-                  top: 6,
-                  child: Text(
-                    'No.${number.toString().padLeft(2, '0')}',
-                    style: const TextStyle(fontSize: 12),
+      child: SpritePanel(
+        child: PixelTextOutline(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: ValueKey('encyclopedia-${animal.id}'),
+              onTap: owned ? () => widget.onSelect(animal) : null,
+              child: Stack(
+                children: [
+                  Center(child: AnimalArt(animalId: animal.id, size: 48)),
+                  Positioned(
+                    left: 6,
+                    top: 6,
+                    child: Text(
+                      'No.${number.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
-                ),
-                if (!owned)
-                  const Center(
-                    child: ZooUiSprite(part: ZooUiPart.lock, scale: 3),
-                  ),
-              ],
+                  if (!owned)
+                    const Center(
+                      child: ZooUiSprite(part: ZooUiPart.lock, scale: 3),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

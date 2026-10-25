@@ -38,29 +38,30 @@ class ShopItemCard extends StatelessWidget {
       button: true,
       label: '${item.name}、${item.price}コイン、$status',
       excludeSemantics: true,
-      child: ColorActionPanel(
-        palette: ButtonPalette.white,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: ValueKey('shop-item-${item.id}'),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  ShopItemArt(item: item),
-                  const SizedBox(height: 8),
-                  Text(
-                    item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                  const Spacer(),
-                  Text(item.priceLabel),
-                  Text(status, style: const TextStyle(fontSize: 12)),
-                ],
+      child: SpritePanel(
+        child: PixelTextOutline(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: ValueKey('shop-item-${item.id}'),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    ShopItemArt(item: item),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                    const Spacer(),
+                    Text(item.priceLabel),
+                    Text(status, style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
               ),
             ),
           ),

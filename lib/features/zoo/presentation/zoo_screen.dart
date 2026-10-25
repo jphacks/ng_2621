@@ -881,12 +881,14 @@ class _ZooScreenState extends State<ZooScreen>
         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         title: const Text('施設を購入'),
         subtitle: const Text('池・研究所・ベンチなどをショップで選ぶ'),
         leading: const ZooArtSprite(part: ZooArtPart.shop, scale: 2),
         onTap: () => _showShop(kind: ShopItemKind.facility, query: ''),
       ),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         title: const Text('囲いの購入・拡張'),
         subtitle: const Text('サイズと場所を決めて購入・拡張する'),
         leading: const TerrainSprite(part: TerrainPart.fence),
@@ -898,11 +900,13 @@ class _ZooScreenState extends State<ZooScreen>
         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         title: const Text('施設の配置・移動'),
         leading: const ZooArtSprite(part: ZooArtPart.pond, scale: 2),
         onTap: _showFacilities,
       ),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         title: const Text('研究所'),
         leading: const ZooBuildingSprite(
           part: ZooBuildingPart.laboratory,
@@ -911,12 +915,14 @@ class _ZooScreenState extends State<ZooScreen>
         onTap: _showResearch,
       ),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         title: const Text('動物一覧'),
         subtitle: const Text('図鑑・動物の配置'),
         leading: const ZooUiSprite(part: ZooUiPart.encyclopediaRed, scale: 3),
         onTap: _showAnimals,
       ),
       SpriteTile(
+        panelStyle: SpritePanelStyle.cream,
         title: const Text('目標の動物'),
         leading: const ZooUiSprite(part: ZooUiPart.check, scale: 2),
         onTap: _showGoalPicker,
@@ -1006,7 +1012,7 @@ class _ZooScreenState extends State<ZooScreen>
                 bottom: false,
                 child: Column(
                   children: [
-                    if (showHomeInfo)
+                    if (_mainTab == ZooMainTab.home)
                       ConstrainedBox(
                         constraints: BoxConstraints(
                           maxHeight: MediaQuery.sizeOf(context).height * .30,
@@ -1028,11 +1034,13 @@ class _ZooScreenState extends State<ZooScreen>
                                         GameConnection.disconnected => '未接続',
                                       },
                               ),
-                              GameNoticeBanner(
-                                session: _game,
-                                onDetails: _showWallet,
-                              ),
-                              if (_experienceCatalog != null &&
+                              if (showHomeInfo)
+                                GameNoticeBanner(
+                                  session: _game,
+                                  onDetails: _showWallet,
+                                ),
+                              if (showHomeInfo &&
+                                  _experienceCatalog != null &&
                                   _game.snapshot != null &&
                                   _experience.goalId != null)
                                 ..._experienceCatalog!.items
