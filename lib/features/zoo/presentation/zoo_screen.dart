@@ -1,3 +1,7 @@
+import '../../game/demo/demo_finale.dart';
+import '../../game/demo/demo_tutorial_controller.dart';
+import '../../game/demo/demo_guide_panel.dart';
+import '../../game/demo/demo_tutorial_screen.dart';
 import '../../../core/storage/draft_storage.dart';
 import 'zoo_navigation.dart';
 import '../../game/experience/game_experience.dart';
@@ -53,8 +57,12 @@ class ZooScreen extends StatefulWidget {
     this.accountEmail,
     this.accountClassName,
     this.accountStorageDescription,
+    this.presentation,
+    this.onDemoRestart,
   });
 
+  final DemoTutorialController? presentation;
+  final VoidCallback? onDemoRestart;
   final DraftStorage? gamePreferences;
   final String? accountName,
       accountEmail,
@@ -784,8 +792,137 @@ class _ZooScreenState extends State<ZooScreen>
     );
   }
 
+  bool _demoBusy = false, _demoFinale = false;
+  Future<void> _runDemoAction() async {
+    final tour = widget.presentation;
+    if (tour == null || _demoBusy) return;
+    setState(() => _demoBusy = true);
+    try {
+      if (!await _leaveContent() || !mounted) return;
+      _setHomeSection(0);
+      switch (tour.step) {
+        case DemoStep.assign:
+          tour.distribute();
+        case DemoStep.submit:
+          final result = await showDialog<String>(
+            context: _navContext,
+            builder: (_) => const DemoAnswerDialog(),
+          );
+          if (result != null && mounted) tour.submit(result);
+        case DemoStep.approve:
+          final approved = await showDialog<bool>(
+            context: _navContext,
+            builder: (context) => PixelUiTheme(
+              child: SpriteAlertDialog(
+                title: const Text('先生役：提出された回答を確認'),
+                content: Text(
+                  tour.repository
+                          .submissionFor(DemoTutorialController.assignmentId)
+                          ?.answerText ??
+                      '',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('あとで'),
+                  ),
+                  FilledButton(
+                    key: const ValueKey('demo-approve'),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('承認する ＋70'),
+                  ),
+                ],
+              ),
+            ),
+          );
+          if (approved == true && mounted) tour.approve();
+        case DemoStep.buyRabbit:
+          await _showShop(query: 'ウサギ', kind: ShopItemKind.animal);
+        case DemoStep.placeRabbit:
+          _assignAnimal(
+            _controller!.world.animals.singleWhere((a) => a.id == 'rabbit'),
+          );
+        case DemoStep.expand:
+          final accept = await showDialog<bool>(
+            context: _navContext,
+            builder: (context) => PixelUiTheme(
+              child: SpriteAlertDialog(
+                title: const Text('施設・進化も体験しよう'),
+                content: Text(tour.explanation),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('あとで'),
+                  ),
+                  FilledButton(
+                    key: const ValueKey('demo-budget'),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('体験用1,500コインで続ける'),
+                  ),
+                ],
+              ),
+            ),
+          );
+          if (accept == true && mounted) {
+            tour.repository.grantExplorationBudget();
+          }
+        case DemoStep.pond:
+          if (tour.hasPond) {
+            _startPlacement('pond');
+          } else {
+            await _showShop(query: '池', kind: ShopItemKind.facility);
+          }
+        case DemoStep.research:
+          if (!tour.hasFox) {
+            await _showShop(query: 'キツネ', kind: ShopItemKind.animal);
+          } else if (!tour.hasLab) {
+            await _showShop(query: '研究所', kind: ShopItemKind.facility);
+          } else {
+            _startPlacement('laboratory');
+          }
+        case DemoStep.evolve:
+          _showResearch();
+        case DemoStep.placeEvolution:
+          _assignAnimal(
+            _controller!.world.animals.singleWhere((a) => a.id == 'fire_fox'),
+          );
+        case DemoStep.collection:
+          tour.seeCollection();
+          _showAnimals();
+        case DemoStep.grown:
+          await tour.repository.showGrownZoo();
+          if (mounted) setState(() => _demoFinale = true);
+          if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _viewportKey.currentState?.resetView();
+            });
+          }
+        case DemoStep.complete:
+          setState(() => _demoFinale = true);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('操作を完了できませんでした。案内ボタンからもう一度お試しください。')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _demoBusy = false);
+    }
+  }
+
   void _showMore() {
     _showMenuPage('/more', '設定・プロフィール', [
+      if (widget.presentation == null)
+        SpriteTile(
+          panelStyle: SpritePanelStyle.cream,
+          title: const Text('発表デモチュートリアル'),
+          subtitle: const Text('保存データに影響せず、最初から体験する'),
+          leading: const ZooUiSprite(part: ZooUiPart.smile, scale: 2),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(builder: (_) => const DemoTutorialScreen()),
+          ),
+        ),
       SpriteTile(
         panelStyle: SpritePanelStyle.cream,
         title: const Text('プロフィール'),
@@ -1015,6 +1152,10 @@ class _ZooScreenState extends State<ZooScreen>
       canPop: !_contentCanPop && _homeSection == 0,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) {
+          if (_demoFinale) {
+            setState(() => _demoFinale = false);
+            return;
+          }
           if (_contentCanPop) {
             _contentKey.currentState?.maybePop();
           } else {
@@ -1083,6 +1224,24 @@ class _ZooScreenState extends State<ZooScreen>
                           ),
                         ),
                       ),
+                    if (widget.presentation != null)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.sizeOf(context).height * .24,
+                        ),
+                        child: SingleChildScrollView(
+                          child: DemoGuidePanel(
+                            controller: widget.presentation!,
+                            onAction: _runDemoAction,
+                            onRestart: widget.onDemoRestart!,
+                            ready:
+                                _controller != null &&
+                                _experienceCatalog != null &&
+                                !_game.loading,
+                            busy: _demoBusy,
+                          ),
+                        ),
+                      ),
                     Expanded(
                       child: MediaQuery.removeViewInsets(
                         context: context,
@@ -1117,7 +1276,8 @@ class _ZooScreenState extends State<ZooScreen>
                   ],
                 ),
               ),
-              if (!widget.isTeacher &&
+              if (widget.presentation == null &&
+                  !widget.isTeacher &&
                   _experience.reward != null &&
                   !_contentCanPop &&
                   _homeSection == 0 &&
@@ -1134,6 +1294,17 @@ class _ZooScreenState extends State<ZooScreen>
                       );
                       _showShop();
                     },
+                  ),
+                ),
+              if (_demoFinale &&
+                  widget.presentation != null &&
+                  _controller != null)
+                Positioned.fill(
+                  child: DemoFinale(
+                    key: const ValueKey('demo-finale'),
+                    controller: _controller!,
+                    onRestart: widget.onDemoRestart!,
+                    onExplore: () => setState(() => _demoFinale = false),
                   ),
                 ),
             ],
