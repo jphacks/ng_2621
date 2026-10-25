@@ -1,3 +1,6 @@
+import 'core/ui/zoo_ui.dart';
+import 'core/ui/zoo_font.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -37,6 +40,9 @@ class _ZooStudyAppState extends State<ZooStudyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      builder: (context, child) =>
+          PixelUiTheme(child: child ?? const SizedBox.shrink()),
+      theme: ThemeData(fontFamily: ZooFont.family),
       title: 'ZooっとStudy',
       home: SavedRoleGate(
         storage: widget.roleStorage,

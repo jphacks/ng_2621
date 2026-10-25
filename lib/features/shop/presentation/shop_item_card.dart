@@ -38,7 +38,8 @@ class ShopItemCard extends StatelessWidget {
       button: true,
       label: '${item.name}、${item.price}コイン、$status',
       excludeSemantics: true,
-      child: SpritePanel(
+      child: ColorActionPanel(
+        palette: ButtonPalette.white,
         child: Material(
           color: Colors.transparent,
           child: InkWell(

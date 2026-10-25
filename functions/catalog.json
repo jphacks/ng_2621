@@ -49,6 +49,49 @@
       "requiredAnimalIds": [
         "fox"
       ]
+    },
+    {
+      "id": "enclosure",
+      "name": "柵（囲い）",
+      "kind": "facility",
+      "targetId": "enclosure",
+      "price": 5,
+      "pricing": "area"
+    },
+    {
+      "id": "laboratory",
+      "name": "研究所",
+      "kind": "facility",
+      "targetId": "laboratory",
+      "price": 400
+    },
+    {
+      "id": "bench",
+      "name": "ベンチ",
+      "kind": "facility",
+      "targetId": "bench",
+      "price": 100
+    },
+    {
+      "id": "topiary",
+      "name": "植木",
+      "kind": "facility",
+      "targetId": "topiary",
+      "price": 120
+    },
+    {
+      "id": "fountain",
+      "name": "噴水",
+      "kind": "facility",
+      "targetId": "fountain",
+      "price": 300
+    },
+    {
+      "id": "flowerArch",
+      "name": "フラワーアーチ",
+      "kind": "facility",
+      "targetId": "flowerArch",
+      "price": 250
     }
   ]
 }

@@ -15,10 +15,12 @@ class ZooHeader extends StatelessWidget {
     required this.onWallet,
     this.coins,
     this.connectionLabel = '未接続',
+    this.displayName = 'ゲスト',
   });
 
   final VoidCallback onProfile;
   final VoidCallback onWallet;
+  final String displayName;
   final int? coins;
   final String connectionLabel;
 
@@ -37,7 +39,8 @@ class ZooHeader extends StatelessWidget {
               flex: 3,
               child: Tooltip(
                 message: 'プロフィール',
-                child: SpritePanel(
+                child: ColorActionPanel(
+                  palette: ButtonPalette.yellow,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -69,13 +72,13 @@ class ZooHeader extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'ゲスト',
+                                    displayName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -110,7 +113,8 @@ class ZooHeader extends StatelessWidget {
               flex: 2,
               child: Tooltip(
                 message: '所持金の詳細',
-                child: SpritePanel(
+                child: ColorActionPanel(
+                  palette: ButtonPalette.yellow,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -173,6 +177,8 @@ class ZooHeader extends StatelessWidget {
   }
 }
 
+enum ZooMainTab { home, study, more }
+
 class ZooBottomBar extends StatelessWidget {
   const ZooBottomBar({
     super.key,
@@ -180,91 +186,96 @@ class ZooBottomBar extends StatelessWidget {
     required this.onStudy,
     this.studyLabel = '学習',
     required this.onMore,
+    this.selectedTab = ZooMainTab.home,
   });
-
-  final VoidCallback onHome;
-  final VoidCallback onStudy;
+  final VoidCallback onHome, onStudy, onMore;
   final String studyLabel;
-  final VoidCallback onMore;
-
+  final ZooMainTab selectedTab;
   @override
-  Widget build(BuildContext context) {
-    return SpritePanel(
-      style: SpritePanelStyle.brick,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: zooLine)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Semantics(
-                    selected: true,
-                    child: TextButton(
-                      style: PixelUiTheme.buttonStyle(SpritePanelStyle.cream)
-                          .copyWith(
-                            minimumSize: const WidgetStatePropertyAll(
-                              Size(48, 56),
-                            ),
-                          ),
-                      onPressed: onHome,
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ZooArtSprite(part: ZooArtPart.home, scale: 2),
-                          SizedBox(height: 3),
-                          Text('ホーム'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: WoodButton(
-                    onPressed: onStudy,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
-                        SizedBox(height: 3),
-                        Text(
-                          studyLabel,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: zooInk,
-                      minimumSize: const Size(48, 56),
-                    ),
-                    onPressed: onMore,
-                    child: const Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ZooUiSprite(part: ZooUiPart.encyclopediaBlue, scale: 3),
-                        SizedBox(height: 3),
-                        Text('その他'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+  Widget build(BuildContext context) => SpritePanel(
+    style: SpritePanelStyle.brick,
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+        child: Row(
+          children: [
+            _tab(
+              ZooMainTab.home,
+              'ホーム',
+              const ZooArtSprite(part: ZooArtPart.home, scale: 2),
+              onHome,
+              compact:
+                  MediaQuery.sizeOf(context).height < 400 ||
+                  MediaQuery.viewInsetsOf(context).bottom > 0,
             ),
-          ),
+            const SizedBox(width: 8),
+            _tab(
+              ZooMainTab.study,
+              studyLabel,
+              const ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
+              onStudy,
+              compact:
+                  MediaQuery.sizeOf(context).height < 400 ||
+                  MediaQuery.viewInsetsOf(context).bottom > 0,
+            ),
+            const SizedBox(width: 8),
+            _tab(
+              ZooMainTab.more,
+              'その他',
+              const Icon(Icons.settings_outlined, size: 28),
+              onMore,
+              compact:
+                  MediaQuery.sizeOf(context).height < 400 ||
+                  MediaQuery.viewInsetsOf(context).bottom > 0,
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+  Widget _tab(
+    ZooMainTab tab,
+    String label,
+    Widget icon,
+    VoidCallback onTap, {
+    bool compact = false,
+  }) => Expanded(
+    child: Semantics(
+      selected: selectedTab == tab,
+      child: TextButton(
+        key: ValueKey('main-tab-${tab.name}'),
+        style: PixelUiTheme.colorfulButtonStyle(
+          selectedTab == tab ? ButtonPalette.green : ButtonPalette.cyan,
+        ),
+        onPressed: onTap,
+        child: compact
+            ? Text(
+                label,
+                style: TextStyle(
+                  fontWeight: selectedTab == tab
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  icon,
+                  const SizedBox(height: 3),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: selectedTab == tab
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    ),
+  );
 }
 
 /// Details are revealed on demand rather than permanently covering the zoo.

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'sprite_panel.dart';
+import 'color_button_panel.dart';
 import '../sprites/sprite_sheet_image.dart';
 import '../sprites/zoo_ui_part.dart';
 import '../sprites/zoo_ui_sprite.dart';
@@ -23,6 +24,7 @@ class WoodPanel extends StatelessWidget {
       : SpritePanel(style: SpritePanelStyle.wood, child: child);
 }
 
+/// Legacy API; actionable surfaces now use the colorful button atlas.
 class WoodButton extends StatefulWidget {
   const WoodButton({super.key, required this.onPressed, required this.child});
   final VoidCallback? onPressed;
@@ -42,7 +44,9 @@ class _WoodButtonState extends State<WoodButton> {
       duration: MediaQuery.disableAnimationsOf(context)
           ? Duration.zero
           : const Duration(milliseconds: 90),
-      child: WoodPanel(
+      child: ColorButtonPanel(
+        enabled: widget.onPressed != null,
+        pressed: _pressed,
         child: Material(
           color: Colors.transparent,
           child: InkWell(

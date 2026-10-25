@@ -1,3 +1,5 @@
+import 'color_button_panel.dart';
+
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -142,12 +144,21 @@ class _PanelPainter extends CustomPainter {
       old.image != image || old.style != style;
 }
 
-/// Apply only to game surfaces, leaving the authentication/study routes alone.
+/// Shared pixel styling; decorative frames and actionable surfaces are distinct.
 class PixelUiTheme extends StatelessWidget {
   const PixelUiTheme({super.key, required this.child});
   final Widget child;
 
-  static ButtonStyle buttonStyle(SpritePanelStyle style) => ButtonStyle(
+  // Compatibility for existing callers; wood is now reserved for decoration.
+  static ButtonStyle buttonStyle(SpritePanelStyle style) =>
+      colorfulButtonStyle(switch (style) {
+        SpritePanelStyle.lime => ButtonPalette.green,
+        SpritePanelStyle.wood => ButtonPalette.cyan,
+        SpritePanelStyle.cream ||
+        SpritePanelStyle.creamRound => ButtonPalette.yellow,
+        _ => ButtonPalette.white,
+      });
+  static ButtonStyle colorfulButtonStyle(ButtonPalette palette) => ButtonStyle(
     minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
     padding: const WidgetStatePropertyAll(
       EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -161,12 +172,14 @@ class PixelUiTheme extends StatelessWidget {
     foregroundColor: WidgetStateProperty.resolveWith(
       (states) => states.contains(WidgetState.disabled)
           ? const Color(0xFF555555)
+          : palette == ButtonPalette.blue || palette == ButtonPalette.gray
+          ? Colors.white
           : const Color(0xFF263D2D),
     ),
-    backgroundBuilder: (context, states, child) => SpritePanel(
-      style: states.contains(WidgetState.disabled)
-          ? SpritePanelStyle.gray
-          : style,
+    backgroundBuilder: (context, states, child) => ColorButtonPanel(
+      palette: palette,
+      enabled: !states.contains(WidgetState.disabled),
+      pressed: states.contains(WidgetState.pressed),
       child: child ?? const SizedBox.shrink(),
     ),
   );
@@ -188,10 +201,10 @@ class PixelUiTheme extends StatelessWidget {
           style: buttonStyle(SpritePanelStyle.wood),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
-          style: buttonStyle(SpritePanelStyle.cream),
+          style: colorfulButtonStyle(ButtonPalette.yellow),
         ),
         textButtonTheme: TextButtonThemeData(
-          style: buttonStyle(SpritePanelStyle.cream),
+          style: colorfulButtonStyle(ButtonPalette.white),
         ),
         iconButtonTheme: IconButtonThemeData(
           style: buttonStyle(SpritePanelStyle.gray),
@@ -223,22 +236,21 @@ class SpriteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
-    child: SpritePanel(
-      child: Material(
-        color: Colors.transparent,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 4,
-          ),
-          leading: leading,
-          title: title,
-          subtitle: subtitle,
-          trailing: trailing,
-          enabled: enabled,
-          onTap: onTap,
-        ),
-      ),
+    child: onTap != null
+        ? ColorActionPanel(enabled: enabled, child: _tile())
+        : SpritePanel(child: _tile()),
+  );
+
+  Widget _tile() => Material(
+    color: Colors.transparent,
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      leading: leading,
+      title: title,
+      subtitle: subtitle,
+      trailing: trailing,
+      enabled: enabled,
+      onTap: enabled ? onTap : null,
     ),
   );
 }

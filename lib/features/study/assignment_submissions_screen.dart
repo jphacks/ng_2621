@@ -1,3 +1,6 @@
+import '../../core/ui/zoo_ui.dart';
+import 'presentation/study_chrome.dart';
+
 import 'package:flutter/material.dart';
 
 import '../game/domain/game_snapshot.dart';
@@ -13,8 +16,8 @@ class AssignmentSubmissionsScreen extends StatelessWidget {
   final StudyRepository store;
   final String assignmentId;
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('生徒ごとの提出状況')),
+  Widget build(BuildContext context) => StudyScaffold(
+    appBar: StudyAppBar(title: const Text('生徒ごとの提出状況')),
     body: ListenableBuilder(
       listenable: store,
       builder: (context, _) => ListView(
@@ -37,7 +40,10 @@ class AssignmentSubmissionsScreen extends StatelessWidget {
                     '${submission?.status.label ?? AssignmentState.notSubmitted.label}${submission == null ? '' : '\n${studyDate(submission.submittedAt)}'}',
                   ),
                   isThreeLine: submission != null,
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const ZooUiSprite(
+                    part: ZooUiPart.arrowRight,
+                    scale: 2,
+                  ),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => AssignmentDetailScreen(

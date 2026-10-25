@@ -1,3 +1,5 @@
+import '../presentation/study_chrome.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -21,8 +23,8 @@ class AttachmentPreviewScreen extends StatefulWidget {
 class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
   late Future<Uint8List> _bytes = widget.store.readAttachment(widget.file);
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.file.name)),
+  Widget build(BuildContext context) => StudyScaffold(
+    appBar: StudyAppBar(title: Text(widget.file.name)),
     body: FutureBuilder<Uint8List>(
       future: _bytes,
       builder: (context, snapshot) {

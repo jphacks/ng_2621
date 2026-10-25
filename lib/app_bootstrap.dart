@@ -1,3 +1,5 @@
+import 'core/ui/zoo_ui.dart';
+import 'core/ui/zoo_font.dart';
 import 'core/storage/attachments/platform_attachment_vault.dart';
 
 import 'package:flutter/foundation.dart';
@@ -39,29 +41,14 @@ class _AppBootstrapState extends State<AppBootstrap> {
       throw StateError('保存モードが無効です');
     }
     await initializeStudyFirebase();
-    final preferences = await SharedPreferences.getInstance();
-    final roleStorage = PreferencesDraftStorage(
-      preferences,
-      'role.$studyStorageMode',
-    );
-    if (kDebugMode && const bool.fromEnvironment('ZOOSTUDY_RESET_ROLE')) {
-      await roleStorage.remove(SavedRoleGate.storageKey);
-    }
     return MaterialApp(
+      builder: (context, child) =>
+          PixelUiTheme(child: child ?? const SizedBox.shrink()),
+      theme: ThemeData(fontFamily: ZooFont.family),
       title: 'ZooっとStudy',
-      home: SavedRoleGate(
-        storage: roleStorage,
-        storageDescription: studyStorageMode == 'emulator'
-            ? 'Firebaseエミュレーターに接続します'
-            : 'Firebaseでデータを共有します',
-        teacherPageBuilder: (_) => FirebaseLoginScreen(
-          isTeacher: true,
-          emulator: studyStorageMode == 'emulator',
-        ),
-        studentPageBuilder: (_) => FirebaseLoginScreen(
-          isTeacher: false,
-          emulator: studyStorageMode == 'emulator',
-        ),
+      home: FirebaseLoginScreen(
+        isTeacher: false,
+        emulator: studyStorageMode == 'emulator',
       ),
     );
   }
@@ -72,6 +59,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
     builder: (context, snapshot) {
       if (snapshot.hasData) return snapshot.data!;
       return MaterialApp(
+        builder: (context, child) =>
+            PixelUiTheme(child: child ?? const SizedBox.shrink()),
+        theme: ThemeData(fontFamily: ZooFont.family),
         home: Scaffold(
           body: Center(
             child: Padding(

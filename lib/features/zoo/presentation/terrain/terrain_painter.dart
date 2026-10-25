@@ -20,6 +20,9 @@ class ZooTerrainPainter extends CustomPainter {
     this.placements = const {},
     this.extraImage,
     this.enclosures = const {},
+    this.previewOpacity = 1,
+    this.previewFacilityId,
+    this.previewEnclosureId,
   });
   final Map<String, FacilityPlacement> placements;
   final ZooWorld world;
@@ -28,6 +31,8 @@ class ZooTerrainPainter extends CustomPainter {
   final ui.Image? image;
   final ui.Image? extraImage;
   final Map<String, Enclosure> enclosures;
+  final double previewOpacity;
+  final String? previewFacilityId, previewEnclosureId;
 
   String _at(int x, int y) {
     if (x < 0 || y < 0 || x >= world.columns || y >= world.rows) return '.';
@@ -136,6 +141,27 @@ class ZooTerrainPainter extends CustomPainter {
       for (var x = 0; x < world.columns; x++) {
         final type = _at(x, y);
         final rect = Rect.fromLTWH(x * tile, y * tile, tile, tile);
+        final ghost =
+            previewOpacity < 1 &&
+            world.facilities.any(
+              (f) =>
+                  f.id == previewFacilityId &&
+                  (placements[f.id] ??
+                          FacilityPlacement(
+                            facilityId: f.id,
+                            left: f.left,
+                            top: f.top,
+                          ))
+                      .contains(x, y, f),
+            );
+        if (ghost) {
+          canvas.drawRect(rect, Paint()..color = const Color(0xFF238424));
+          _sprite(canvas, TerrainPart.grass, rect);
+          canvas.saveLayer(
+            rect,
+            Paint()..color = Color.fromRGBO(255, 255, 255, previewOpacity),
+          );
+        }
         // A readable fallback is shown until the cached sheet finishes decoding.
         paint.color = type == '~'
             ? const Color(0xFF6CBCCB)
@@ -168,9 +194,22 @@ class ZooTerrainPainter extends CustomPainter {
             paint,
           );
         }
+        if (ghost) canvas.restore();
       }
     }
     for (final pen in enclosures.values) {
+      final ghost = previewOpacity < 1 && pen.id == previewEnclosureId;
+      if (ghost) {
+        canvas.saveLayer(
+          Rect.fromLTWH(
+            pen.left * tile,
+            pen.top * tile,
+            pen.width * tile,
+            pen.height * tile,
+          ),
+          Paint()..color = Color.fromRGBO(255, 255, 255, previewOpacity),
+        );
+      }
       for (var y = 0; y < pen.height; y++) {
         for (var x = 0; x < pen.width; x++) {
           final sideX = x == 0 || x == pen.width - 1;
@@ -209,11 +248,15 @@ class ZooTerrainPainter extends CustomPainter {
           }
         }
       }
+      if (ghost) canvas.restore();
     }
   }
 
   @override
   bool shouldRepaint(ZooTerrainPainter old) =>
+      old.previewOpacity != previewOpacity ||
+      old.previewFacilityId != previewFacilityId ||
+      old.previewEnclosureId != previewEnclosureId ||
       old.world != world ||
       old.animals != animals ||
       old.facilities != facilities ||

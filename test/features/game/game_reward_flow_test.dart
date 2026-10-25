@@ -18,6 +18,10 @@ Future<void> receive(WidgetTester tester, String label) async {
   await tester.tap(find.text(label));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
+  await tester.tap(find.byKey(const ValueKey('main-tab-home')));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pump(const Duration(milliseconds: 400));
 }
 
 void main() {
@@ -52,6 +56,8 @@ void main() {
     await receive(tester, '初回提出の確定結果を受信');
     expect(find.text('30'), findsOneWidget);
     expect(find.text('課題を提出！ +30コイン'), findsOneWidget);
+    await tester.ensureVisible(find.byTooltip('通知を閉じる'));
+    await tester.pump();
     await tester.tap(find.byTooltip('通知を閉じる'));
     await tester.pump();
     await openDemo(tester);
@@ -108,6 +114,8 @@ void main() {
     await tester.pump();
     expect(find.text('ほか1件'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.ensureVisible(find.byTooltip('通知を閉じる'));
+    await tester.pump();
     await tester.tap(find.byTooltip('通知を閉じる'));
     await tester.pump();
     expect(find.text('先生が確認！ +70コイン'), findsOneWidget);
@@ -140,6 +148,8 @@ void main() {
     await receive(tester, '再提出依頼を受信');
     expect(find.text('30'), findsOneWidget);
     expect(find.text('もう一度チャレンジ！ 前回の30コインはそのまま'), findsOneWidget);
+    await tester.ensureVisible(find.byTooltip('通知を閉じる'));
+    await tester.pump();
     await tester.tap(find.byTooltip('通知を閉じる'));
     await tester.pump();
     await openDemo(tester);

@@ -1,3 +1,5 @@
+import '../presentation/study_chrome.dart';
+
 import 'package:flutter/material.dart';
 
 import '../study_repository.dart';
@@ -27,8 +29,8 @@ class _StudyRecordsScreenState extends State<StudyRecordsScreen> {
 
   void _refresh() => setState(() => _records = _load());
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+  Widget build(BuildContext context) => StudyScaffold(
+    appBar: StudyAppBar(
       title: Text(widget.isTeacher ? '生徒の学習記録' : '学習記録'),
       actions: [
         IconButton(
@@ -80,7 +82,7 @@ class _StudyRecordsScreenState extends State<StudyRecordsScreen> {
                     child: Text('学習記録はまだありません'),
                   ),
                 for (final record in records)
-                  Card(
+                  StudyCard(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(

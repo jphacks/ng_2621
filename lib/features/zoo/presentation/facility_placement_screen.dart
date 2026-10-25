@@ -1,3 +1,5 @@
+import '../../game/experience/game_feedback.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_ui.dart';
@@ -29,7 +31,7 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
   late FacilityPlacement _draft = widget.controller.positionOf(
     widget.definition,
   );
-  bool _saving = false;
+  bool _saving = false, _dragging = false;
   String? _error;
 
   void _select(int x, int y) {
@@ -52,6 +54,7 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
     });
     try {
       await widget.onSave(_draft);
+      GameFeedback.placementAccepted();
       if (mounted) {
         setState(() => _saving = false);
         Navigator.pop(context);
@@ -118,7 +121,7 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          '左上の位置をマップで選択してください（${widget.definition.width}×${widget.definition.height}マス）',
+                          '選択枠をドラッグするか、左上の位置をマップで選択してください（${widget.definition.width}×${widget.definition.height}マス）',
                         ),
                         const SizedBox(height: 8),
                         SizedBox(
@@ -132,7 +135,21 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
                               boundaryMargin: const EdgeInsets.all(80),
                               child: ZooMap(
                                 controller: widget.controller,
+                                previewFacilityId: widget.definition.id,
+                                previewOpacity: _dragging ? .6 : 1,
+                                onDraggingChanged: (value) {
+                                  if (mounted) {
+                                    setState(() => _dragging = value);
+                                  }
+                                },
                                 onTileSelected: _saving ? null : _select,
+                                draggableTileArea: Rect.fromLTWH(
+                                  _draft.left.toDouble(),
+                                  _draft.top.toDouble(),
+                                  widget.definition.width.toDouble(),
+                                  widget.definition.height.toDouble(),
+                                ),
+                                onTileDragged: _saving ? null : _select,
                                 placementsOverride: {
                                   ...widget.controller.placements,
                                   _draft.facilityId: _draft,

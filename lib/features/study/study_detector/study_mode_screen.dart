@@ -1,3 +1,6 @@
+import '../../../core/ui/zoo_ui.dart';
+import '../presentation/study_chrome.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -368,8 +371,8 @@ class _StudyModeScreenState extends State<StudyModeScreen>
     onPopInvokedWithResult: (didPop, _) {
       if (!didPop) _finish(exit: true);
     },
-    child: Scaffold(
-      appBar: AppBar(title: const Text('勉強モード')),
+    child: StudyScaffold(
+      appBar: StudyAppBar(title: const Text('勉強モード')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
@@ -404,7 +407,9 @@ class _StudyModeScreenState extends State<StudyModeScreen>
                 ),
               ] else if (_session != null || _pending != null) ...[
                 const SizedBox(height: 80),
-                const Center(child: Icon(Icons.menu_book_outlined, size: 64)),
+                const Center(
+                  child: ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 4),
+                ),
                 const SizedBox(height: 24),
                 Center(
                   child: Text(
@@ -453,7 +458,7 @@ class _StudyModeScreenState extends State<StudyModeScreen>
                     child: const Text('カメラを再接続'),
                   ),
               ] else ...[
-                const Card(
+                const StudyCard(
                   child: Padding(
                     padding: EdgeInsets.all(12),
                     child: Text(

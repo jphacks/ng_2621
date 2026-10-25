@@ -91,24 +91,26 @@ void main() {
     },
   );
 
-  testWidgets(
-    'sheet title and close action stay visible when catalog scrolls',
-    (tester) async {
-      await openGame(tester);
-      await tester.tap(find.text('ショップへ'));
-      await frames(tester);
-      await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('shop-item-evolved_fox')),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pump();
-      expect(find.byTooltip('閉じる').hitTestable(), findsOneWidget);
-      expect(find.text('ショップ').hitTestable(), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-    },
-  );
+  testWidgets('home and shop navigation stay visible when catalog scrolls', (
+    tester,
+  ) async {
+    await openGame(tester);
+    await tester.tap(find.text('ショップへ'));
+    await frames(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('shop-item-evolved_fox')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('main-tab-home')).hitTestable(),
+      findsOneWidget,
+    );
+    expect(find.text('ショップ').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('zoom readout and empty guidance follow actual map state', (
     tester,
@@ -118,7 +120,7 @@ void main() {
     await tester.tap(find.byTooltip('拡大'));
     await tester.pump();
     expect(find.text('2.0×'), findsOneWidget);
-    await tester.tap(find.text('ホーム'));
+    await tester.tap(find.byTooltip('全体を表示'));
     await tester.pump();
     expect(find.text('1.0×'), findsOneWidget);
     final data = repository.currentSnapshot.toJson();

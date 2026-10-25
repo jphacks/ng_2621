@@ -38,6 +38,16 @@ service cloud.firestore {
         && (resource.data.studentId == request.auth.uid || teacher(resource.data.classId, resource.data.organizationId));
     }
     match /zoos/{uid} { allow get: if signedIn() && request.auth.uid == uid; }
+    match /gamePreferences/{uid} {
+      function owner() { return signedIn() && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/users/$(uid)); }
+      allow get, delete: if owner();
+      allow create, update: if owner()
+        && request.resource.data.keys().hasOnly(['goalId', 'seen'])
+        && (request.resource.data.goalId == null || request.resource.data.goalId in ['rabbit','fox','deer','evolved_fox'])
+        && request.resource.data.seen is list && request.resource.data.seen.size() <= 2000;
+    }
+
     match /rewardTransactions/{transactionId} {
       allow read: if signedIn() && resource.data.studentId == request.auth.uid
         && member(resource.data.classId, resource.data.organizationId);
