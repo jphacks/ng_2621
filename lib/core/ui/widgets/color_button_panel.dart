@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/widgets.dart';
 
 import '../sprites/sprite_sheet_image.dart';
+import 'pixel_text_outline.dart';
 
 enum ButtonPalette { yellow, green, cyan, orange, pink, blue, white, gray }
 
@@ -49,7 +50,13 @@ class ColorButtonPanel extends StatelessWidget {
       ),
       child: Transform.translate(
         offset: Offset(0, enabled && pressed ? 2 : 0),
-        child: child,
+        child: PixelTextOutline(
+          lightText:
+              !enabled ||
+              palette == ButtonPalette.blue ||
+              palette == ButtonPalette.gray,
+          child: child,
+        ),
       ),
     ),
   );
@@ -73,8 +80,14 @@ class _ButtonPainter extends CustomPainter {
     }
     final top = pressed ? 2.0 : 0.0;
     const edge = 4.0;
-    final dx = math.min(8.0, size.width / 2),
-        dy = math.min(8.0, (size.height - top) / 2);
+    // The released sprite has a two-pixel plinth plus its lower rim and
+    // rounded corners. Keep all seven lower rows OUT of the repeated body.
+    // Pressed art has no plinth and retains its existing four-row cap.
+    final bottomEdge = pressed ? 4.0 : 7.0;
+    final dx = math.min(8.0, size.width / 2);
+    final availableHeight = math.max(0.0, size.height - top);
+    final capScale = math.min(2.0, availableHeight / (edge + bottomEdge));
+    final topHeight = edge * capScale, bottomHeight = bottomEdge * capScale;
     final sx = [
       source.left,
       source.left + edge,
@@ -84,11 +97,11 @@ class _ButtonPainter extends CustomPainter {
     final sy = [
       source.top,
       source.top + edge,
-      source.bottom - edge,
+      source.bottom - bottomEdge,
       source.bottom,
     ];
     final tx = [0.0, dx, size.width - dx, size.width];
-    final ty = [top, top + dy, size.height - dy, size.height];
+    final ty = [top, top + topHeight, size.height - bottomHeight, size.height];
     final paint = Paint()
       ..filterQuality = FilterQuality.none
       ..isAntiAlias = false;

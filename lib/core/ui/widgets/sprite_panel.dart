@@ -1,4 +1,5 @@
 import 'color_button_panel.dart';
+import 'pixel_text_outline.dart';
 
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -29,8 +30,12 @@ class SpritePanel extends StatelessWidget {
     assetPath: style == SpritePanelStyle.creamRound
         ? ZooBuildingSprite.assetPath
         : ZooExtraSprite.assetPath,
-    builder: (context, image) =>
-        CustomPaint(painter: _PanelPainter(image, style), child: child),
+    builder: (context, image) => CustomPaint(
+      painter: _PanelPainter(image, style),
+      child: style == SpritePanelStyle.wood
+          ? PixelTextOutline(child: child)
+          : child,
+    ),
   );
 }
 
@@ -171,7 +176,7 @@ class PixelUiTheme extends StatelessWidget {
     shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
     foregroundColor: WidgetStateProperty.resolveWith(
       (states) => states.contains(WidgetState.disabled)
-          ? const Color(0xFF555555)
+          ? Colors.white
           : palette == ButtonPalette.blue || palette == ButtonPalette.gray
           ? Colors.white
           : const Color(0xFF263D2D),

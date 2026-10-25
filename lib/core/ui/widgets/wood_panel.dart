@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'sprite_panel.dart';
 import 'color_button_panel.dart';
+import 'pixel_text_outline.dart';
 import '../sprites/sprite_sheet_image.dart';
 import '../sprites/zoo_ui_part.dart';
 import '../sprites/zoo_ui_sprite.dart';
@@ -18,8 +19,10 @@ class WoodPanel extends StatelessWidget {
   Widget build(BuildContext context) => originalSheet
       ? SpriteSheetImage(
           assetPath: ZooUiSprite.assetPath,
-          builder: (context, image) =>
-              CustomPaint(painter: _OriginalWoodPainter(image), child: child),
+          builder: (context, image) => CustomPaint(
+            painter: _OriginalWoodPainter(image),
+            child: PixelTextOutline(child: child),
+          ),
         )
       : SpritePanel(style: SpritePanelStyle.wood, child: child);
 }

@@ -21,3 +21,5 @@ export 'sprites/zoo_extra_sprite.dart';
 export 'widgets/sprite_panel.dart';
 
 export 'widgets/color_button_panel.dart';
+
+export 'widgets/pixel_text_outline.dart';

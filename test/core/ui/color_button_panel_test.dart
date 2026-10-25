@@ -103,6 +103,31 @@ void main() {
               reason: '$palette pressed=$pressed has a gap at row $y',
             );
           }
+          // The entire central surface must remain the same body color.
+          // Checking alpha alone misses repeated opaque highlights/black rims.
+          final bodyColor = original.getUint32(
+            ((rect.top.toInt() + 5) * 64 + rect.left.toInt() + 8) * 4,
+          );
+          final bottomCap = pressed ? 8 : 14;
+          for (var y = top + 8; y < 100 - bottomCap; y++) {
+            for (var x = 8; x < 132; x++) {
+              expect(
+                pixels.getUint32((y * 140 + x) * 4),
+                bodyColor,
+                reason: '$palette pressed=$pressed repeats decoration at $x,$y',
+              );
+            }
+          }
+          // Keep the released two-pixel plinth once at the bottom, at 2x.
+          for (var y = 0; y < bottomCap; y++) {
+            final sy = rect.bottom.toInt() - bottomCap ~/ 2 + y ~/ 2;
+            final sx = rect.left.toInt() + 8;
+            expect(
+              pixels.getUint32(((100 - bottomCap + y) * 140 + 70) * 4),
+              original.getUint32((sy * 64 + sx) * 4),
+              reason: '$palette pressed=$pressed bottom decoration row $y',
+            );
+          }
           rendered!.dispose();
         }
       }
