@@ -277,6 +277,7 @@ class _AssignmentFormState extends State<_AssignmentForm> {
                     if (widget.store.drafts != null)
                       const Text('入力内容はこの端末の下書きとして保存されます'),
                     DropdownButtonFormField<AssignmentSubject>(
+                      isExpanded: true,
                       initialValue: _subject,
                       decoration: const InputDecoration(
                         labelText: '科目名',

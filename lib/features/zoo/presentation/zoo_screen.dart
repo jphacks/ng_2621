@@ -1027,7 +1027,7 @@ class _ZooScreenState extends State<ZooScreen>
                     child: const Text('あとで'),
                   ),
                   FilledButton(
-                    key: const ValueKey('demo-approve'),
+                    key: const ValueKey('demo-result-confirm'),
                     onPressed: () => Navigator.pop(context, true),
                     child: const Text('確認して動物園へ ＋70'),
                   ),

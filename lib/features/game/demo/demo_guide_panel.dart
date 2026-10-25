@@ -87,7 +87,7 @@ class _DemoAnswerDialogState extends State<DemoAnswerDialog> {
   @override
   Widget build(BuildContext context) => PixelUiTheme(
     child: SpriteAlertDialog(
-      title: const Text('生徒役：課題に回答'),
+      title: const Text('課題に回答'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

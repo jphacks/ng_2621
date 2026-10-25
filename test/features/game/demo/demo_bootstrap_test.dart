@@ -8,17 +8,13 @@ void main() {
     (tester) async {
       await tester.pumpWidget(const AppBootstrap());
       await tester.pump();
-      expect(
-        find.byKey(
-          ValueKey(
-            const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') ==
-                    'teacher'
-                ? 'teacher-create'
-                : 'demo-start',
-          ),
-        ),
-        findsOneWidget,
-      );
+      if (const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') ==
+          'teacher') {
+        expect(find.text('課題を作成'), findsOneWidget);
+      } else {
+        expect(find.byKey(const ValueKey('demo-start')), findsOneWidget);
+        expect(find.byKey(const ValueKey('demo-start-teacher')), findsNothing);
+      }
       expect(find.text('保存先を開けませんでした'), findsNothing);
       expect(tester.takeException(), isNull);
     },

@@ -49,7 +49,7 @@ class _TutorialSessionState extends State<_TutorialSession> {
   late final _controller = DemoTutorialController(_repository);
   bool _started =
       const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') == 'teacher';
-  bool _teacher =
+  final bool _teacher =
       const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') == 'teacher';
   @override
   void dispose() {
@@ -104,11 +104,11 @@ class _TutorialSessionState extends State<_TutorialSession> {
                             ),
                             const SizedBox(height: 16),
                             const Text(
-                              '先生用・生徒用をそれぞれの端末で選んでください。課題・ごほうび・動物園の成長を、タイミングを合わせて体験できます。',
+                              'この端末では生徒として、課題の確認・提出から動物園の成長まで体験します。先生の操作は別のスマートフォンで行います。',
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              '① 課題を配布・提出・承認\n② ウサギを購入して囲いへ\n③ 池や研究所を配置\n④ 炎狐への進化と図鑑\n⑤ 育った動物園の完成イメージ',
+                              '① 配布された課題を確認・提出\n② ウサギを購入して囲いへ\n③ 池や研究所を配置\n④ 炎狐への進化と図鑑\n⑤ 育った動物園の完成イメージ',
                             ),
                             const SizedBox(height: 12),
                             const Text(
@@ -119,19 +119,9 @@ class _TutorialSessionState extends State<_TutorialSession> {
                             FilledButton(
                               key: const ValueKey('demo-start'),
                               onPressed: () => setState(() {
-                                _teacher = false;
                                 _started = true;
                               }),
                               child: const Text('生徒デモをはじめる'),
-                            ),
-                            const SizedBox(height: 12),
-                            FilledButton(
-                              key: const ValueKey('demo-start-teacher'),
-                              onPressed: () => setState(() {
-                                _teacher = true;
-                                _started = true;
-                              }),
-                              child: const Text('先生デモをはじめる'),
                             ),
                             if (Navigator.of(context).canPop())
                               TextButton(

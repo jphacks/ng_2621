@@ -40,6 +40,7 @@ Future<void> start(WidgetTester tester, Size size) async {
     await rootBundle.loadString('assets/zoo/shop_catalog.json');
     await tester.pumpWidget(const PresentationDemoApp());
   });
+  expect(find.text('先生デモをはじめる'), findsNothing);
   await tap(tester, 'demo-start');
   await frames(tester);
 }
@@ -52,6 +53,7 @@ void main() {
     'visitor can finish every real operation and see the grown zoo, then restart',
     (tester) async {
       await start(tester, const Size(390, 844));
+      expect(find.byKey(const ValueKey('demo-start-teacher')), findsNothing);
       expect(tour(tester).step, DemoStep.assign);
       expect(tour(tester).repository.coins, 3000);
       expect(find.text('最初の仲間を迎えよう'), findsNothing);
@@ -63,7 +65,7 @@ void main() {
       expect(tour(tester).repository.coins, 3030);
       await tap(tester, 'demo-next');
       expect(find.text('先生からのアドバイス'), findsOneWidget);
-      await tap(tester, 'demo-approve');
+      await tap(tester, 'demo-result-confirm');
       expect(tour(tester).repository.coins, 3100);
       expect(find.byKey(const ValueKey('demo-next')), findsNothing);
       expect(
