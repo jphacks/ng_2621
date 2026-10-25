@@ -5,22 +5,10 @@ import '../../../core/storage/attachments/platform_attachment_vault.dart';
 import '../../study/demo_assignment_store.dart';
 import '../../zoo/presentation/zoo_screen.dart';
 import '../data/school_account_api.dart';
+import '../data/account_scoped_storage.dart';
+export '../data/account_scoped_storage.dart' show StudentAccountStorage;
 import 'student_code_form.dart';
 import 'student_qr_scanner.dart';
-
-class StudentAccountStorage implements DraftStorage {
-  StudentAccountStorage(this.parent, this.studentId);
-  final DraftStorage parent;
-  final String studentId;
-  String _key(String key) => 'student.$studentId.$key';
-  @override
-  Future<Map<String, dynamic>?> read(String key) => parent.read(_key(key));
-  @override
-  Future<void> write(String key, Map<String, dynamic> value) =>
-      parent.write(_key(key), value);
-  @override
-  Future<void> remove(String key) => parent.remove(_key(key));
-}
 
 class LocalStudentAccessScreen extends StatefulWidget {
   const LocalStudentAccessScreen({
@@ -68,6 +56,10 @@ class _LocalStudentAccessScreenState extends State<LocalStudentAccessScreen> {
   Future<void> _open(Map<String, dynamic> student) async {
     final store = await DemoAssignmentStore.open(
       StudentAccountStorage(widget.storage, student['id'] as String),
+      assignmentSource: ClassAccountStorage(
+        widget.storage,
+        student['classId'] as String,
+      ),
       studentId: student['id'] as String,
       studentName: student['name'] as String,
       attachmentVault:
@@ -143,7 +135,8 @@ class _LocalStudentAccessScreenState extends State<LocalStudentAccessScreen> {
         key: ValueKey(_student!['id']),
         accountName: _student!['name'] as String,
         accountClassName: _student!['className'] as String?,
-        accountStorageDescription: 'この生徒のデータをこの端末に保存します。別端末や先生の課題とは自動同期しません。',
+        accountStorageDescription:
+            'この生徒のデータをこの端末に保存します。同じ端末の先生から課題を受け取れます。別端末との同期はありません。',
         gameRepository: store,
         assignmentStore: store,
         gamePreferences: StudentAccountStorage(

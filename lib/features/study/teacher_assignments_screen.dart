@@ -82,7 +82,7 @@ class DemoAssignmentList extends StatelessWidget {
                     ),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => isTeacher && store.students.length > 1
+                        builder: (_) => isTeacher && store.students.length != 1
                             ? AssignmentSubmissionsScreen(
                                 store: store,
                                 assignmentId: assignment.id,
@@ -147,6 +147,21 @@ class TeacherAssignmentsScreen extends StatelessWidget {
               label: const Text('生徒の学習記録'),
             ),
             const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () async {
+                try {
+                  await store.refresh();
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('最新データを読み込めませんでした。')),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('提出状況を更新'),
+            ),
             DemoAssignmentList(store: store, isTeacher: true),
           ],
         ),

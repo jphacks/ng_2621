@@ -53,6 +53,7 @@ class ZooScreen extends StatefulWidget {
     this.schoolStorage,
     this.isTeacher = false,
     this.assignmentStore,
+    this.teacherAssignmentsBuilder,
     this.placementRepository,
     this.onSignOut,
     this.onManageAccounts,
@@ -83,6 +84,7 @@ class ZooScreen extends StatefulWidget {
   final GameRepository? gameRepository;
   final bool isTeacher;
   final StudyRepository? assignmentStore;
+  final WidgetBuilder? teacherAssignmentsBuilder;
   final Future<void> Function()? onSignOut;
   final Future<void> Function()? onManageAccounts;
   final FacilityPlacementRepository? placementRepository;
@@ -504,6 +506,7 @@ class _ZooScreenState extends State<ZooScreen>
         MaterialPageRoute<void>(
           settings: const RouteSettings(name: '/study'),
           builder: (_) =>
+              widget.teacherAssignmentsBuilder?.call(context) ??
               TeacherAssignmentsScreen(store: widget.assignmentStore!),
         ),
       );
@@ -547,7 +550,9 @@ class _ZooScreenState extends State<ZooScreen>
     if (widget.isTeacher && store != null) {
       Navigator.of(_navContext).push(
         MaterialPageRoute<void>(
-          builder: (_) => TeacherAssignmentsScreen(store: store),
+          builder: (context) =>
+              widget.teacherAssignmentsBuilder?.call(context) ??
+              TeacherAssignmentsScreen(store: store),
         ),
       );
       return;
