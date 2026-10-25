@@ -40,30 +40,12 @@ class _AppBootstrapState extends State<AppBootstrap> {
       throw StateError('保存モードが無効です');
     }
     await initializeStudyFirebase();
-    final preferences = await SharedPreferences.getInstance();
-    final roleStorage = PreferencesDraftStorage(
-      preferences,
-      'role.$studyStorageMode',
-    );
-    if (kDebugMode && const bool.fromEnvironment('ZOOSTUDY_RESET_ROLE')) {
-      await roleStorage.remove(SavedRoleGate.storageKey);
-    }
     return MaterialApp(
       theme: ThemeData(fontFamily: ZooFont.family),
       title: 'ZooっとStudy',
-      home: SavedRoleGate(
-        storage: roleStorage,
-        storageDescription: studyStorageMode == 'emulator'
-            ? 'Firebaseエミュレーターに接続します'
-            : 'Firebaseでデータを共有します',
-        teacherPageBuilder: (_) => FirebaseLoginScreen(
-          isTeacher: true,
-          emulator: studyStorageMode == 'emulator',
-        ),
-        studentPageBuilder: (_) => FirebaseLoginScreen(
-          isTeacher: false,
-          emulator: studyStorageMode == 'emulator',
-        ),
+      home: FirebaseLoginScreen(
+        isTeacher: false,
+        emulator: studyStorageMode == 'emulator',
       ),
     );
   }

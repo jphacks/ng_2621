@@ -1,3 +1,4 @@
+import '../../../core/storage/draft_storage.dart';
 import 'zoo_navigation.dart';
 import '../../game/experience/game_experience.dart';
 import '../../game/experience/experience_widgets.dart';
@@ -46,8 +47,13 @@ class ZooScreen extends StatefulWidget {
     this.assignmentStore,
     this.placementRepository,
     this.onSignOut,
+    this.gamePreferences,
+    this.accountName,
+    this.accountEmail,
   });
 
+  final DraftStorage? gamePreferences;
+  final String? accountName, accountEmail;
   final GameRepository? gameRepository;
   final bool isTeacher;
   final StudyRepository? assignmentStore;
@@ -102,8 +108,9 @@ class _ZooScreenState extends State<ZooScreen>
   @override
   void initState() {
     super.initState();
-    _experience = GameExperience(storage: widget.assignmentStore?.drafts)
-      ..addListener(_experienceChanged);
+    _experience = GameExperience(
+      storage: widget.gamePreferences ?? widget.assignmentStore?.drafts,
+    )..addListener(_experienceChanged);
     _game = GameSession(widget.gameRepository ?? _defaultGameRepository())
       ..addListener(_onGameChanged);
     _purchases = ShopPurchaseController(_game);
@@ -327,19 +334,29 @@ class _ZooScreenState extends State<ZooScreen>
                   ? null
                   : () async {
                       await _experience.setGoal(item.targetId);
-                      if (mounted) Navigator.pop(_navContext);
+                      if (mounted) _finishGoalSelection();
                     },
             ),
           TextButton(
             onPressed: () async {
               await _experience.setGoal(null);
-              if (mounted) Navigator.pop(_navContext);
+              if (mounted) _finishGoalSelection();
             },
             child: const Text('目標を解除'),
           ),
         ],
       ],
     );
+  }
+
+  void _finishGoalSelection() {
+    final error = _experience.persistenceError;
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+    } else {
+      Navigator.pop(_navContext);
+    }
   }
 
   void _showResearch() {
@@ -430,13 +447,17 @@ class _ZooScreenState extends State<ZooScreen>
     showZooSheet(
       _navContext,
       title: 'プロフィール',
-      children: const [
+      children: [
         SpriteTile(
-          leading: ZooUiSprite(part: ZooUiPart.smile, scale: 3),
-          title: Text('ゲスト'),
-          subtitle: Text('レベル 1'),
+          leading: const ZooUiSprite(part: ZooUiPart.smile, scale: 3),
+          title: Text(widget.accountName ?? 'ゲスト'),
+          subtitle: Text(widget.accountEmail ?? 'レベル 1'),
         ),
-        Text('ユーザー名とレベルはサンプル表示です。アカウントや成長データにはまだ接続していません。'),
+        Text(
+          widget.accountName == null
+              ? '端末内デモのプロフィールです。'
+              : 'このアカウントのデータをFirebaseに保存します。',
+        ),
       ],
     );
   }
@@ -995,6 +1016,7 @@ class _ZooScreenState extends State<ZooScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ZooHeader(
+                                displayName: widget.accountName ?? 'ゲスト',
                                 onProfile: _showProfile,
                                 onWallet: _showWallet,
                                 coins: _game.snapshot?.coins,

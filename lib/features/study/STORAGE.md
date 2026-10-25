@@ -58,7 +58,7 @@ config/firebase.example.jsonをconfig/firebase.local.jsonへコピーし、対�
 
     flutter run --dart-define-from-file=config/firebase.local.json
 
-Firebaseプロジェクト、Email/Password認証、事前登録したユーザーと所属情報が必要です。自己登録・招待・管理者UIは未実装です。このMVPは1アカウント1クラス、1クラス100人までです。
+Firebaseプロジェクト、Email/Password認証、事前登録したユーザーと所属情報が必要です。生徒の自己登録・招待コードでの参加を追加しました。先生は管理者による事前登録が必要で、管理者UIは未実装です。[アカウント設定](../../../docs/accounts.md) を参照してください。このMVPは1アカウント1クラス、1クラス100人までです。
 
 管理側で以下を用意します。クライアントには直接書き込みを許可しません。
 

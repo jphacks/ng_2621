@@ -15,10 +15,12 @@ class ZooHeader extends StatelessWidget {
     required this.onWallet,
     this.coins,
     this.connectionLabel = '未接続',
+    this.displayName = 'ゲスト',
   });
 
   final VoidCallback onProfile;
   final VoidCallback onWallet;
+  final String displayName;
   final int? coins;
   final String connectionLabel;
 
@@ -69,13 +71,13 @@ class ZooHeader extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'ゲスト',
+                                    displayName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(

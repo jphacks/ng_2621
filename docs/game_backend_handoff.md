@@ -1,6 +1,6 @@
 # ゲーム担当 → 学習・Firebase担当 接続仕様
 
-現状はゲーム側・モックまで実装。下記はバックエンドに必要な対応で、Functions・学習Repositoryは今回変更していません。
+`feat/account-game-storage` で、以下の購入・配置API、追加カタログ、UID別保存、招待登録を実装しました。Firebaseエミュレーターで検証済みで、本番へのデプロイは未実施です。[アカウント設定](accounts.md) を参照してください。
 全体の進め方は [フェーズ資料](game_experience_phases.md) を参照。
 
 ## 1. 確定データを返す
@@ -27,7 +27,7 @@
 
 ## 2. 配置編集を購入窓口へ渡す
 
-既存Dart型 `PurchaseRequest` に `layoutEdit` がある。以下はCallableへ渡す際のJSON案であり、現在のFirebaseアダプターには未実装。
+既存Dart型 `PurchaseRequest` に `layoutEdit` がある。以下のJSONをFirebaseアダプターからCallableへ渡す。
 
 ```json
 {

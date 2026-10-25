@@ -1,0 +1,174 @@
+{
+  "map": {
+    "columns": 20,
+    "rows": 16,
+    "tileSize": 16,
+    "tiles": [
+      ".........#..........",
+      ".........#..........",
+      ".........#..........",
+      ".........#..........",
+      ".........#..........",
+      ".........#..........",
+      ".........#..........",
+      ".........#..........",
+      "====================",
+      ".........#..........",
+      ".........#..........",
+      ".........#....~~~~~.",
+      ".........#....~~~~~.",
+      ".........#....~~~~~.",
+      ".........#....~~~~~.",
+      ".........#.........."
+    ]
+  },
+  "animals": [
+    {
+      "id": "rabbit",
+      "name": "うさぎ",
+      "imagePath": null,
+      "speed": 0.9,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFFFF0DA",
+      "evolutionIds": []
+    },
+    {
+      "id": "fox",
+      "name": "きつね",
+      "imagePath": null,
+      "speed": 1.2,
+      "movementArea": {
+        "left": 12,
+        "top": 2,
+        "right": 17,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDB8B48",
+      "evolutionIds": [
+        "evolved_fox"
+      ]
+    },
+    {
+      "id": "panda",
+      "name": "パンダ",
+      "imagePath": null,
+      "speed": 0.6,
+      "movementArea": {
+        "left": 2,
+        "top": 11,
+        "right": 7,
+        "bottom": 14
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "deer",
+      "name": "シカ",
+      "imagePath": null,
+      "speed": 0.8,
+      "movementArea": {
+        "left": 11,
+        "top": 11,
+        "right": 13,
+        "bottom": 14
+      },
+      "placeholderColor": "FFB98C5F",
+      "evolutionIds": []
+    },
+    {
+      "id": "evolved_fox",
+      "name": "進化キツネ",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 12,
+        "top": 2,
+        "right": 17,
+        "bottom": 6
+      },
+      "placeholderColor": "FFE9D8F2",
+      "evolutionIds": []
+    }
+  ],
+  "facilities": [
+    {
+      "id": "pond",
+      "tile": "water",
+      "left": 14,
+      "top": 11,
+      "width": 5,
+      "height": 4,
+      "name": "池"
+    },
+    {
+      "id": "forest",
+      "tile": "forest",
+      "left": 1,
+      "top": 1,
+      "width": 7,
+      "height": 5,
+      "name": "森エリア"
+    },
+    {
+      "id": "laboratory",
+      "name": "研究所",
+      "tile": "sprite",
+      "spriteId": "laboratory",
+      "left": 11,
+      "top": 0,
+      "width": 2,
+      "height": 2,
+      "blocksAnimalAreas": true
+    },
+    {
+      "id": "bench",
+      "name": "ベンチ",
+      "tile": "sprite",
+      "spriteId": "bench",
+      "left": 14,
+      "top": 0,
+      "width": 1,
+      "height": 1,
+      "blocksAnimalAreas": true
+    },
+    {
+      "id": "topiary",
+      "name": "植木",
+      "tile": "sprite",
+      "spriteId": "topiary",
+      "left": 16,
+      "top": 0,
+      "width": 1,
+      "height": 1,
+      "blocksAnimalAreas": true
+    },
+    {
+      "id": "fountain",
+      "name": "噴水",
+      "tile": "sprite",
+      "spriteId": "fountain",
+      "left": 11,
+      "top": 3,
+      "width": 2,
+      "height": 2,
+      "blocksAnimalAreas": true
+    },
+    {
+      "id": "flowerArch",
+      "name": "フラワーアーチ",
+      "tile": "sprite",
+      "spriteId": "flowerArch",
+      "left": 15,
+      "top": 3,
+      "width": 2,
+      "height": 2,
+      "blocksAnimalAreas": true
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import '../../game/domain/zoo_layout.dart';
+
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
@@ -255,6 +257,11 @@ class FirebaseStudyRepository extends StudyRepository {
         ownedFacilityIds: List<String>.from(
           zoo?['ownedFacilityIds'] as List? ?? [],
         ),
+        layout: zoo?['layout'] == null
+            ? ZooLayout()
+            : ZooLayout.fromJson(
+                Map<String, dynamic>.from(zoo!['layout'] as Map),
+              ),
         rewards: rewards,
         assignments: isTeacher
             ? []
@@ -339,7 +346,15 @@ class FirebaseStudyRepository extends StudyRepository {
       _pending.remove(key);
       return Map<String, dynamic>.from(result.data as Map);
     } on FirebaseFunctionsException catch (error) {
-      throw StudyFailure(error.message ?? 'サーバーで処理できませんでした', code: error.code);
+      throw StudyFailure(
+        error.message ?? 'サーバーで処理できませんでした',
+        code:
+            name == 'purchaseItem' &&
+                error.details is Map &&
+                (error.details as Map)['purchaseFailure'] == 'requestConflict'
+            ? 'purchase-request-conflict'
+            : error.code,
+      );
     } on TimeoutException {
       throw const StudyFailure('処理結果を確認できませんでした。再試行しても報酬は重複しません。');
     }
@@ -481,6 +496,21 @@ class FirebaseStudyRepository extends StudyRepository {
     try {
       final r = await _call('purchaseItem', {
         'itemId': request.itemId,
+        if (request.layoutEdit case final edit?)
+          'layoutEdit': {
+            'kind': edit.kind.name,
+            'id': edit.id,
+            if (edit.kind == LayoutEditKind.assignAnimal)
+              'enclosureId': edit.enclosureId
+            else ...{
+              'left': edit.left,
+              'top': edit.top,
+              if (edit.kind == LayoutEditKind.enclosure) ...{
+                'width': edit.width,
+                'height': edit.height,
+              },
+            },
+          },
       }, requestId: request.requestId);
       return PurchaseReceipt(
         requestId: r['requestId'] as String,
@@ -496,6 +526,8 @@ class FirebaseStudyRepository extends StudyRepository {
               ? PurchaseFailureCode.requestConflict
               : PurchaseFailureCode.alreadyOwned,
         'failed-precondition' => PurchaseFailureCode.locked,
+        'invalid-argument' => PurchaseFailureCode.invalidRequest,
+        'purchase-request-conflict' => PurchaseFailureCode.requestConflict,
         'not-found' => PurchaseFailureCode.unknownItem,
         'permission-denied' ||
         'unauthenticated' => PurchaseFailureCode.unavailable,

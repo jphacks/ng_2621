@@ -257,3 +257,109 @@ test('reward bucket forgery and rewards without fresh samples are rejected', asy
   const client=env.authenticatedContext('student_a').firestore();
   await assertFails(setDoc(doc(client,'studyDailyRewards','student_a_fake'),{eligibleMs:999999999,coinsGranted:30}));
 });
+
+test('student invitation registration is atomic, repeatable, limited and cannot grant teacher role', async () => {
+  const {invitationHash} = require('../accounts');
+  const code = '1234567890abcdef1234567890abcdef';
+  const invite = db.doc(`classInvitations/${invitationHash(code)}`);
+  await invite.set({organizationId: 'org_a', classId: 'class_a', role: 'student', expiresAt: require('firebase-admin/firestore').Timestamp.fromMillis(Date.now() + 60000), maxUses: 1, useCount: 0});
+  await Promise.all(Array.from({length: 3}, () => service.joinClass(request('new_student', {displayName: '新しい生徒', invitationCode: code, role: 'teacher', coins: 9999}))));
+  assert.equal((await db.doc('users/new_student').get()).data().displayName, '新しい生徒');
+  assert.equal((await db.doc('classMemberships/class_a_new_student').get()).data().role, 'student');
+  assert.equal((await db.doc('zoos/new_student').get()).data().coins, 0);
+  assert.equal((await invite.get()).data().useCount, 1);
+  await assert.rejects(service.joinClass(request('new_other', {displayName: '別の生徒', invitationCode: code})), denied);
+  await assert.rejects(service.joinClass(request(null, {displayName: '生徒', invitationCode: code})), denied);
+  await assert.rejects(service.joinClass(request('student_a', {displayName: '所属変更', invitationCode: code})), denied);
+  await assert.rejects(service.joinClass(request('new_other', {displayName: ' ', invitationCode: code})), denied);
+  await invite.update({maxUses: 10, role: 'teacher'});
+  await assert.rejects(service.joinClass(request('new_other', {displayName: '先生化', invitationCode: code})), denied);
+  await invite.update({role: 'student', classId: 123});
+  await assert.rejects(service.joinClass(request('new_other', {displayName: '設定不正', invitationCode: code})), denied);
+  await invite.update({classId: 'class_a'});
+  await invite.update({role: 'student', expiresAt: require('firebase-admin/firestore').Timestamp.fromMillis(0)});
+  await assert.rejects(service.joinClass(request('new_other', {displayName: '期限切れ', invitationCode: code})), denied);
+});
+
+test('account game layout charges atomically, retains ownership and rejects conflicting replay', async () => {
+  await db.doc('zoos/student_a').set({organizationId: 'org_a', classId: 'class_a', studentId: 'student_a', revision: 1, coins: 2000, ownedAnimalIds: [], ownedFacilityIds: []});
+  const edit = (requestId, layoutEdit, uid = 'student_a') => service.purchaseItem(request(uid, {requestId, itemId: 'zoo_layout', layoutEdit}));
+  const pen = {kind: 'enclosure', id: 'p1', left: 0, top: 0, width: 4, height: 4};
+  const receipts = await Promise.all(Array.from({length: 4}, () => edit('pen', pen)));
+  assert.equal(receipts[0].price, 80);
+  assert.equal((await db.doc('zoos/student_a').get()).data().coins, 1920);
+  assert.equal((await edit('expand', {...pen, width: 5})).price, 20);
+  await assert.rejects(edit('pen', {...pen, left: 1}), error => error.code === 'already-exists' && error.details.purchaseFailure === 'requestConflict');
+  await assert.rejects(edit('shrink', {...pen, width: 3}), denied);
+  await assert.rejects(edit('road', {...pen, id: 'p2', left: 8}), denied);
+  await assert.rejects(edit('assign', {kind: 'assignAnimal', id: 'rabbit', enclosureId: 'p1'}), denied);
+  await service.purchaseItem(request('student_a', {requestId: 'rabbit', itemId: 'rabbit'}));
+  await edit('assign', {kind: 'assignAnimal', id: 'rabbit', enclosureId: 'p1'});
+  await service.purchaseItem(request('student_a', {requestId: 'lab', itemId: 'laboratory'}));
+  await edit('place-lab', {kind: 'facility', id: 'laboratory', left: 11, top: 0});
+  await assert.rejects(edit('overlap-lab', {...pen, id: 'p3', left: 11}), denied);
+  await assert.rejects(edit('move-lab-pen', {kind: 'facility', id: 'laboratory', left: 1, top: 1}), denied);
+  await assert.rejects(edit('teacher-layout', pen, 'teacher_a'), denied);
+  const saved = (await db.doc('zoos/student_a').get()).data();
+  assert.equal(saved.coins, 1400);
+  assert.equal(saved.layout.animalEnclosures.rabbit, 'p1');
+  assert.equal(saved.layout.facilities[0].facilityId, 'laboratory');
+  assert.deepEqual(saved.ownedAnimalIds, ['rabbit']);
+  // The existing study reward transaction must preserve layout and purchases.
+  await Promise.all([
+    service.saveStudySession(request('student_a', {record: rewardedRecord('account-keep', 120)})),
+    service.purchaseItem(request('student_a', {requestId: 'concurrent-fox', itemId: 'fox'})),
+    edit('concurrent-move', {kind: 'facility', id: 'laboratory', left: 15, top: 5}),
+  ]);
+  // A new server read restores both concurrent writes without overwriting layout.
+  const restored = (await db.doc('zoos/student_a').get()).data();
+  assert.equal(restored.coins, 1151);
+  assert.deepEqual(new Set(restored.ownedAnimalIds), new Set(['rabbit', 'fox']));
+  assert.deepEqual(restored.layout.enclosures, saved.layout.enclosures);
+  assert.deepEqual(restored.layout.animalEnclosures, saved.layout.animalEnclosures);
+  assert.deepEqual(restored.layout.facilities, [{facilityId: 'laboratory', left: 15, top: 5}]);
+});
+
+test('account settings and zoo data are isolated; wallet and roles remain server-only', async () => {
+  const student = env.authenticatedContext('student_a').firestore();
+  const otherDevice = env.authenticatedContext('student_a').firestore();
+  const other = env.authenticatedContext('student_b').firestore();
+  const guest = env.unauthenticatedContext().firestore();
+  await assertSucceeds(setDoc(doc(student, 'gamePreferences/student_a'), {goalId: 'fox', seen: ['study:s1']}));
+  assert.equal((await assertSucceeds(getDoc(doc(otherDevice, 'gamePreferences/student_a')))).data().goalId, 'fox');
+  await assertFails(getDoc(doc(other, 'gamePreferences/student_a')));
+  await assertFails(getDoc(doc(guest, 'gamePreferences/student_a')));
+  await assertFails(setDoc(doc(student, 'gamePreferences/student_b'), {goalId: null, seen: []}));
+  await assertFails(setDoc(doc(student, 'gamePreferences/student_a'), {goalId: 'fox', seen: [], coins: 9999}));
+  await assertFails(setDoc(doc(student, 'users/student_a'), {role: 'teacher'}));
+  await assertFails(setDoc(doc(student, 'zoos/student_a'), {coins: 9999}));
+  await assertFails(getDoc(doc(other, 'zoos/student_a')));
+  await assertFails(getDocs(collection(student, 'classInvitations')));
+});
+
+test('server game catalog and map match the shipped Flutter assets', () => {
+  assert.deepEqual(require('../catalog.json'), JSON.parse(fs.readFileSync(path.join(__dirname, '../../assets/zoo/shop_catalog.json'), 'utf8')));
+  assert.deepEqual(require('../game_world.json'), JSON.parse(fs.readFileSync(path.join(__dirname, '../../assets/zoo/world.json'), 'utf8')));
+});
+
+test('Auth signup and callable invitation enrollment create a restorable zero-coin account', async () => {
+  const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+  const email = `new-${Date.now()}@example.test`;
+  const signup = await fetch(`http://${authHost}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email, password: 'ZooStudyDemo123!', returnSecureToken: true})});
+  assert.equal(signup.status, 200);
+  const account = await signup.json();
+  const response = await fetch(`http://127.0.0.1:5001/${projectId}/asia-northeast1/joinClass`, {method: 'POST', headers: {'Content-Type': 'application/json', Authorization: `Bearer ${account.idToken}`}, body: JSON.stringify({data: {displayName: '登録テスト', invitationCode: '0123456789abcdef0123456789abcdef'}})});
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  assert.equal((await service.sessionInfo(request(account.localId))).displayName, '登録テスト');
+  const login = await fetch(`http://${authHost}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-key`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email, password: 'ZooStudyDemo123!', returnSecureToken: true})});
+  assert.equal((await login.json()).localId, account.localId);
+  assert.equal((await db.doc(`zoos/${account.localId}`).get()).data().coins, 0);
+});
+
+test('enrollment respects the same 100-student class limit as assignment publishing', async () => {
+  const batch = db.batch();
+  for (let i = 0; i < 98; i++) batch.set(db.doc(`classMemberships/class_a_filled_${i}`), {organizationId: 'org_a', classId: 'class_a', userId: `filled_${i}`, role: 'student'});
+  await batch.commit();
+  await assert.rejects(service.joinClass(request('over_capacity', {displayName: '上限テスト', invitationCode: '0123456789abcdef0123456789abcdef'})), error => error.code === 'resource-exhausted');
+  assert.equal((await db.doc('users/over_capacity').get()).exists, false);
+});

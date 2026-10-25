@@ -29,6 +29,10 @@ async function seed() {
     await db.doc(`classes/${classId}`).set({organizationId, name: classId === 'class_a' ? 'デモクラス' : '別の塾のクラス'});
     await db.doc(`organizations/${organizationId}`).set({name: organizationId});
   }
+  const code = '0123456789abcdef0123456789abcdef';
+  const hash = require('node:crypto').createHash('sha256').update(code).digest('hex');
+  const {Timestamp} = requireFunctions('firebase-admin/firestore');
+  await db.doc(`classInvitations/${hash}`).set({organizationId: 'org_a', classId: 'class_a', role: 'student', maxUses: 100, useCount: 0, expiresAt: Timestamp.fromMillis(Date.now() + 86400000)});
   return users;
 }
 module.exports = {seed};

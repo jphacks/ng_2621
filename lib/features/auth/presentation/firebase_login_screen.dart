@@ -1,3 +1,6 @@
+import 'account_form.dart';
+import '../data/cloud_game_preferences.dart';
+
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,8 +26,7 @@ class FirebaseLoginScreen extends StatefulWidget {
 }
 
 class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
+  String? _message;
   FirebaseStudyRepository? _repository;
   StreamSubscription<User?>? _authSubscription;
   bool _busy = false;
@@ -40,6 +42,7 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
         if (user != null) _open();
         return;
       }
+      if (mounted) setState(() {});
       final repository = _repository;
       if (mounted && repository != null && user?.uid != repository.uid) {
         setState(() {
@@ -51,7 +54,7 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
     });
   }
 
-  Future<void> _open() async {
+  Future<void> _open({String? email, String? password}) async {
     setState(() {
       _busy = true;
       _error = null;
@@ -60,8 +63,8 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
     try {
       if (FirebaseAuth.instance.currentUser == null) {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _email.text.trim(),
-          password: _password.text,
+          email: email!,
+          password: password!,
         );
       }
       final preferences = await SharedPreferences.getInstance();
@@ -76,11 +79,6 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
         pending.dispose();
         pending = null;
         throw StateError('ログイン状態が変わりました。再試行してください。');
-      }
-      if (pending.isTeacher != widget.isTeacher) {
-        pending.dispose();
-        pending = null;
-        throw StateError('アカウントの役割と選択が異なります。戻って選び直すか、ログアウトしてください。');
       }
       if (!mounted) {
         pending.dispose();
@@ -104,12 +102,106 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
     }
   }
 
+  Future<void> _register(
+    String email,
+    String password,
+    String name,
+    String code,
+  ) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      await _enroll(name, code);
+      if (mounted) await _open();
+    } on FirebaseAuthException catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error.code == 'email-already-in-use'
+              ? 'このメールアドレスは登録済みです。ログインしてください。'
+              : 'アカウントを作成できませんでした。入力と通信を確認してください。',
+        );
+      }
+    } on FirebaseFunctionsException catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error.message ?? 'クラスに参加できませんでした。招待コードを確認して再試行してください。',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = '登録・参加を確認できませんでした。ログイン中なら招待コードで参加を再試行してください。');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _enroll(String name, String code) =>
+      FirebaseFunctions.instanceFor(region: 'asia-northeast1')
+          .httpsCallable('joinClass')
+          .call<dynamic>({'displayName': name, 'invitationCode': code})
+          .timeout(const Duration(seconds: 20))
+          .then((_) {});
+  Future<void> _join(String name, String code) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await _enroll(name, code);
+      if (mounted) await _open();
+    } on FirebaseFunctionsException catch (error) {
+      if (mounted) setState(() => _error = error.message ?? 'クラスに参加できませんでした');
+    } catch (_) {
+      if (mounted) setState(() => _error = 'クラスに参加できませんでした。通信を確認してください。');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _resetPassword(String email) async {
+    if (_busy) return;
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+      setState(() => _error = 'メールアドレスを入力してください');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (mounted) {
+        setState(() => _message = '登録されている場合は再設定メールが送信されます。メールをご確認ください。');
+      }
+    } on FirebaseAuthException catch (error) {
+      if (mounted) {
+        setState(() {
+          if (error.code == 'user-not-found') {
+            _message = '登録されている場合は再設定メールが送信されます。メールをご確認ください。';
+          } else {
+            _error = '送信できませんでした。通信を確認してください。';
+          }
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   void dispose() {
     _authSubscription?.cancel();
     _repository?.dispose();
-    _email.dispose();
-    _password.dispose();
+
     super.dispose();
   }
 
@@ -118,7 +210,14 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
     final repository = _repository;
     if (repository != null) {
       return ZooScreen(
+        key: ValueKey(repository.uid),
         gameRepository: repository,
+        gamePreferences: CloudGamePreferences(
+          uid: repository.uid,
+          organizationId: repository.organizationId,
+        ),
+        accountName: repository.identity['displayName'] as String?,
+        accountEmail: FirebaseAuth.instance.currentUser?.email,
         assignmentStore: repository,
         isTeacher: repository.isTeacher,
         onSignOut: () async {
@@ -126,8 +225,7 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
         },
       );
     }
-    if (_restoringAuth ||
-        (_busy && FirebaseAuth.instance.currentUser != null)) {
+    if (_restoringAuth) {
       return const Scaffold(
         body: Center(
           child: Column(
@@ -142,7 +240,7 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.isTeacher ? '先生' : '生徒'}としてログイン')),
+      appBar: AppBar(title: const Text('アカウントにログイン')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
@@ -155,41 +253,41 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
               ),
               if (widget.emulator)
                 const Text(
-                  '先生：teacher@example.test\n生徒：student@example.test\nデモ専用パスワード：ZooStudyDemo123!',
+                  '先生：teacher@example.test\n生徒：student@example.test\nデモ専用パスワード：ZooStudyDemo123!\n新規登録の招待コード：0123456789abcdef0123456789abcdef',
                 ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Text(_error!),
                 ),
-              if (FirebaseAuth.instance.currentUser == null) ...[
-                TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'メールアドレス'),
-                ),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'パスワード'),
-                ),
-              ] else
-                Text('ログイン中：${FirebaseAuth.instance.currentUser!.email}'),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _busy ? null : _open,
-                child: Text(_busy ? '接続中…' : 'ログイン'),
-              ),
+              if (_message != null) Text(_message!),
               if (FirebaseAuth.instance.currentUser != null)
-                TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () async {
-                          await FirebaseAuth.instance.signOut();
-                          if (mounted) setState(() => _error = null);
-                        },
-                  child: const Text('ログアウトして別のアカウントで入る'),
+                FilledButton(
+                  onPressed: _busy ? null : () => _open(),
+                  child: const Text('登録済みのアカウントで続ける'),
                 ),
+              const Text('先生のアカウントは管理者が用意します。役割は登録済みの権限から判定します。'),
+              AccountForm(
+                isTeacher: widget.isTeacher,
+                busy: _busy,
+                signedInEmail: FirebaseAuth.instance.currentUser == null
+                    ? null
+                    : FirebaseAuth.instance.currentUser!.email ?? 'アカウント',
+                onSignIn: (email, password) =>
+                    _open(email: email, password: password),
+                onRegister: _register,
+                onJoin: _join,
+                onReset: _resetPassword,
+                onSignOut: () async {
+                  await FirebaseAuth.instance.signOut();
+                  if (mounted) {
+                    setState(() {
+                      _error = null;
+                      _message = null;
+                    });
+                  }
+                },
+              ),
             ],
           ),
         ),

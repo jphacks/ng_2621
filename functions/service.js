@@ -2,7 +2,8 @@
 const {createHash} = require('node:crypto');
 const {getFirestore, FieldValue, Timestamp} = require('firebase-admin/firestore');
 const {HttpsError} = require('firebase-functions/v2/https');
-const catalog = require('./catalog.json').items;
+const {createGamePurchase} = require('./game_purchase');
+const {createAccountService} = require('./accounts');
 const {verifyAttachments} = require('./attachments');
 const {normalizeStudyRecord} = require('./study_sessions');
 const subjects = new Set(['japanese', 'mathematics', 'english', 'science', 'socialStudies', 'other']);
@@ -55,7 +56,7 @@ function wallet(data, context) {
   if (!data) return {organizationId: context.organizationId, classId: context.classId,
     studentId: context.uid, coins: 0, revision: 0, ownedAnimalIds: [], ownedFacilityIds: []};
   if (data.organizationId !== context.organizationId || data.studentId !== context.uid ||
-      data.classId !== context.classId || !Number.isSafeInteger(data.coins) || data.coins < 0) {
+      data.classId !== context.classId || !Number.isSafeInteger(data.coins) || data.coins < 0 || !Number.isSafeInteger(data.revision) || data.revision < 0 || !Array.isArray(data.ownedAnimalIds) || !Array.isArray(data.ownedFacilityIds)) {
     fail('failed-precondition', '残高データを確認してください');
   }
   return data;
@@ -63,6 +64,8 @@ function wallet(data, context) {
 
 function createService(db = getFirestore()) {
   return {
+    ...createAccountService(db),
+    purchaseItem: createGamePurchase(db, {session, wallet, stamp, contextFields, uidOf, id}),
     async sessionInfo(request) {
       const uid = uidOf(request);
       const context = await db.runTransaction(tx => session(tx, db, uid));
@@ -206,33 +209,6 @@ function createService(db = getFirestore()) {
           kind: 'approve', amount, confirmedAt: stamp()});
         tx.set(zoo.ref, {...current, coins: current.coins + amount, revision: current.revision + 1, updatedAt: stamp()});
         return complete(tx, op, {rewardAmount: amount});
-      });
-    },
-
-    async purchaseItem(request) {
-      const uid = uidOf(request), data = request.data || {};
-      const requestId = id(data.requestId, 'リクエスト'), itemId = id(data.itemId, '商品');
-      const item = catalog.find(i => i.id === itemId);
-      if (!item) fail('not-found', '商品が見つかりません');
-      return db.runTransaction(async tx => {
-        const context = await session(tx, db, uid, 'student');
-        const [transaction, zoo] = await tx.getAll(ref(db, 'shopTransactions', `${uid}_${requestId}`), ref(db, 'zoos', uid));
-        if (transaction.exists) {
-          if (transaction.data().itemId !== itemId) fail('already-exists', '購入内容が一致しません');
-          return transaction.data().receipt;
-        }
-        const current = wallet(zoo.data(), context);
-        const field = item.kind === 'animal' ? 'ownedAnimalIds' : 'ownedFacilityIds';
-        if (current[field].includes(item.targetId)) fail('already-exists', 'すでに購入済みです');
-        if (!(item.requiredAnimalIds || []).every(a => current.ownedAnimalIds.includes(a)) ||
-            current.ownedAnimalIds.length < (item.minimumAnimalSpecies || 0)) fail('failed-precondition', '解放条件を満たしていません');
-        if (current.coins < item.price) fail('resource-exhausted', 'コインが足りません');
-        const revision = current.revision + 1;
-        const receipt = {requestId, itemId, price: item.price, revision};
-        tx.set(zoo.ref, {...current, coins: current.coins - item.price, revision,
-          [field]: [...current[field], item.targetId], updatedAt: stamp()});
-        tx.create(transaction.ref, {...contextFields(context), studentId: uid, itemId, receipt, createdAt: stamp()});
-        return receipt;
       });
     },
   };

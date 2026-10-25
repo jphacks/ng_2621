@@ -1,3 +1,4 @@
+import 'package:zoo_study/core/storage/game_preferences_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zoo_study/core/storage/draft_storage.dart';
 import 'package:zoo_study/features/game/data/mock_game_repository.dart';
@@ -24,6 +25,22 @@ class MemoryPreferences implements DraftStorage {
   }
 }
 
+class ManagedPreferences extends MemoryPreferences
+    implements GamePreferencesStorage {
+  String? remoteGoal;
+  int explicitGoalWrites = 0;
+  @override
+  Future<void> writeGoal(String key, String? goalId) async {
+    remoteGoal = goalId;
+    explicitGoalWrites++;
+  }
+
+  @override
+  Future<void> write(String key, Map<String, dynamic> value) async {
+    data[key] = {'goalId': remoteGoal, 'seen': value['seen']};
+  }
+}
+
 ConfirmedGameReward reward(GameSnapshot state, String id, {String? student}) =>
     ConfirmedGameReward(
       organizationId: state.organizationId,
@@ -33,6 +50,23 @@ ConfirmedGameReward reward(GameSnapshot state, String id, {String? student}) =>
       source: '自習',
     );
 void main() {
+  test('cloud goal writes are explicit and background receipts cannot overwrite another device goal', () async {
+    final storage = ManagedPreferences();
+    final experience = GameExperience(storage: storage);
+    addTearDown(experience.dispose);
+    await experience.receive(
+      MockGameRepository.snapshotFor(DemoScenario.assigned),
+    );
+    await experience.setGoal('fox');
+    expect(storage.remoteGoal, 'fox');
+    storage.remoteGoal = 'rabbit';
+    await experience.receive(
+      MockGameRepository.snapshotFor(DemoScenario.submitted, revision: 2),
+    );
+    expect(storage.explicitGoalWrites, 1);
+    expect(storage.remoteGoal, 'rabbit');
+  });
+
   test(
     'failed preference reads do not overwrite existing goals and can recover',
     () async {

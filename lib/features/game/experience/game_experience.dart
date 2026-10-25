@@ -1,3 +1,5 @@
+import '../../../core/storage/game_preferences_storage.dart';
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -128,7 +130,17 @@ class GameExperience extends ChangeNotifier {
   Future<void> setGoal(String? id) => _serial(() async {
     if (_snapshot == null) return;
     goalId = id;
-    await _persist();
+    final target = storage;
+    if (target is GamePreferencesStorage) {
+      try {
+        await target.writeGoal(_key, id);
+        persistenceError = null;
+      } catch (_) {
+        persistenceError = '目標を保存できませんでした。再試行してください';
+      }
+    } else {
+      await _persist();
+    }
     _notify();
   });
   void dismissReward(String id) {
