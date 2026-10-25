@@ -47,17 +47,27 @@ class ZooScreen extends StatefulWidget {
     this.assignmentStore,
     this.placementRepository,
     this.onSignOut,
+    this.onManageAccounts,
     this.gamePreferences,
     this.accountName,
     this.accountEmail,
+    this.accountClassName,
+    this.accountStorageDescription,
   });
 
   final DraftStorage? gamePreferences;
-  final String? accountName, accountEmail;
+  final String? accountName,
+      accountEmail,
+      accountClassName,
+      accountStorageDescription;
+  String get displayName => accountName?.trim().isNotEmpty == true
+      ? accountName!.trim()
+      : (isTeacher ? '先生' : 'デモ生徒');
   final GameRepository? gameRepository;
   final bool isTeacher;
   final StudyRepository? assignmentStore;
   final Future<void> Function()? onSignOut;
+  final Future<void> Function()? onManageAccounts;
   final FacilityPlacementRepository? placementRepository;
 
   @override
@@ -446,13 +456,16 @@ class _ZooScreenState extends State<ZooScreen>
       children: [
         SpriteTile(
           leading: const ZooUiSprite(part: ZooUiPart.smile, scale: 3),
-          title: Text(widget.accountName ?? 'ゲスト'),
-          subtitle: Text(widget.accountEmail ?? 'レベル 1'),
+          title: Text(widget.displayName),
+          subtitle: Text(
+            widget.accountClassName ?? widget.accountEmail ?? 'レベル 1',
+          ),
         ),
         Text(
-          widget.accountName == null
-              ? '端末内デモのプロフィールです。'
-              : 'このアカウントのデータをFirebaseに保存します。',
+          widget.accountStorageDescription ??
+              (widget.accountName == null
+                  ? '端末内デモのプロフィールです。'
+                  : 'このアカウントのデータをFirebaseに保存します。'),
         ),
       ],
     );
@@ -793,6 +806,12 @@ class _ZooScreenState extends State<ZooScreen>
           subtitle: const Text('外部の確定結果を模擬受信'),
           onTap: _showDemoResults,
         ),
+      if (widget.isTeacher && widget.onManageAccounts != null)
+        SpriteTile(
+          title: const Text('クラス・生徒管理'),
+          leading: const Icon(Icons.groups),
+          onTap: widget.onManageAccounts,
+        ),
       if (widget.onSignOut != null)
         SpriteTile(
           panelStyle: SpritePanelStyle.cream,
@@ -1022,7 +1041,7 @@ class _ZooScreenState extends State<ZooScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ZooHeader(
-                                displayName: widget.accountName ?? 'ゲスト',
+                                displayName: widget.displayName,
                                 onProfile: _showProfile,
                                 onWallet: _showWallet,
                                 coins: _game.snapshot?.coins,

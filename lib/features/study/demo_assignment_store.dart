@@ -22,13 +22,25 @@ class DemoAssignmentStore extends StudyRepository
   DemoAssignmentStore({
     DateTime Function()? clock,
     this.storage,
+    this.studentId = 'demo_student',
+    this.studentName = 'デモ生徒',
     AttachmentVault? attachmentVault,
-  }) : _clock = clock ?? DateTime.now,
+  }) : _game = MockGameRepository(
+         initialSnapshot: GameSnapshot(
+           organizationId: 'demo_org',
+           studentId: studentId,
+           classIds: ['demo_class'],
+           revision: 0,
+           coins: 0,
+           confirmedAt: DateTime.now(),
+         ),
+       ),
+       _clock = clock ?? DateTime.now,
        _attachmentVault = attachmentVault ?? MemoryAttachmentVault() {
     _game.receiveConfirmedSnapshot(
       GameSnapshot(
         organizationId: 'demo_org',
-        studentId: 'demo_student',
+        studentId: studentId,
         classIds: ['demo_class'],
         revision: 1,
         coins: 0,
@@ -36,6 +48,9 @@ class DemoAssignmentStore extends StudyRepository
       ),
     );
   }
+  final String studentId, studentName;
+  @override
+  List<StudyStudent> get students => [StudyStudent(studentId, studentName)];
   final DraftStorage? storage;
   final AttachmentVault _attachmentVault;
   final _knownAttachments = <String, StudyAttachment>{};
@@ -57,16 +72,22 @@ class DemoAssignmentStore extends StudyRepository
   @override
   String get storageExplanation => storage == null
       ? super.storageExplanation
-      : 'この端末に保存します。先生と生徒は同じデモデータを共有します。クラウド同期はありません。';
+      : studentId == 'demo_student'
+      ? 'この端末に保存します。先生と生徒は同じデモデータを共有します。クラウド同期はありません。'
+      : 'この生徒のデータを端末内に保存します。別端末や先生の課題とは自動同期しません。';
   @override
   String? get storageError => _saveError;
 
   static Future<DemoAssignmentStore> open(
     DraftStorage storage, {
     AttachmentVault? attachmentVault,
+    String studentId = 'demo_student',
+    String studentName = 'デモ生徒',
   }) async {
     final store = DemoAssignmentStore(
       storage: storage,
+      studentId: studentId,
+      studentName: studentName,
       attachmentVault: attachmentVault,
     );
     try {
@@ -81,6 +102,7 @@ class DemoAssignmentStore extends StudyRepository
 
   Map<String, dynamic> _serialize() => {
     'schemaVersion': 1,
+    'studyAdvice': _advice.values.map((a) => a.toJson()).toList(),
     'studyDailyMs': _studyDailyMs,
     'studyCoins': _studyCoins,
     'studyRecords': _studyRecords.values.map((r) => r.toJson()).toList(),
@@ -133,8 +155,14 @@ class DemoAssignmentStore extends StudyRepository
       Map<String, dynamic>.from(saved['snapshot'] as Map),
     );
     if (restored.organizationId != 'demo_org' ||
-        restored.studentId != 'demo_student') {
+        restored.studentId != studentId) {
       throw const FormatException('Invalid demo identity');
+    }
+    for (final raw in saved['studyAdvice'] as List? ?? []) {
+      final advice = StudyAdvice.fromJson(
+        Map<String, dynamic>.from(raw as Map),
+      );
+      _advice[advice.id] = advice;
     }
     _sequence = saved['sequence'] as int;
     _studyDailyMs.addAll(
@@ -178,6 +206,8 @@ class DemoAssignmentStore extends StudyRepository
       final id = s['assignmentId'] as String;
       assignmentFor(id);
       _submissions[id] = DemoSubmission(
+        studentId: studentId,
+        studentName: studentName,
         assignmentId: id,
         answerText: s['answerText'] as String,
         status: AssignmentState.parse(s['status'] as String),
@@ -241,9 +271,76 @@ class DemoAssignmentStore extends StudyRepository
   }
 
   final DateTime Function() _clock;
-  final _game = MockGameRepository();
+  final MockGameRepository _game;
   final _studyDailyMs = <String, int>{};
   final _studyCoins = <String, int>{};
+  final _advice = <String, StudyAdvice>{};
+  @override
+  Future<List<StudyAdvice>> loadStudyAdvice({required bool teacher}) async =>
+      _advice.values.where((a) => teacher || a.published).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  @override
+  Future<StudyAdvice> generateStudyAdvice(String studentId) async {
+    if (!students.any((s) => s.id == studentId)) {
+      throw const StudyFailure('生徒が見つかりません');
+    }
+    final now = _clock();
+    final records = _studyRecords.values
+        .where(
+          (r) =>
+              r.studentId == studentId &&
+              !r.startedAt.isBefore(now.subtract(const Duration(days: 7))) &&
+              !r.endedAt.isAfter(now),
+        )
+        .toList();
+    final minutes = records.fold<int>(0, (sum, r) => sum + r.activeMs) ~/ 60000;
+    final missing = records.isEmpty;
+    final advice = StudyAdvice(
+      id: 'advice_${++_sequence}',
+      studentId: studentId,
+      createdAt: now,
+      summary: missing
+          ? '直近7日間の学習モードの記録はありません。未記録の学習については分かりません。'
+          : '直近7日間に学習モードを${records.length}回、合計$minutes分利用しています。',
+      teacherNote: missing
+          ? '記録だけでは判断できません。学習の様子や困りごとを本人に確認してください。'
+          : '時間は端末の利用記録です。集中度や理解度は判断せず、取り組んだ内容を本人に確認してください。',
+      message: missing
+          ? 'べんきょうで、こまっていることはあるかな？ せんせいにおしえてね。'
+          : 'べんきょうのじかんをつくれたね！ むずかしかったところがあれば、せんせいにおしえてね。',
+      source: 'template',
+    );
+    _advice[advice.id] = advice;
+    _persist();
+    await flush();
+    return advice;
+  }
+
+  @override
+  Future<void> publishStudyAdvice(String id, String message) async {
+    final a = _advice[id];
+    if (a == null) throw const StudyFailure('下書きが見つかりません');
+    if (message.trim().isEmpty || message.trim().length > 1000) {
+      throw const StudyFailure('1〜1000文字で入力してください');
+    }
+    if (a.published) {
+      if (message.trim() == a.message) return;
+      throw const StudyFailure('送信済みのアドバイスは変更できません');
+    }
+    _advice[id] = StudyAdvice(
+      id: a.id,
+      studentId: a.studentId,
+      createdAt: a.createdAt,
+      summary: a.summary,
+      teacherNote: a.teacherNote,
+      message: message.trim(),
+      source: a.source,
+      publishedAt: _clock(),
+    );
+    _persist();
+    await flush();
+  }
+
   final _studyRecords = <String, StudyRecord>{};
   @override
   Future<List<StudyRecord>> loadStudyRecords() async =>
@@ -258,6 +355,11 @@ class DemoAssignmentStore extends StudyRepository
         ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
   @override
   Future<int> saveStudyRecord(StudyRecord record) async {
+    record = StudyRecord.fromJson({
+      ...record.toJson(),
+      'studentId': studentId,
+      'studentName': studentName,
+    });
     record.validate();
     final existing = _studyRecords[record.id];
     if (existing != null &&
@@ -296,7 +398,7 @@ class DemoAssignmentStore extends StudyRepository
   List<DemoAssignment> get assignments => List.unmodifiable(_assignments);
   @override
   DemoSubmission? submissionFor(String id, {String? studentId}) =>
-      studentId == null || studentId == 'demo_student'
+      studentId == null || studentId == this.studentId
       ? _submissions[id]
       : null;
   @override
@@ -449,6 +551,8 @@ class DemoAssignmentStore extends StudyRepository
     }
     final now = _clock();
     _submissions[id] = DemoSubmission(
+      studentId: studentId,
+      studentName: studentName,
       assignmentId: id,
       answerText: text,
       attachments: List.unmodifiable(attachments),
@@ -474,7 +578,7 @@ class DemoAssignmentStore extends StudyRepository
     int? expectedVersion,
   }) {
     _requireRole(role, DemoStudyRole.teacher);
-    if (studentId != null && studentId != 'demo_student') {
+    if (studentId != null && studentId != this.studentId) {
       throw const StudyFailure('対象の生徒が見つかりません');
     }
     assignmentFor(id);
@@ -492,6 +596,8 @@ class DemoAssignmentStore extends StudyRepository
     }
     final now = _clock();
     _submissions[id] = DemoSubmission(
+      studentId: this.studentId,
+      studentName: studentName,
       assignmentId: id,
       answerText: previous.answerText,
       attachments: previous.attachments,

@@ -54,3 +54,7 @@ config/firebase.local.json
 *-debug.log
 *-debug.*.log
 service-account*.json
+
+# Server AI credentials and local configuration
+functions/.secret.local
+functions/.env*

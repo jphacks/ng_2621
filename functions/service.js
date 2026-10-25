@@ -34,7 +34,7 @@ async function session(tx, db, uid, requiredRole) {
       !['teacher', 'student'].includes(member.data().role) || (requiredRole && member.data().role !== requiredRole)) {
     fail('permission-denied', 'このクラスの操作権限がありません');
   }
-  return {uid, organizationId, classId, role: member.data().role, displayName: user.data().displayName || 'ユーザー'};
+  return {uid, organizationId, classId, role: member.data().role, className: classroom.data().name || 'クラス', displayName: user.data().displayName || 'ユーザー'};
 }
 function inScope(assignment, context) {
   if (!assignment || assignment.organizationId !== context.organizationId || assignment.classId !== context.classId || assignment.status !== 'published') {
@@ -62,9 +62,11 @@ function wallet(data, context) {
   return data;
 }
 
-function createService(db = getFirestore()) {
+function createService(db = getFirestore(), adviceOptions = {}) {
   return {
+    ...require('./study_advice').createAdviceService(db, {session, uidOf}, adviceOptions),
     ...createAccountService(db),
+    ...require('./student_codes').createStudentCodeService(db, {session, uidOf}),
     purchaseItem: createGamePurchase(db, {session, wallet, stamp, contextFields, uidOf, id}),
     async sessionInfo(request) {
       const uid = uidOf(request);

@@ -271,7 +271,7 @@ void main() {
         MaterialApp(home: StudyRecordsScreen(store: store, isTeacher: true)),
       );
       await tester.pumpAndSettle();
-      expect(find.text('デモ生徒'), findsOneWidget);
+      expect(find.text('デモ生徒'), findsWidgets);
       expect(find.text('判定方式：顔の姿勢'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       store.dispose();

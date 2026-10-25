@@ -1,3 +1,5 @@
+import 'advice/study_advice.dart';
+export 'advice/study_advice.dart';
 import 'attachments/study_attachment.dart';
 import 'study_detector/study_record.dart';
 export 'attachments/study_attachment.dart';
@@ -29,6 +31,12 @@ abstract class StudyRepository extends ChangeNotifier
   DraftStorage? get drafts => null;
   Future<void> flush() async {}
   Future<void> refresh() async {}
+  Future<List<StudyAdvice>> loadStudyAdvice({required bool teacher}) async =>
+      [];
+  Future<StudyAdvice> generateStudyAdvice(String studentId) async =>
+      throw const StudyFailure('アドバイス作成に未対応です');
+  Future<void> publishStudyAdvice(String id, String message) async =>
+      throw const StudyFailure('アドバイス送信に未対応です');
   Future<List<StudyRecord>> loadStudyRecords() async => [];
   Future<int> saveStudyRecord(StudyRecord record) async =>
       throw const StudyFailure('学習記録の保存に未対応です');

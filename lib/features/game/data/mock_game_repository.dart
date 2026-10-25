@@ -16,10 +16,11 @@ enum DemoScenario { assigned, submitted, needsRevision, resubmitted, approved }
 class MockGameRepository implements GameRepository, ShopRepository {
   MockGameRepository({
     DemoScenario scenario = DemoScenario.assigned,
+    GameSnapshot? initialSnapshot,
     Future<ShopCatalog> Function()? catalogLoader,
     int bonusCoins = 0,
     Future<ZooWorld> Function()? worldLoader,
-  }) : _current = _initialSnapshot(scenario, bonusCoins),
+  }) : _current = initialSnapshot ?? _initialSnapshot(scenario, bonusCoins),
        _catalogLoader = catalogLoader ?? loadShopCatalog,
        _worldLoader = worldLoader ?? ZooRepository().load;
 

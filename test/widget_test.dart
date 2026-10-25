@@ -48,7 +48,7 @@ void main() {
     (tester) async {
       await loadZoo(tester);
       expect(find.text('ZooっとStudy'), findsOneWidget);
-      expect(find.text('ゲスト'), findsOneWidget);
+      expect(find.text('デモ生徒'), findsOneWidget);
       expect(find.text('Lv.1'), findsOneWidget);
       expect(find.text('100'), findsOneWidget);
       expect(find.byType(ZooMap), findsOneWidget);
@@ -56,7 +56,7 @@ void main() {
         expect(find.byKey(ValueKey(id)), findsNothing);
       }
       final viewport = tester.getRect(find.byType(InteractiveViewer));
-      expect(tester.getBottomLeft(find.text('ゲスト')).dy, lessThan(viewport.top));
+      expect(tester.getBottomLeft(find.text('デモ生徒')).dy, lessThan(viewport.top));
       for (final label in ['ホーム', '学習', 'その他']) {
         expect(
           tester.getTopLeft(find.text(label)).dy,
