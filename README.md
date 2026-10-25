@@ -1,6 +1,6 @@
 # ZooっとStudy(ずーっとスタディ)略:ずースタ
 
-[![ZooっとStudy 紹介動画](https://jphacks.com/wp-content/uploads/2026/07/IMG_5316.png)](https://www.youtube.com/watch?v=piaNsc6ilBI)
+[![ZooっとStudy 紹介動画](https://img.youtube.com/vi/Ys33HINil24/maxresdefault.jpg)](https://www.youtube.com/watch?v=Ys33HINil24)
 
 ## 製品概要
 ### 課題への取り組みを、自分だけの動物園の成長に
