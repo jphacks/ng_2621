@@ -22,13 +22,25 @@ class DemoAssignmentStore extends StudyRepository
   DemoAssignmentStore({
     DateTime Function()? clock,
     this.storage,
+    this.studentId = 'demo_student',
+    this.studentName = 'デモ生徒',
     AttachmentVault? attachmentVault,
-  }) : _clock = clock ?? DateTime.now,
+  }) : _game = MockGameRepository(
+         initialSnapshot: GameSnapshot(
+           organizationId: 'demo_org',
+           studentId: studentId,
+           classIds: ['demo_class'],
+           revision: 0,
+           coins: 0,
+           confirmedAt: DateTime.now(),
+         ),
+       ),
+       _clock = clock ?? DateTime.now,
        _attachmentVault = attachmentVault ?? MemoryAttachmentVault() {
     _game.receiveConfirmedSnapshot(
       GameSnapshot(
         organizationId: 'demo_org',
-        studentId: 'demo_student',
+        studentId: studentId,
         classIds: ['demo_class'],
         revision: 1,
         coins: 0,
@@ -36,6 +48,9 @@ class DemoAssignmentStore extends StudyRepository
       ),
     );
   }
+  final String studentId, studentName;
+  @override
+  List<StudyStudent> get students => [StudyStudent(studentId, studentName)];
   final DraftStorage? storage;
   final AttachmentVault _attachmentVault;
   final _knownAttachments = <String, StudyAttachment>{};
@@ -57,16 +72,22 @@ class DemoAssignmentStore extends StudyRepository
   @override
   String get storageExplanation => storage == null
       ? super.storageExplanation
-      : 'この端末に保存します。先生と生徒は同じデモデータを共有します。クラウド同期はありません。';
+      : studentId == 'demo_student'
+      ? 'この端末に保存します。先生と生徒は同じデモデータを共有します。クラウド同期はありません。'
+      : 'この生徒のデータを端末内に保存します。別端末や先生の課題とは自動同期しません。';
   @override
   String? get storageError => _saveError;
 
   static Future<DemoAssignmentStore> open(
     DraftStorage storage, {
     AttachmentVault? attachmentVault,
+    String studentId = 'demo_student',
+    String studentName = 'デモ生徒',
   }) async {
     final store = DemoAssignmentStore(
       storage: storage,
+      studentId: studentId,
+      studentName: studentName,
       attachmentVault: attachmentVault,
     );
     try {
@@ -134,7 +155,7 @@ class DemoAssignmentStore extends StudyRepository
       Map<String, dynamic>.from(saved['snapshot'] as Map),
     );
     if (restored.organizationId != 'demo_org' ||
-        restored.studentId != 'demo_student') {
+        restored.studentId != studentId) {
       throw const FormatException('Invalid demo identity');
     }
     for (final raw in saved['studyAdvice'] as List? ?? []) {
@@ -185,6 +206,8 @@ class DemoAssignmentStore extends StudyRepository
       final id = s['assignmentId'] as String;
       assignmentFor(id);
       _submissions[id] = DemoSubmission(
+        studentId: studentId,
+        studentName: studentName,
         assignmentId: id,
         answerText: s['answerText'] as String,
         status: AssignmentState.parse(s['status'] as String),
@@ -248,7 +271,7 @@ class DemoAssignmentStore extends StudyRepository
   }
 
   final DateTime Function() _clock;
-  final _game = MockGameRepository();
+  final MockGameRepository _game;
   final _studyDailyMs = <String, int>{};
   final _studyCoins = <String, int>{};
   final _advice = <String, StudyAdvice>{};
@@ -332,6 +355,11 @@ class DemoAssignmentStore extends StudyRepository
         ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
   @override
   Future<int> saveStudyRecord(StudyRecord record) async {
+    record = StudyRecord.fromJson({
+      ...record.toJson(),
+      'studentId': studentId,
+      'studentName': studentName,
+    });
     record.validate();
     final existing = _studyRecords[record.id];
     if (existing != null &&
@@ -370,7 +398,7 @@ class DemoAssignmentStore extends StudyRepository
   List<DemoAssignment> get assignments => List.unmodifiable(_assignments);
   @override
   DemoSubmission? submissionFor(String id, {String? studentId}) =>
-      studentId == null || studentId == 'demo_student'
+      studentId == null || studentId == this.studentId
       ? _submissions[id]
       : null;
   @override
@@ -523,6 +551,8 @@ class DemoAssignmentStore extends StudyRepository
     }
     final now = _clock();
     _submissions[id] = DemoSubmission(
+      studentId: studentId,
+      studentName: studentName,
       assignmentId: id,
       answerText: text,
       attachments: List.unmodifiable(attachments),
@@ -548,7 +578,7 @@ class DemoAssignmentStore extends StudyRepository
     int? expectedVersion,
   }) {
     _requireRole(role, DemoStudyRole.teacher);
-    if (studentId != null && studentId != 'demo_student') {
+    if (studentId != null && studentId != this.studentId) {
       throw const StudyFailure('対象の生徒が見つかりません');
     }
     assignmentFor(id);
@@ -566,6 +596,8 @@ class DemoAssignmentStore extends StudyRepository
     }
     final now = _clock();
     _submissions[id] = DemoSubmission(
+      studentId: this.studentId,
+      studentName: studentName,
       assignmentId: id,
       answerText: previous.answerText,
       attachments: previous.attachments,

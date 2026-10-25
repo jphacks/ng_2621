@@ -15,7 +15,7 @@ class ZooHeader extends StatelessWidget {
     required this.onWallet,
     this.coins,
     this.connectionLabel = '未接続',
-    this.displayName = 'ゲスト',
+    this.displayName = '生徒',
   });
 
   final VoidCallback onProfile;
