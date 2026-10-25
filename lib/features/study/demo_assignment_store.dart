@@ -81,6 +81,7 @@ class DemoAssignmentStore extends StudyRepository
 
   Map<String, dynamic> _serialize() => {
     'schemaVersion': 1,
+    'studyAdvice': _advice.values.map((a) => a.toJson()).toList(),
     'studyDailyMs': _studyDailyMs,
     'studyCoins': _studyCoins,
     'studyRecords': _studyRecords.values.map((r) => r.toJson()).toList(),
@@ -135,6 +136,12 @@ class DemoAssignmentStore extends StudyRepository
     if (restored.organizationId != 'demo_org' ||
         restored.studentId != 'demo_student') {
       throw const FormatException('Invalid demo identity');
+    }
+    for (final raw in saved['studyAdvice'] as List? ?? []) {
+      final advice = StudyAdvice.fromJson(
+        Map<String, dynamic>.from(raw as Map),
+      );
+      _advice[advice.id] = advice;
     }
     _sequence = saved['sequence'] as int;
     _studyDailyMs.addAll(
@@ -244,6 +251,73 @@ class DemoAssignmentStore extends StudyRepository
   final _game = MockGameRepository();
   final _studyDailyMs = <String, int>{};
   final _studyCoins = <String, int>{};
+  final _advice = <String, StudyAdvice>{};
+  @override
+  Future<List<StudyAdvice>> loadStudyAdvice({required bool teacher}) async =>
+      _advice.values.where((a) => teacher || a.published).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  @override
+  Future<StudyAdvice> generateStudyAdvice(String studentId) async {
+    if (!students.any((s) => s.id == studentId)) {
+      throw const StudyFailure('生徒が見つかりません');
+    }
+    final now = _clock();
+    final records = _studyRecords.values
+        .where(
+          (r) =>
+              r.studentId == studentId &&
+              !r.startedAt.isBefore(now.subtract(const Duration(days: 7))) &&
+              !r.endedAt.isAfter(now),
+        )
+        .toList();
+    final minutes = records.fold<int>(0, (sum, r) => sum + r.activeMs) ~/ 60000;
+    final missing = records.isEmpty;
+    final advice = StudyAdvice(
+      id: 'advice_${++_sequence}',
+      studentId: studentId,
+      createdAt: now,
+      summary: missing
+          ? '直近7日間の学習モードの記録はありません。未記録の学習については分かりません。'
+          : '直近7日間に学習モードを${records.length}回、合計$minutes分利用しています。',
+      teacherNote: missing
+          ? '記録だけでは判断できません。学習の様子や困りごとを本人に確認してください。'
+          : '時間は端末の利用記録です。集中度や理解度は判断せず、取り組んだ内容を本人に確認してください。',
+      message: missing
+          ? 'べんきょうで、こまっていることはあるかな？ せんせいにおしえてね。'
+          : 'べんきょうのじかんをつくれたね！ むずかしかったところがあれば、せんせいにおしえてね。',
+      source: 'template',
+    );
+    _advice[advice.id] = advice;
+    _persist();
+    await flush();
+    return advice;
+  }
+
+  @override
+  Future<void> publishStudyAdvice(String id, String message) async {
+    final a = _advice[id];
+    if (a == null) throw const StudyFailure('下書きが見つかりません');
+    if (message.trim().isEmpty || message.trim().length > 1000) {
+      throw const StudyFailure('1〜1000文字で入力してください');
+    }
+    if (a.published) {
+      if (message.trim() == a.message) return;
+      throw const StudyFailure('送信済みのアドバイスは変更できません');
+    }
+    _advice[id] = StudyAdvice(
+      id: a.id,
+      studentId: a.studentId,
+      createdAt: a.createdAt,
+      summary: a.summary,
+      teacherNote: a.teacherNote,
+      message: message.trim(),
+      source: a.source,
+      publishedAt: _clock(),
+    );
+    _persist();
+    await flush();
+  }
+
   final _studyRecords = <String, StudyRecord>{};
   @override
   Future<List<StudyRecord>> loadStudyRecords() async =>

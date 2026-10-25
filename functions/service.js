@@ -62,8 +62,9 @@ function wallet(data, context) {
   return data;
 }
 
-function createService(db = getFirestore()) {
+function createService(db = getFirestore(), adviceOptions = {}) {
   return {
+    ...require('./study_advice').createAdviceService(db, {session, uidOf}, adviceOptions),
     ...createAccountService(db),
     purchaseItem: createGamePurchase(db, {session, wallet, stamp, contextFields, uidOf, id}),
     async sessionInfo(request) {

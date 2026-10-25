@@ -330,6 +330,38 @@ class FirebaseStudyRepository extends StudyRepository {
     return result['rewardAmount'] as int? ?? 0;
   }
 
+  @override
+  Future<List<StudyAdvice>> loadStudyAdvice({required bool teacher}) async {
+    Query<Map<String, dynamic>> query = _query(
+      isTeacher ? 'studyAdviceDrafts' : 'studyAdvice',
+    );
+    if (!isTeacher) {
+      query = query
+          .where('studentId', isEqualTo: uid)
+          .where('status', isEqualTo: 'published');
+    }
+    final result = await query
+        .get(const GetOptions(source: Source.server))
+        .timeout(const Duration(seconds: 20));
+    return result.docs.map((d) => StudyAdvice.fromJson(d.data())).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  Future<StudyAdvice> generateStudyAdvice(String studentId) async {
+    if (!isTeacher) throw const StudyFailure('先生だけが作成できます');
+    final data = await _call('generateStudyAdvice', {'studentId': studentId});
+    return StudyAdvice.fromJson(
+      Map<String, dynamic>.from(data['advice'] as Map),
+    );
+  }
+
+  @override
+  Future<void> publishStudyAdvice(String id, String message) async {
+    if (!isTeacher) throw const StudyFailure('先生だけが送信できます');
+    await _call('publishStudyAdvice', {'adviceId': id, 'message': message});
+  }
+
   Future<Map<String, dynamic>> _call(
     String name,
     Map<String, dynamic> payload, {
