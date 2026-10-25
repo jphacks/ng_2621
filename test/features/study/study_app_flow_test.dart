@@ -77,6 +77,9 @@ void main() {
       await tester.enterText(find.byType(TextFormField), '実験結果をまとめました');
       await tap('課題を提出する');
       expect(store.coins, 30);
+      // Let the transient reward overlay leave before using the header back button.
+      await tester.pump(const Duration(seconds: 3));
+      await frame();
       await tester.tap(find.byType(BackButton).hitTestable().last);
       await frame();
       await tester.tap(find.byType(BackButton).hitTestable().last);
@@ -91,6 +94,8 @@ void main() {
       );
       await tap('内容を確認して承認');
       expect(store.coins, 100);
+      await tester.pump(const Duration(seconds: 3));
+      await frame();
       await tester.tap(find.byType(BackButton).hitTestable().last);
       await frame();
       await tester.tap(find.byType(BackButton).hitTestable().last);

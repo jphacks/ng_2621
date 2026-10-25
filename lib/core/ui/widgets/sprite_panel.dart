@@ -1,3 +1,4 @@
+import 'tutorial_highlight.dart';
 import 'color_button_panel.dart';
 import 'pixel_text_outline.dart';
 
@@ -247,23 +248,28 @@ class SpriteTile extends StatelessWidget {
     this.onTap,
     this.enabled = true,
     this.panelStyle,
+    this.highlighted = false,
   });
   final Widget? leading, title, subtitle, trailing;
   final VoidCallback? onTap;
   final bool enabled;
+  final bool highlighted;
   final SpritePanelStyle? panelStyle;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
-    child: panelStyle != null
-        ? SpritePanel(
-            style: panelStyle!,
-            child: PixelTextOutline(child: _tile()),
-          )
-        : onTap != null
-        ? ColorActionPanel(enabled: enabled, child: _tile())
-        : SpritePanel(child: _tile()),
+    child: TutorialHighlight(
+      active: highlighted,
+      child: panelStyle != null
+          ? SpritePanel(
+              style: panelStyle!,
+              child: PixelTextOutline(child: _tile()),
+            )
+          : onTap != null
+          ? ColorActionPanel(enabled: enabled, child: _tile())
+          : SpritePanel(child: _tile()),
+    ),
   );
 
   Widget _tile() => Material(

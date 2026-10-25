@@ -1,3 +1,5 @@
+import '../../zoo/presentation/map_decoration.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_ui.dart';
@@ -9,19 +11,21 @@ class DemoFinale extends StatelessWidget {
   const DemoFinale({
     super.key,
     required this.controller,
-    required this.onRestart,
+    required this.onOptions,
     required this.onExplore,
   });
   static const decorativeArches = [
-    Rect.fromLTWH(8, 0, 2, 2),
-    Rect.fromLTWH(8, 2.5, 2, 2),
-    Rect.fromLTWH(8, 5, 2, 2),
+    Rect.fromLTWH(8.625, 0.25, 1.75, 1.75),
+    Rect.fromLTWH(8.625, 2.75, 1.75, 1.75),
+    Rect.fromLTWH(8.625, 5.25, 1.75, 1.75),
   ];
-  static final plazaTiles = Map<(int, int), String>.unmodifiable({
-    for (var y = 0; y < 7; y++) (8, y): '#',
-  });
+  static const furnishings = [
+    MapDecoration(ZooBuildingPart.bench, Rect.fromLTWH(14.5, 2.25, 1, 1)),
+    MapDecoration(ZooBuildingPart.topiary, Rect.fromLTWH(13.25, 2.25, 1, 1)),
+    MapDecoration(ZooBuildingPart.topiary, Rect.fromLTWH(15.75, 2.25, 1, 1)),
+  ];
   final ZooController controller;
-  final VoidCallback onRestart, onExplore;
+  final VoidCallback onOptions, onExplore;
   @override
   Widget build(BuildContext context) => BlockSemantics(
     child: Material(
@@ -65,7 +69,7 @@ class DemoFinale extends StatelessWidget {
                     child: ZooMap(
                       controller: controller,
                       decorativeArches: decorativeArches,
-                      tileOverrides: plazaTiles,
+                      decorations: furnishings,
                     ),
                   ),
                 ),
@@ -80,9 +84,9 @@ class DemoFinale extends StatelessWidget {
                 alignment: WrapAlignment.center,
                 children: [
                   FilledButton(
-                    key: const ValueKey('demo-finale-restart'),
-                    onPressed: onRestart,
-                    child: const Text('もう一度体験する'),
+                    key: const ValueKey('demo-finale-options'),
+                    onPressed: onOptions,
+                    child: const Text('その他'),
                   ),
                   TextButton(
                     key: const ValueKey('demo-finale-explore'),

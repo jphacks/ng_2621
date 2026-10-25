@@ -183,11 +183,13 @@ class ZooBottomBar extends StatelessWidget {
   const ZooBottomBar({
     super.key,
     required this.onHome,
+    this.highlightHome = false,
     required this.onStudy,
     this.studyLabel = '学習',
     required this.onMore,
     this.selectedTab = ZooMainTab.home,
   });
+  final bool highlightHome;
   final VoidCallback onHome, onStudy, onMore;
   final String studyLabel;
   final ZooMainTab selectedTab;
@@ -243,36 +245,39 @@ class ZooBottomBar extends StatelessWidget {
   }) => Expanded(
     child: Semantics(
       selected: selectedTab == tab,
-      child: TextButton(
-        key: ValueKey('main-tab-${tab.name}'),
-        style: PixelUiTheme.colorfulButtonStyle(
-          selectedTab == tab ? ButtonPalette.green : ButtonPalette.cyan,
-        ),
-        onPressed: onTap,
-        child: compact
-            ? Text(
-                label,
-                style: TextStyle(
-                  fontWeight: selectedTab == tab
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  icon,
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: selectedTab == tab
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
+      child: TutorialHighlight(
+        active: highlightHome && tab == ZooMainTab.home,
+        child: TextButton(
+          key: ValueKey('main-tab-${tab.name}'),
+          style: PixelUiTheme.colorfulButtonStyle(
+            selectedTab == tab ? ButtonPalette.green : ButtonPalette.cyan,
+          ),
+          onPressed: onTap,
+          child: compact
+              ? Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: selectedTab == tab
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
-                ],
-              ),
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    icon,
+                    const SizedBox(height: 3),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight: selectedTab == tab
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     ),
   );

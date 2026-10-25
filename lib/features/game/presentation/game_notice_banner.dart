@@ -5,7 +5,7 @@ import '../../../core/ui/zoo_ui.dart';
 import '../domain/game_notice.dart';
 import 'game_session.dart';
 
-/// Stays until dismissed so a sheet or short disconnect cannot hide a reward.
+/// Displays the queued notice; the host controls its transient lifetime.
 class GameNoticeBanner extends StatelessWidget {
   const GameNoticeBanner({
     super.key,

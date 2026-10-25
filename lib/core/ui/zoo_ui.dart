@@ -26,3 +26,5 @@ export 'widgets/pixel_text_outline.dart';
 
 export 'sprites/zoo_character_part.dart';
 export 'sprites/zoo_character_sprite.dart';
+
+export 'widgets/tutorial_highlight.dart';

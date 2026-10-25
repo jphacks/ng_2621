@@ -14,11 +14,13 @@ class ShopItemCard extends StatelessWidget {
     required this.snapshot,
     required this.available,
     required this.onTap,
+    this.highlighted = false,
   });
   final ShopItem item;
   final GameSnapshot? snapshot;
   final bool available;
   final VoidCallback onTap;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -34,37 +36,40 @@ class ShopItemCard extends StatelessWidget {
         : state.coins < item.minimumPrice
         ? 'コイン不足'
         : '購入可';
-    return Semantics(
-      button: true,
-      label: '${item.name}、${item.price}コイン、$status',
-      excludeSemantics: true,
-      child: SpritePanel(
-        child: PixelTextOutline(
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              key: ValueKey('shop-item-${item.id}'),
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Tooltip(
-                  message: '${item.name}・${item.priceLabel}・$status',
-                  excludeFromSemantics: true,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: FittedBox(child: ShopItemArt(item: item)),
-                      ),
-                      if (owned || !unlocked)
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: ZooUiSprite(
-                            part: owned ? ZooUiPart.check : ZooUiPart.lock,
-                            scale: 1,
-                          ),
+    return TutorialHighlight(
+      active: highlighted,
+      child: Semantics(
+        button: true,
+        label: '${item.name}、${item.price}コイン、$status',
+        excludeSemantics: true,
+        child: SpritePanel(
+          child: PixelTextOutline(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: ValueKey('shop-item-${item.id}'),
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Tooltip(
+                    message: '${item.name}・${item.priceLabel}・$status',
+                    excludeFromSemantics: true,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: FittedBox(child: ShopItemArt(item: item)),
                         ),
-                    ],
+                        if (owned || !unlocked)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: ZooUiSprite(
+                              part: owned ? ZooUiPart.check : ZooUiPart.lock,
+                              scale: 1,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),

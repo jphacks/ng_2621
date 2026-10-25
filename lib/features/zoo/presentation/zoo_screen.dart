@@ -1,3 +1,8 @@
+import '../../game/demo/presentation_repository.dart';
+
+import 'dart:async';
+
+import '../../game/presentation/notice_transition.dart';
 import '../../game/demo/demo_finale.dart';
 import '../../game/demo/demo_tutorial_controller.dart';
 import '../../game/demo/demo_guide_panel.dart';
@@ -179,6 +184,7 @@ class _ZooScreenState extends State<ZooScreen>
       snapshot?.ownedAnimalIds ?? {},
       snapshot?.ownedFacilityIds ?? {},
     );
+    _timeNotice();
     setState(() {});
   }
 
@@ -229,6 +235,8 @@ class _ZooScreenState extends State<ZooScreen>
 
   @override
   void dispose() {
+    _noticeTimer?.cancel();
+    _rewardTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
     _homeRevision.dispose();
@@ -246,6 +254,15 @@ class _ZooScreenState extends State<ZooScreen>
   void _experienceChanged() {
     if (!mounted) return;
     final id = _experience.reward?.transactionId;
+    if (id != _timedRewardId) {
+      _timedRewardId = id;
+      _rewardTimer?.cancel();
+      if (id != null) {
+        _rewardTimer = Timer(const Duration(milliseconds: 2400), () {
+          if (mounted) _experience.dismissReward(id);
+        });
+      }
+    }
     if (id != null && id != _welcomedReward) {
       _welcomedReward = id;
       _reactionRevision++;
@@ -422,6 +439,9 @@ class _ZooScreenState extends State<ZooScreen>
                 for (final item in catalog.items.where((i) => i.isResearch))
                   SpriteTile(
                     panelStyle: SpritePanelStyle.cream,
+                    highlighted:
+                        widget.presentation?.step == DemoStep.evolve &&
+                        item.id == 'fire_fox',
                     leading: AnimalArt(animalId: item.targetId),
                     title: Text(item.name),
                     subtitle: Text(
@@ -440,6 +460,10 @@ class _ZooScreenState extends State<ZooScreen>
                                   session: _game,
                                   purchases: _purchases,
                                   item: item,
+                                  highlighted:
+                                      widget.presentation?.step ==
+                                          DemoStep.evolve &&
+                                      item.id == 'fire_fox',
                                   catalog: catalog,
                                   onViewZoo: () => Navigator.pop(_navContext),
                                 ),
@@ -560,6 +584,9 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showAnimals() {
+    if (widget.presentation?.step == DemoStep.collection) {
+      widget.presentation!.seeCollection();
+    }
     final controller = _controller;
     if (controller == null) return;
     showDialog<void>(
@@ -567,6 +594,7 @@ class _ZooScreenState extends State<ZooScreen>
       useRootNavigator: false,
       builder: (_) => AnimalEncyclopedia(
         animals: controller.world.animals,
+        highlightAnimalId: _guidedAnimal,
         ownedIds: controller.ownedAnimals,
         onChooseGoal: () {
           Navigator.pop(_navContext);
@@ -601,6 +629,9 @@ class _ZooScreenState extends State<ZooScreen>
       children: [
         AnimalEnclosurePicker(
           animal: animal,
+          highlightPenId: _guidedAnimal == animal.id
+              ? PresentationRepository.starterPen
+              : null,
           transactions: _layoutTransactions,
         ),
       ],
@@ -624,12 +655,15 @@ class _ZooScreenState extends State<ZooScreen>
           ),
           subtitle: const Text('解放済み'),
         ),
-        FilledButton(
-          onPressed: () {
-            Navigator.pop(_navContext);
-            _assignAnimal(animal);
-          },
-          child: const Text('囲いに配置する'),
+        TutorialHighlight(
+          active: _guidedAnimal == animal.id,
+          child: FilledButton(
+            onPressed: () {
+              Navigator.pop(_navContext);
+              _assignAnimal(animal);
+            },
+            child: const Text('囲いに配置する'),
+          ),
         ),
         if (animal.evolutionIds.isNotEmpty) ...[
           const Text('進化先', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -685,6 +719,7 @@ class _ZooScreenState extends State<ZooScreen>
         for (final definition in controller.world.facilities)
           if (controller.ownedFacilities.contains(definition.id))
             SpriteTile(
+              highlighted: _guidedFacility == definition.id,
               title: Text(definition.displayName),
               subtitle: Text(
                 '${definition.width}×${definition.height}マス${definition.tile == 'sprite' && !controller.placements.containsKey(definition.id) ? '・未配置' : ''}',
@@ -725,6 +760,7 @@ class _ZooScreenState extends State<ZooScreen>
       MaterialPageRoute(
         builder: (_) => FacilityPlacementScreen(
           controller: controller,
+          highlighted: _guidedFacility == facilityId,
           definition: definition,
           name: definition.displayName,
           onSave: (placement) async {
@@ -792,7 +828,38 @@ class _ZooScreenState extends State<ZooScreen>
     );
   }
 
-  bool _demoBusy = false, _demoFinale = false;
+  bool _demoBusy = false, _demoFinale = false, _demoGuideVisible = true;
+  Timer? _noticeTimer, _rewardTimer;
+  String? _timedNoticeId, _timedRewardId;
+
+  void _timeNotice() {
+    final id = _game.currentNotice?.id;
+    if (id == _timedNoticeId) return;
+    _timedNoticeId = id;
+    _noticeTimer?.cancel();
+    if (id != null) {
+      _noticeTimer = Timer(const Duration(milliseconds: 2400), () {
+        if (mounted) _game.dismissNotice(id);
+      });
+    }
+  }
+
+  String? get _guidedAnimal => widget.presentation?.placementAnimalId;
+  String? get _guidedFacility => widget.presentation?.placementFacilityId;
+  String get _demoHint {
+    final tour = widget.presentation!;
+    if (tour.isDirectAction) return tour.explanation;
+    if (tour.shopTargetId != null) {
+      return _homeSection == 1 ? '光る商品・購入ボタンを順番にタップ' : '上の「ショップ」をタップしましょう';
+    }
+    if (_homeSection != 2) return '上の「囲い・施設」をタップしましょう';
+    if (tour.placementAnimalId != null || tour.step == DemoStep.collection) {
+      return '「動物一覧」を開き、光る操作を選びましょう';
+    }
+    if (tour.placementFacilityId != null) return '「施設の配置・移動」をタップしましょう';
+    return '「研究所」を開き、炎狐を選びましょう';
+  }
+
   Future<void> _runDemoAction() async {
     final tour = widget.presentation;
     if (tour == null || _demoBusy) return;
@@ -837,11 +904,8 @@ class _ZooScreenState extends State<ZooScreen>
           );
           if (approved == true && mounted) tour.approve();
         case DemoStep.buyRabbit:
-          await _showShop(query: 'ウサギ', kind: ShopItemKind.animal);
         case DemoStep.placeRabbit:
-          _assignAnimal(
-            _controller!.world.animals.singleWhere((a) => a.id == 'rabbit'),
-          );
+          return;
         case DemoStep.expand:
           final accept = await showDialog<bool>(
             context: _navContext,
@@ -867,28 +931,11 @@ class _ZooScreenState extends State<ZooScreen>
             tour.repository.grantExplorationBudget();
           }
         case DemoStep.pond:
-          if (tour.hasPond) {
-            _startPlacement('pond');
-          } else {
-            await _showShop(query: '池', kind: ShopItemKind.facility);
-          }
         case DemoStep.research:
-          if (!tour.hasFox) {
-            await _showShop(query: 'キツネ', kind: ShopItemKind.animal);
-          } else if (!tour.hasLab) {
-            await _showShop(query: '研究所', kind: ShopItemKind.facility);
-          } else {
-            _startPlacement('laboratory');
-          }
         case DemoStep.evolve:
-          _showResearch();
         case DemoStep.placeEvolution:
-          _assignAnimal(
-            _controller!.world.animals.singleWhere((a) => a.id == 'fire_fox'),
-          );
         case DemoStep.collection:
-          tour.seeCollection();
-          _showAnimals();
+          return;
         case DemoStep.grown:
           await tour.repository.showGrownZoo();
           if (mounted) setState(() => _demoFinale = true);
@@ -913,6 +960,55 @@ class _ZooScreenState extends State<ZooScreen>
 
   void _showMore() {
     _showMenuPage('/more', '設定・プロフィール', [
+      if (widget.presentation != null) ...[
+        SpriteTile(
+          key: const ValueKey('demo-restart'),
+          panelStyle: SpritePanelStyle.cream,
+          title: const Text('デモをはじめから'),
+          onTap: widget.onDemoRestart,
+        ),
+        SpriteTile(
+          key: const ValueKey('demo-help'),
+          panelStyle: SpritePanelStyle.cream,
+          title: const Text('この手順の説明'),
+          onTap: () => showDialog<void>(
+            context: _navContext,
+            builder: (context) => PixelUiTheme(
+              child: SpriteAlertDialog(
+                title: Text(widget.presentation!.title),
+                content: Text(widget.presentation!.explanation),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('閉じる'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SpriteTile(
+          key: const ValueKey('demo-guide-toggle'),
+          panelStyle: SpritePanelStyle.cream,
+          title: Text(_demoGuideVisible ? '案内を非表示' : '案内を表示'),
+          onTap: () {
+            setState(() => _demoGuideVisible = !_demoGuideVisible);
+            Navigator.pop(_navContext);
+          },
+        ),
+        SpriteTile(
+          key: const ValueKey('demo-exit'),
+          panelStyle: SpritePanelStyle.cream,
+          title: const Text('発表デモを終了'),
+          onTap: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              widget.onDemoRestart?.call();
+            }
+          },
+        ),
+      ],
       if (widget.presentation == null)
         SpriteTile(
           panelStyle: SpritePanelStyle.cream,
@@ -1012,7 +1108,13 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _setHomeSection(int section) {
-    if (section == 1) _shopOpened = true;
+    if (section == 1) {
+      _shopOpened = true;
+      if (widget.presentation != null) {
+        _shopQuery = '';
+        _shopKey.currentState?.browse(query: '');
+      }
+    }
     _homeSection = section;
     _lastFrame = null;
     _syncGameTicker();
@@ -1030,7 +1132,12 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   Widget _buildConstructionMenu() => ListView(
-    padding: const EdgeInsets.all(16),
+    padding: EdgeInsets.fromLTRB(
+      16,
+      16,
+      16,
+      widget.presentation == null ? 16 : 160,
+    ),
     children: [
       const Text(
         '購入する',
@@ -1057,12 +1164,14 @@ class _ZooScreenState extends State<ZooScreen>
       ),
       SpriteTile(
         panelStyle: SpritePanelStyle.cream,
+        highlighted: _guidedFacility != null,
         title: const Text('施設の配置・移動'),
         leading: const ZooArtSprite(part: ZooArtPart.pond, scale: 2),
         onTap: _showFacilities,
       ),
       SpriteTile(
         panelStyle: SpritePanelStyle.cream,
+        highlighted: widget.presentation?.step == DemoStep.evolve,
         title: const Text('研究所'),
         leading: const ZooBuildingSprite(
           part: ZooBuildingPart.laboratory,
@@ -1072,6 +1181,9 @@ class _ZooScreenState extends State<ZooScreen>
       ),
       SpriteTile(
         panelStyle: SpritePanelStyle.cream,
+        highlighted:
+            _guidedAnimal != null ||
+            widget.presentation?.step == DemoStep.collection,
         title: const Text('動物一覧'),
         subtitle: const Text('図鑑・動物の配置'),
         leading: const ZooUiSprite(part: ZooUiPart.encyclopediaRed, scale: 3),
@@ -1090,7 +1202,17 @@ class _ZooScreenState extends State<ZooScreen>
     builder: (context, constraints) => Column(
       children: [
         if (constraints.maxHeight >= 220)
-          ZooHomeTabs(selected: _homeSection, onSelect: _setHomeSection),
+          ZooHomeTabs(
+            selected: _homeSection,
+            onSelect: _setHomeSection,
+            highlightIndex:
+                widget.presentation?.shopTargetId != null && _homeSection != 1
+                ? 1
+                : widget.presentation?.needsConstruction == true &&
+                      _homeSection != 2
+                ? 2
+                : null,
+          ),
         Expanded(
           child: IndexedStack(
             index: _homeSection,
@@ -1102,6 +1224,8 @@ class _ZooScreenState extends State<ZooScreen>
                   session: _game,
                   purchases: _purchases,
                   embedded: true,
+                  highlightedItemId: widget.presentation?.shopTargetId,
+                  bottomPadding: widget.presentation == null ? 24 : 160,
                   initialQuery: _shopQuery,
                   initialKind: _shopKind,
                   onViewZoo: () => _setHomeSection(0),
@@ -1194,11 +1318,6 @@ class _ZooScreenState extends State<ZooScreen>
                                         GameConnection.disconnected => '未接続',
                                       },
                               ),
-                              if (showHomeInfo)
-                                GameNoticeBanner(
-                                  session: _game,
-                                  onDetails: _showWallet,
-                                ),
                               if (showHomeInfo &&
                                   _experienceCatalog != null &&
                                   _game.snapshot != null &&
@@ -1224,49 +1343,65 @@ class _ZooScreenState extends State<ZooScreen>
                           ),
                         ),
                       ),
-                    if (widget.presentation != null)
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.sizeOf(context).height * .24,
-                        ),
-                        child: SingleChildScrollView(
-                          child: DemoGuidePanel(
-                            controller: widget.presentation!,
-                            onAction: _runDemoAction,
-                            onRestart: widget.onDemoRestart!,
-                            ready:
-                                _controller != null &&
-                                _experienceCatalog != null &&
-                                !_game.loading,
-                            busy: _demoBusy,
-                          ),
-                        ),
-                      ),
                     Expanded(
                       child: MediaQuery.removeViewInsets(
                         context: context,
                         removeBottom: true,
-                        child: Navigator(
-                          key: _contentKey,
-                          observers: [_contentObserver],
-                          onGenerateRoute: (_) => MaterialPageRoute<void>(
-                            settings: const RouteSettings(name: '/home'),
-                            builder: (routeContext) {
-                              _homeContext = routeContext;
-                              return AnimatedBuilder(
-                                animation: Listenable.merge([
-                                  _game,
-                                  _experience,
-                                  _homeRevision,
-                                ]),
-                                builder: (_, _) => _buildHomeContent(),
-                              );
-                            },
-                          ),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Navigator(
+                                key: _contentKey,
+                                observers: [_contentObserver],
+                                onGenerateRoute: (_) => MaterialPageRoute<void>(
+                                  settings: const RouteSettings(name: '/home'),
+                                  builder: (routeContext) {
+                                    _homeContext = routeContext;
+                                    return AnimatedBuilder(
+                                      animation: Listenable.merge([
+                                        _game,
+                                        _experience,
+                                        _homeRevision,
+                                      ]),
+                                      builder: (_, _) => _buildHomeContent(),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            if (widget.presentation != null &&
+                                _demoGuideVisible &&
+                                !_contentCanPop &&
+                                _mainTab != ZooMainTab.more)
+                              Positioned(
+                                left: 8,
+                                bottom: 8,
+                                child: SizedBox(
+                                  width: MediaQuery.sizeOf(context).width < 360
+                                      ? 210
+                                      : 250,
+                                  child: DemoGuidePanel(
+                                    controller: widget.presentation!,
+                                    onAction: _runDemoAction,
+                                    instruction: _demoHint,
+                                    notice: _game.currentNotice?.message,
+                                    ready:
+                                        _controller != null &&
+                                        _experienceCatalog != null &&
+                                        !_game.loading,
+                                    busy: _demoBusy,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
                     ZooBottomBar(
+                      highlightHome:
+                          widget.presentation != null &&
+                          !widget.presentation!.isDirectAction &&
+                          _mainTab != ZooMainTab.home,
                       selectedTab: _mainTab,
                       onHome: () => _switchMain(ZooMainTab.home),
                       onStudy: () => _switchMain(ZooMainTab.study),
@@ -1276,24 +1411,36 @@ class _ZooScreenState extends State<ZooScreen>
                   ],
                 ),
               ),
-              if (widget.presentation == null &&
-                  !widget.isTeacher &&
-                  _experience.reward != null &&
-                  !_contentCanPop &&
-                  _homeSection == 0 &&
-                  ModalRoute.of(context)?.isCurrent != false)
-                Positioned.fill(
-                  child: RewardCelebration(
-                    reward: _experience.reward!,
-                    onClose: () => _experience.dismissReward(
-                      _experience.reward!.transactionId,
+              if (widget.presentation == null && _game.currentNotice != null)
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 8,
+                  left: 8,
+                  right: 8,
+                  child: NoticeTransition(
+                    key: ValueKey('notice-${_game.currentNotice!.id}'),
+                    child: GameNoticeBanner(
+                      session: _game,
+                      onDetails: _showWallet,
                     ),
-                    onShop: () {
-                      _experience.dismissReward(
-                        _experience.reward!.transactionId,
-                      );
-                      _showShop();
-                    },
+                  ),
+                ),
+              if (widget.presentation == null &&
+                  _game.currentNotice == null &&
+                  _experience.reward?.source == '自習')
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 8,
+                  left: 8,
+                  right: 8,
+                  child: NoticeTransition(
+                    key: ValueKey(_experience.reward!.transactionId),
+                    child: SpritePanel(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          '自習のごほうび +${_experience.reward!.amount}コイン',
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               if (_demoFinale &&
@@ -1303,7 +1450,10 @@ class _ZooScreenState extends State<ZooScreen>
                   child: DemoFinale(
                     key: const ValueKey('demo-finale'),
                     controller: _controller!,
-                    onRestart: widget.onDemoRestart!,
+                    onOptions: () {
+                      setState(() => _demoFinale = false);
+                      _showMore();
+                    },
                     onExplore: () => setState(() => _demoFinale = false),
                   ),
                 ),

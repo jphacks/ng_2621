@@ -408,7 +408,9 @@ class AnimalEnclosurePicker extends StatelessWidget {
     super.key,
     required this.animal,
     required this.transactions,
+    this.highlightPenId,
   });
+  final String? highlightPenId;
   final AnimalDefinition animal;
   final LayoutTransactions transactions;
   @override
@@ -427,6 +429,7 @@ class AnimalEnclosurePicker extends StatelessWidget {
           for (final pen in layout.enclosures.values)
             SpriteTile(
               key: ValueKey('assign-${pen.id}'),
+              highlighted: highlightPenId == pen.id,
               title: Text(
                 '囲い ${layout.enclosures.keys.toList().indexOf(pen.id) + 1}（${pen.width}×${pen.height}）',
               ),

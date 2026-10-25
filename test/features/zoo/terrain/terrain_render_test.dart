@@ -152,7 +152,7 @@ void main() {
         () => rootBundle.loadString('assets/zoo/world.json'),
       ))!;
       final world = ZooWorld.fromJson(jsonDecode(data) as Map<String, dynamic>);
-      for (final overrides in [<(int, int), String>{}, DemoFinale.plazaTiles]) {
+      for (final overrides in [<(int, int), String>{}]) {
         final actual = await pixels(
           tester,
           ZooTerrainPainter(world, [], {}, sheet, tileOverrides: overrides),
@@ -180,19 +180,31 @@ void main() {
   );
 
   test(
-    'decorative arches are equally spaced on stone without changing ownership',
+    'demo arches share the normal path and fountain furniture is symmetric',
     () {
       final arches = DemoFinale.decorativeArches;
       expect(arches, hasLength(3));
       expect(arches[1].top - arches[0].top, arches[2].top - arches[1].top);
       for (final arch in arches) {
-        expect(arch.left, 8);
-        for (var y = arch.top.floor(); y < arch.bottom.ceil(); y++) {
-          expect(DemoFinale.plazaTiles[(8, y)], '#');
-          // The other column is the existing central stone path.
-          expect(arch.right, 10);
-        }
+        expect(arch.center.dx, 9.5);
+        expect(arch.left, greaterThanOrEqualTo(8.5));
+        expect(arch.right, lessThanOrEqualTo(10.5));
       }
+      final furniture = DemoFinale.furnishings;
+      final bench = furniture.singleWhere(
+        (d) => d.part == ZooBuildingPart.bench,
+      );
+      final trees = furniture
+          .where((d) => d.part == ZooBuildingPart.topiary)
+          .toList();
+      expect(bench.bounds.center.dx, 15);
+      expect(bench.bounds.top, greaterThanOrEqualTo(2));
+      expect(trees[0].bounds.center.dy, bench.bounds.center.dy);
+      expect(trees[1].bounds.center.dy, bench.bounds.center.dy);
+      expect(
+        bench.bounds.center.dx - trees[0].bounds.center.dx,
+        trees[1].bounds.center.dx - bench.bounds.center.dx,
+      );
     },
   );
 }

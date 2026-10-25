@@ -60,6 +60,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byTooltip('通知を閉じる'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     await openDemo(tester);
     await receive(tester, '同じ確定結果を再受信');
     expect(find.byTooltip('通知を閉じる'), findsNothing);
@@ -112,12 +113,15 @@ void main() {
       MockGameRepository.snapshotFor(DemoScenario.approved),
     );
     await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     expect(find.text('ほか1件'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.ensureVisible(find.byTooltip('通知を閉じる'));
     await tester.pump();
     await tester.tap(find.byTooltip('通知を閉じる'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     expect(find.text('先生が確認！ +70コイン'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -152,6 +156,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byTooltip('通知を閉じる'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     await openDemo(tester);
     await receive(tester, '再提出の確定結果を受信');
     expect(find.text('30'), findsOneWidget);

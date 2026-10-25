@@ -57,6 +57,41 @@ class DemoTutorialController extends ChangeNotifier {
     return DemoStep.grown;
   }
 
+  bool get isDirectAction => const {
+    DemoStep.assign,
+    DemoStep.submit,
+    DemoStep.approve,
+    DemoStep.expand,
+    DemoStep.grown,
+    DemoStep.complete,
+  }.contains(step);
+  String? get shopTargetId => switch (step) {
+    DemoStep.buyRabbit => 'rabbit',
+    DemoStep.pond => hasPond ? null : 'pond',
+    DemoStep.research =>
+      !hasFox
+          ? 'fox'
+          : !hasLab
+          ? 'laboratory'
+          : null,
+    _ => null,
+  };
+  String? get placementAnimalId => switch (step) {
+    DemoStep.placeRabbit => 'rabbit',
+    DemoStep.placeEvolution => 'fire_fox',
+    _ => null,
+  };
+  String? get placementFacilityId => switch (step) {
+    DemoStep.pond => hasPond ? 'pond' : null,
+    DemoStep.research => hasFox && hasLab && !labPlaced ? 'laboratory' : null,
+    _ => null,
+  };
+  bool get needsConstruction =>
+      placementAnimalId != null ||
+      placementFacilityId != null ||
+      step == DemoStep.evolve ||
+      step == DemoStep.collection;
+
   String get title => switch (step) {
     DemoStep.assign => '先生役：課題を配布',
     DemoStep.submit => '生徒役：回答を提出して＋30',

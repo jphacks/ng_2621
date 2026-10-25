@@ -14,6 +14,7 @@ class ShopPanel extends StatefulWidget {
     required this.purchases,
     required this.item,
     required this.catalog,
+    this.highlighted = false,
     this.onViewZoo,
     this.onPlaceFacility,
     this.onCreateEnclosure,
@@ -22,6 +23,7 @@ class ShopPanel extends StatefulWidget {
   final ShopPurchaseController purchases;
   final ShopItem item;
   final ShopCatalog catalog;
+  final bool highlighted;
   final VoidCallback? onViewZoo;
   final VoidCallback? onPlaceFacility;
   final VoidCallback? onCreateEnclosure;
@@ -103,10 +105,13 @@ class _ShopPanelState extends State<ShopPanel> {
               onPressed: () => Navigator.pop(context, false),
               child: const Text('やめる'),
             ),
-            FilledButton(
-              key: const ValueKey('confirm-purchase'),
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(item.isResearch ? '進化を確定' : '購入を確定'),
+            TutorialHighlight(
+              active: widget.highlighted,
+              child: FilledButton(
+                key: const ValueKey('confirm-purchase'),
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(item.isResearch ? '進化を確定' : '購入を確定'),
+              ),
             ),
           ],
         ),
@@ -276,30 +281,33 @@ class _ShopPanelState extends State<ShopPanel> {
                         : '購入後、動物園で配置・移動できます。',
                   ),
                   const SizedBox(height: 16),
-                  FilledButton(
-                    key: ValueKey('buy-${item.id}'),
-                    onPressed:
-                        available && !owned && unlocked && enough && !blocked
-                        ? (item.pricing == ShopPricing.area
-                              ? widget.onCreateEnclosure
-                              : () => _confirmAndBuy(item))
-                        : null,
-                    child: Text(
-                      item.pricing == ShopPricing.area
-                          ? 'サイズと場所を選ぶ'
-                          : _purchases.busy && _purchases.item?.id == item.id
-                          ? '購入を確認中…'
-                          : owned
-                          ? '購入済み'
-                          : !available
-                          ? '未接続'
-                          : !unlocked
-                          ? '未解放'
-                          : !enough
-                          ? 'コイン不足'
-                          : item.isResearch
-                          ? '進化する'
-                          : '購入する',
+                  TutorialHighlight(
+                    active: widget.highlighted && !owned,
+                    child: FilledButton(
+                      key: ValueKey('buy-${item.id}'),
+                      onPressed:
+                          available && !owned && unlocked && enough && !blocked
+                          ? (item.pricing == ShopPricing.area
+                                ? widget.onCreateEnclosure
+                                : () => _confirmAndBuy(item))
+                          : null,
+                      child: Text(
+                        item.pricing == ShopPricing.area
+                            ? 'サイズと場所を選ぶ'
+                            : _purchases.busy && _purchases.item?.id == item.id
+                            ? '購入を確認中…'
+                            : owned
+                            ? '購入済み'
+                            : !available
+                            ? '未接続'
+                            : !unlocked
+                            ? '未解放'
+                            : !enough
+                            ? 'コイン不足'
+                            : item.isResearch
+                            ? '進化する'
+                            : '購入する',
+                      ),
                     ),
                   ),
                 ],

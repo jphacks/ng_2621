@@ -8,16 +8,24 @@ class TerrainSelection {
 
 const _directions = [(0, -1), (1, 0), (0, 1), (-1, 0)];
 
-/// Direction in which the material points away from a different path surface.
-int? _pathCap(String Function(int, int) at, int x, int y) {
-  final type = at(x, y);
-  if (type != '=' && type != '#') return null;
-  final other = type == '=' ? '#' : '=';
-  final touching = [
+int? _dirtSide(String Function(int, int) at, int x, int y) {
+  final sides = [
     for (var i = 0; i < 4; i++)
-      if (at(x + _directions[i].$1, y + _directions[i].$2) == other) i,
+      if (at(x + _directions[i].$1, y + _directions[i].$2) == '=') i,
   ];
-  return touching.length == 1 ? (touching.single + 2) % 4 : null;
+  return sides.length == 1 ? sides.single : null;
+}
+
+/// Stone ends one cell before the continuous half-dirt shoulder.
+int? _pathCap(String Function(int, int) at, int x, int y) {
+  if (at(x, y) != '#' || _dirtSide(at, x, y) != null) return null;
+  for (var i = 0; i < 4; i++) {
+    final dx = _directions[i].$1, dy = _directions[i].$2;
+    if (at(x + dx, y + dy) == '#' && _dirtSide(at, x + dx, y + dy) == i) {
+      return (i + 2) % 4;
+    }
+  }
+  return null;
 }
 
 TerrainSelection _half(String surface, int direction) => TerrainSelection(
@@ -28,14 +36,20 @@ TerrainSelection _half(String surface, int direction) => TerrainSelection(
 /// Keep supplied half/quarter edges around path junctions as a grass buffer.
 TerrainSelection selectTerrain(String Function(int, int) at, int x, int y) {
   final type = at(x, y);
-  if (type == '=' || type == '#') {
+  if (type == '=') return const TerrainSelection(TerrainPart.dirt);
+  if (type == '#') {
+    final shoulder = _dirtSide(at, x, y);
+    if (shoulder != null) return _half('=', shoulder);
     final cap = _pathCap(at, x, y);
-    if (cap != null) return _half(type, cap);
-    return TerrainSelection(type == '=' ? TerrainPart.dirt : TerrainPart.stone);
+    return cap == null
+        ? const TerrainSelection(TerrainPart.stone)
+        : _half('#', cap);
   }
   if (type == '~') return const TerrainSelection(TerrainPart.water);
   const cardinal = [(0, -1), (1, 0), (0, 1), (-1, 0)]; // N E S W, clockwise.
   const diagonal = [(1, -1), (1, 1), (-1, 1), (-1, -1)]; // NE SE SW NW.
+  final dirt = _dirtSide(at, x, y);
+  if (dirt != null) return _half('=', dirt);
   // Neighbors of a half-ended path need matching quarter corners, rather
   // than extending a full half-material stripe toward the crossing.
   for (var side = 0; side < 4; side++) {

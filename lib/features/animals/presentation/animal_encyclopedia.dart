@@ -14,7 +14,9 @@ class AnimalEncyclopedia extends StatefulWidget {
     required this.ownedIds,
     required this.onSelect,
     this.onChooseGoal,
+    this.highlightAnimalId,
   });
+  final String? highlightAnimalId;
   final VoidCallback? onChooseGoal;
   final List<AnimalDefinition> animals;
   final Set<String> ownedIds;
@@ -145,14 +147,23 @@ class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              IconButton(
-                                tooltip: '前のページ',
-                                onPressed: page > 0
-                                    ? () => setState(() => _page = page - 1)
-                                    : null,
-                                icon: const ZooUiSprite(
-                                  part: ZooUiPart.arrowLeft,
-                                  scale: 2,
+                              TutorialHighlight(
+                                active:
+                                    widget.highlightAnimalId != null &&
+                                    widget.animals.indexWhere(
+                                          (a) =>
+                                              a.id == widget.highlightAnimalId,
+                                        ) <
+                                        start,
+                                child: IconButton(
+                                  tooltip: '前のページ',
+                                  onPressed: page > 0
+                                      ? () => setState(() => _page = page - 1)
+                                      : null,
+                                  icon: const ZooUiSprite(
+                                    part: ZooUiPart.arrowLeft,
+                                    scale: 2,
+                                  ),
                                 ),
                               ),
                               Padding(
@@ -161,14 +172,23 @@ class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
                                 ),
                                 child: Text('${page + 1} / $pages'),
                               ),
-                              IconButton(
-                                tooltip: '次のページ',
-                                onPressed: page + 1 < pages
-                                    ? () => setState(() => _page = page + 1)
-                                    : null,
-                                icon: const ZooUiSprite(
-                                  part: ZooUiPart.arrowRight,
-                                  scale: 2,
+                              TutorialHighlight(
+                                active:
+                                    widget.highlightAnimalId != null &&
+                                    widget.animals.indexWhere(
+                                          (a) =>
+                                              a.id == widget.highlightAnimalId,
+                                        ) >=
+                                        start + perPage,
+                                child: IconButton(
+                                  tooltip: '次のページ',
+                                  onPressed: page + 1 < pages
+                                      ? () => setState(() => _page = page + 1)
+                                      : null,
+                                  icon: const ZooUiSprite(
+                                    part: ZooUiPart.arrowRight,
+                                    scale: 2,
+                                  ),
                                 ),
                               ),
                             ],
@@ -188,34 +208,37 @@ class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
 
   Widget _entry(AnimalDefinition animal, int number) {
     final owned = widget.ownedIds.contains(animal.id);
-    return Semantics(
-      label:
-          'No.${number.toString().padLeft(2, '0')} ${animal.name}${owned ? '' : ' 未所持'}',
-      button: true,
-      enabled: owned,
-      child: SpritePanel(
-        child: PixelTextOutline(
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              key: ValueKey('encyclopedia-${animal.id}'),
-              onTap: owned ? () => widget.onSelect(animal) : null,
-              child: Stack(
-                children: [
-                  Center(child: AnimalArt(animalId: animal.id, size: 48)),
-                  Positioned(
-                    left: 6,
-                    top: 6,
-                    child: Text(
-                      'No.${number.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 12),
+    return TutorialHighlight(
+      active: widget.highlightAnimalId == animal.id,
+      child: Semantics(
+        label:
+            'No.${number.toString().padLeft(2, '0')} ${animal.name}${owned ? '' : ' 未所持'}',
+        button: true,
+        enabled: owned,
+        child: SpritePanel(
+          child: PixelTextOutline(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: ValueKey('encyclopedia-${animal.id}'),
+                onTap: owned ? () => widget.onSelect(animal) : null,
+                child: Stack(
+                  children: [
+                    Center(child: AnimalArt(animalId: animal.id, size: 48)),
+                    Positioned(
+                      left: 6,
+                      top: 6,
+                      child: Text(
+                        'No.${number.toString().padLeft(2, '0')}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ),
-                  ),
-                  if (!owned)
-                    const Center(
-                      child: ZooUiSprite(part: ZooUiPart.lock, scale: 3),
-                    ),
-                ],
+                    if (!owned)
+                      const Center(
+                        child: ZooUiSprite(part: ZooUiPart.lock, scale: 3),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

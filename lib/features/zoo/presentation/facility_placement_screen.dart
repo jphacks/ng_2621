@@ -14,11 +14,13 @@ class FacilityPlacementScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.definition,
+    this.highlighted = false,
     required this.name,
     required this.onSave,
   });
   final ZooController controller;
   final FacilityDefinition definition;
+  final bool highlighted;
   final String name;
   final Future<void> Function(FacilityPlacement placement) onSave;
 
@@ -220,12 +222,15 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
                                   : () => Navigator.pop(context),
                               child: const Text('キャンセル'),
                             ),
-                            FilledButton(
-                              key: const ValueKey('confirm-placement'),
-                              onPressed: _saving || issue != null
-                                  ? null
-                                  : _save,
-                              child: Text(_saving ? '保存中…' : 'ここに設置'),
+                            TutorialHighlight(
+                              active: widget.highlighted && issue == null,
+                              child: FilledButton(
+                                key: const ValueKey('confirm-placement'),
+                                onPressed: _saving || issue != null
+                                    ? null
+                                    : _save,
+                                child: Text(_saving ? '保存中…' : 'ここに設置'),
+                              ),
                             ),
                           ],
                         ),

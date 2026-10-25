@@ -1,3 +1,4 @@
+import 'map_decoration.dart';
 import '../../game/experience/experience_widgets.dart';
 
 import 'dart:math' as math;
@@ -20,6 +21,7 @@ class ZooMap extends StatelessWidget {
     required this.controller,
     this.onAnimalSelected,
     this.decorativeArches = const [],
+    this.decorations = const [],
     this.tileOverrides = const {},
     this.onTileSelected,
     this.draggableTileArea,
@@ -36,6 +38,7 @@ class ZooMap extends StatelessWidget {
 
   final ZooController controller;
   final List<Rect> decorativeArches;
+  final List<MapDecoration> decorations;
   final Map<(int, int), String> tileOverrides;
   final void Function(int x, int y)? onTileSelected;
   final Rect? draggableTileArea;
@@ -168,7 +171,14 @@ class ZooMap extends StatelessWidget {
                                         ),
                                       ),
                                       for (final facility in world.facilities)
-                                        if (!(facility.id == 'flowerArch' &&
+                                        if (!decorations.any(
+                                              (d) =>
+                                                  d.part ==
+                                                  ZooBuildingPart.forId(
+                                                    facility.spriteId,
+                                                  ),
+                                            ) &&
+                                            !(facility.id == 'flowerArch' &&
                                                 decorativeArches.isNotEmpty) &&
                                             facility.tile == 'sprite' &&
                                             (placementsOverride ??
@@ -241,6 +251,26 @@ class ZooMap extends StatelessWidget {
                                               part: ZooBuildingPart.flowerArch,
                                               scale: 1,
                                               semanticLabel: 'デモ用フラワーアーチ',
+                                            ),
+                                          ),
+                                        ),
+                                      for (final decoration in decorations)
+                                        Positioned.fromRect(
+                                          rect: Rect.fromLTWH(
+                                            decoration.bounds.left *
+                                                world.tileSize,
+                                            decoration.bounds.top *
+                                                world.tileSize,
+                                            decoration.bounds.width *
+                                                world.tileSize,
+                                            decoration.bounds.height *
+                                                world.tileSize,
+                                          ),
+                                          child: FittedBox(
+                                            child: ZooBuildingSprite(
+                                              part: decoration.part,
+                                              scale: 1,
+                                              semanticLabel: 'デモ用の装飾',
                                             ),
                                           ),
                                         ),

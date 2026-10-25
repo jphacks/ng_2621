@@ -72,6 +72,24 @@ void main() {
       expect(result.part, TerrainPart.dirt);
     },
   );
+  test('dirt and both shoulders are continuous across the stone crossing', () {
+    String at(int x, int y) => y == 8
+        ? '='
+        : x == 9
+        ? '#'
+        : '.';
+    for (var x = 0; x < 20; x++) {
+      expect(selectTerrain(at, x, 8).part, TerrainPart.dirt);
+      expect(selectTerrain(at, x, 7).part, TerrainPart.grassHalfDirt);
+      expect(selectTerrain(at, x, 7).quarterTurns, 0);
+      expect(selectTerrain(at, x, 9).part, TerrainPart.grassHalfDirt);
+      expect(selectTerrain(at, x, 9).quarterTurns, 2);
+    }
+    expect(selectTerrain(at, 9, 6).part, TerrainPart.grassHalfStone);
+    expect(selectTerrain(at, 9, 6).quarterTurns, 1);
+    expect(selectTerrain(at, 9, 10).part, TerrainPart.grassHalfStone);
+    expect(selectTerrain(at, 9, 10).quarterTurns, 3);
+  });
   test('forest and unavailable neighbor cells remain grass', () {
     expect(
       selectTerrain((x, y) => x == 0 && y == 0 ? '^' : '.', 0, 0).part,

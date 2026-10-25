@@ -1,3 +1,4 @@
+import 'package:zoo_study/core/ui/zoo_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,27 +61,83 @@ void main() {
       await tap(tester, 'demo-next');
       await tap(tester, 'demo-approve');
       expect(tour(tester).repository.coins, 100);
-      await tap(tester, 'demo-next');
+      expect(find.byKey(const ValueKey('demo-next')), findsNothing);
+      expect(
+        tester
+            .widget<TutorialHighlight>(
+              find
+                  .ancestor(
+                    of: find.byKey(const ValueKey('home-section-1')),
+                    matching: find.byType(TutorialHighlight),
+                  )
+                  .first,
+            )
+            .active,
+        isTrue,
+      );
+      await tap(tester, 'home-section-1');
       await buy(tester, 'rabbit');
-      expect(tour(tester).step, DemoStep.placeRabbit);
-      await tap(tester, 'demo-next');
-      await tap(tester, 'assign-${PresentationRepository.starterPen}');
+      await tester.tap(find.byTooltip('商品一覧へ戻る'));
+      await frames(tester);
+      Future<void> openConstruction() async {
+        await tap(tester, 'home-section-2');
+      }
+
+      Future<void> placeAnimal(String id) async {
+        await openConstruction();
+        await tester.ensureVisible(find.text('動物一覧'));
+        await tester.tap(find.text('動物一覧'));
+        await frames(tester);
+        for (
+          var page = 0;
+          page < 5 &&
+              find.byKey(ValueKey('encyclopedia-$id')).evaluate().isEmpty;
+          page++
+        ) {
+          await tester.tap(find.byTooltip('次のページ'));
+          await frames(tester);
+        }
+        await tap(tester, 'encyclopedia-$id');
+        await tester.tap(find.text('囲いに配置する'));
+        await frames(tester);
+        await tap(tester, 'assign-${PresentationRepository.starterPen}');
+      }
+
+      Future<void> placeFacility(String name) async {
+        await openConstruction();
+        await tester.ensureVisible(find.text('施設の配置・移動'));
+        await tester.tap(find.text('施設の配置・移動'));
+        await frames(tester);
+        await tester.tap(find.text(name).hitTestable().last);
+        await frames(tester);
+        await tap(tester, 'confirm-placement');
+      }
+
+      await placeAnimal('rabbit');
       expect(tour(tester).step, DemoStep.expand);
       await tap(tester, 'demo-next');
       await tap(tester, 'demo-budget');
-      await tap(tester, 'demo-next');
+      await tap(tester, 'home-section-1');
+      await tap(tester, 'shop-filter-施設');
       await buy(tester, 'pond');
-      await tap(tester, 'demo-next');
-      await tap(tester, 'confirm-placement');
+      await tester.tap(find.byTooltip('商品一覧へ戻る'));
+      await frames(tester);
+      await placeFacility('池');
       expect(tour(tester).step, DemoStep.research);
-      await tap(tester, 'demo-next');
+      await tap(tester, 'home-section-1');
+      await tap(tester, 'shop-filter-動物');
       await buy(tester, 'fox');
-      await tap(tester, 'demo-next');
+      await tester.tap(find.byTooltip('商品一覧へ戻る'));
+      await frames(tester);
+      await tap(tester, 'shop-filter-施設');
       await buy(tester, 'laboratory');
-      await tap(tester, 'demo-next');
-      await tap(tester, 'confirm-placement');
+      await tester.tap(find.byTooltip('商品一覧へ戻る'));
+      await frames(tester);
+      await placeFacility('研究所');
       expect(tour(tester).step, DemoStep.evolve);
-      await tap(tester, 'demo-next');
+      await tester.ensureVisible(find.text('研究所'));
+      await tester.tap(find.text('研究所'));
+      await frames(tester);
       await tester.ensureVisible(find.text('炎狐'));
       await tester.tap(find.text('炎狐'));
       await frames(tester);
@@ -88,18 +145,20 @@ void main() {
       await tap(tester, 'confirm-purchase');
       await tester.tap(find.byTooltip('閉じる').hitTestable().last);
       await frames(tester);
-      await tap(tester, 'demo-next');
-      await tap(tester, 'assign-${PresentationRepository.starterPen}');
+      await placeAnimal('fire_fox');
       expect(tour(tester).step, DemoStep.collection);
-      await tap(tester, 'demo-next');
-      expect(find.text('動物一覧'), findsOneWidget);
+      await tester.ensureVisible(find.text('動物一覧'));
+      await tester.tap(find.text('動物一覧'));
+      await frames(tester);
+      expect(find.text('動物一覧'), findsWidgets);
       await tester.tap(find.byTooltip('閉じる').hitTestable().last);
       await frames(tester);
       await tap(tester, 'demo-next');
       expect(tour(tester).step, DemoStep.complete);
       expect(tour(tester).repository.snapshot.ownedAnimalIds, hasLength(27));
       expect(find.byKey(const ValueKey('demo-finale')), findsOneWidget);
-      await tap(tester, 'demo-finale-restart');
+      await tap(tester, 'demo-finale-options');
+      await tap(tester, 'demo-restart');
       expect(find.byKey(const ValueKey('demo-start')), findsOneWidget);
       await tap(tester, 'demo-start');
       expect(tour(tester).step, DemoStep.assign);

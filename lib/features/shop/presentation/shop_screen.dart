@@ -23,7 +23,11 @@ class ShopScreen extends StatefulWidget {
     this.initialKind = ShopItemKind.animal,
     this.embedded = false,
     this.onViewZoo,
+    this.highlightedItemId,
+    this.bottomPadding = 24,
   });
+  final String? highlightedItemId;
+  final double bottomPadding;
   final String initialQuery;
   final ShopItemKind initialKind;
   final bool embedded;
@@ -89,6 +93,7 @@ class ShopScreenState extends State<ShopScreen> {
 
   Future<void> _openItem(ShopItem item) async {
     FocusManager.instance.primaryFocus?.unfocus();
+    final guided = widget.highlightedItemId == item.id;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (detailContext) => PixelUiTheme(
@@ -102,10 +107,19 @@ class ShopScreenState extends State<ShopScreen> {
                   child: Text(item.name),
                 ),
               ),
-              leading: IconButton(
-                tooltip: '商品一覧へ戻る',
-                onPressed: () => Navigator.pop(detailContext),
-                icon: const ZooUiSprite(part: ZooUiPart.back, scale: 2),
+              leading: ListenableBuilder(
+                listenable: widget.session,
+                builder: (context, _) => TutorialHighlight(
+                  active:
+                      guided &&
+                      widget.session.snapshot != null &&
+                      item.isOwned(widget.session.snapshot!),
+                  child: IconButton(
+                    tooltip: '商品一覧へ戻る',
+                    onPressed: () => Navigator.pop(detailContext),
+                    icon: const ZooUiSprite(part: ZooUiPart.back, scale: 2),
+                  ),
+                ),
               ),
             ),
             body: SafeArea(
@@ -116,6 +130,7 @@ class ShopScreenState extends State<ShopScreen> {
                   session: widget.session,
                   purchases: _purchases,
                   item: item,
+                  highlighted: guided,
                   catalog: _catalog!,
                   onCreateEnclosure: widget.onCreateEnclosure == null
                       ? null
@@ -249,18 +264,27 @@ class ShopScreenState extends State<ShopScreen> {
     bool selected,
     VoidCallback onPressed, {
     Key? key,
-  }) => Semantics(
-    selected: selected,
-    child: OutlinedButton(
-      key: key,
-      onPressed: onPressed,
-      style: PixelUiTheme.colorfulButtonStyle(
-        selected ? ButtonPalette.green : ButtonPalette.cyan,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+  }) => TutorialHighlight(
+    active:
+        selected == false &&
+        _catalog?.items
+                .where((i) => i.id == widget.highlightedItemId)
+                .firstOrNull
+                ?.kind ==
+            (label == '動物' ? ShopItemKind.animal : ShopItemKind.facility),
+    child: Semantics(
+      selected: selected,
+      child: OutlinedButton(
+        key: key,
+        onPressed: onPressed,
+        style: PixelUiTheme.colorfulButtonStyle(
+          selected ? ButtonPalette.green : ButtonPalette.cyan,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     ),
@@ -320,7 +344,7 @@ class ShopScreenState extends State<ShopScreen> {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+          padding: EdgeInsets.fromLTRB(12, 0, 12, widget.bottomPadding),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
@@ -331,6 +355,8 @@ class ShopScreenState extends State<ShopScreen> {
               final item = items[index];
               return ShopItemCard(
                 item: item,
+                highlighted:
+                    widget.highlightedItemId == item.id && kind == _kind,
                 snapshot: widget.session.snapshot,
                 available: available,
                 onTap: () => _openItem(item),

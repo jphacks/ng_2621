@@ -1,3 +1,4 @@
+import 'package:zoo_study/features/game/presentation/notice_transition.dart';
 import 'package:zoo_study/features/study/demo_assignment_store.dart';
 
 import '../study/study_reward_test.dart' show earned;
@@ -49,10 +50,13 @@ void main() {
       await frames(tester);
       await tester.tap(find.byKey(const ValueKey('main-tab-home')));
       await frames(tester);
-      expect(find.byType(RewardCelebration), findsOneWidget);
+      expect(find.byType(NoticeTransition), findsOneWidget);
       expect(find.text('自習のごほうび +2コイン'), findsOneWidget);
       expect(store.coins, 2);
-      await tester.tap(find.widgetWithText(OutlinedButton, '閉じる'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 2600)),
+      );
+      await tester.pump(const Duration(seconds: 3));
       await frames(tester);
       await tester.tap(find.text('学習'));
       await frames(tester);
@@ -62,7 +66,7 @@ void main() {
       await frames(tester);
       await tester.tap(find.byKey(const ValueKey('main-tab-home')));
       await frames(tester);
-      expect(find.byType(RewardCelebration), findsNothing);
+      expect(find.byType(NoticeTransition), findsNothing);
       expect(store.coins, 2);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -101,7 +105,7 @@ void main() {
           tester.widget<ZooStudyApp>(find.byType(ZooStudyApp)).gameRepository!
               as MockGameRepository;
       // Existing approved history is a baseline, not a fresh reward.
-      expect(find.byType(RewardCelebration), findsNothing);
+      expect(find.byType(NoticeTransition), findsNothing);
       final data = repository.currentSnapshot.toJson();
       final receipt = Map<String, dynamic>.from(
         (data['rewards'] as List).first as Map,
@@ -120,13 +124,21 @@ void main() {
       final confirmed = GameSnapshot.fromJson(data);
       repository.receiveConfirmedSnapshot(confirmed);
       await frames(tester);
-      expect(find.byType(RewardCelebration), findsOneWidget);
+      expect(find.byType(NoticeTransition), findsOneWidget);
       expect(repository.currentSnapshot.coins, 130);
-      await tester.tap(find.widgetWithText(OutlinedButton, '閉じる'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 2600)),
+      );
+      await tester.pump(const Duration(seconds: 3));
       await frames(tester);
       repository.receiveConfirmedSnapshot(confirmed);
       await frames(tester);
-      expect(find.byType(RewardCelebration), findsNothing);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 2600)),
+      );
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+      expect(find.byType(NoticeTransition), findsNothing);
       expect(repository.currentSnapshot.coins, 130);
       await tester.pumpWidget(const SizedBox.shrink());
     },

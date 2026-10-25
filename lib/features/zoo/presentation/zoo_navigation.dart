@@ -91,8 +91,10 @@ class ZooHomeTabs extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onSelect,
+    this.highlightIndex,
   });
   final int selected;
+  final int? highlightIndex;
   final ValueChanged<int> onSelect;
   @override
   Widget build(BuildContext context) => Padding(
@@ -105,21 +107,24 @@ class ZooHomeTabs extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: Semantics(
                 selected: selected == index,
-                child: TextButton(
-                  key: ValueKey('home-section-$index'),
-                  style: PixelUiTheme.colorfulButtonStyle(
-                    selected == index
-                        ? ButtonPalette.green
-                        : ButtonPalette.cyan,
-                  ),
-                  onPressed: () => onSelect(index),
-                  child: Text(
-                    ['動物園', 'ショップ', '囲い・施設'][index],
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: selected == index
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+                child: TutorialHighlight(
+                  active: highlightIndex == index,
+                  child: TextButton(
+                    key: ValueKey('home-section-$index'),
+                    style: PixelUiTheme.colorfulButtonStyle(
+                      selected == index
+                          ? ButtonPalette.green
+                          : ButtonPalette.cyan,
+                    ),
+                    onPressed: () => onSelect(index),
+                    child: Text(
+                      ['動物園', 'ショップ', '囲い・施設'][index],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: selected == index
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
                     ),
                   ),
                 ),
