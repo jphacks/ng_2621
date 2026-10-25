@@ -20,10 +20,12 @@ class ZooTerrainPainter extends CustomPainter {
     this.placements = const {},
     this.extraImage,
     this.enclosures = const {},
+    this.tileOverrides = const {},
     this.previewOpacity = 1,
     this.previewFacilityId,
     this.previewEnclosureId,
   });
+  final Map<(int, int), String> tileOverrides;
   final Map<String, FacilityPlacement> placements;
   final ZooWorld world;
   final List<AnimalDefinition> animals;
@@ -36,7 +38,7 @@ class ZooTerrainPainter extends CustomPainter {
 
   String _at(int x, int y) {
     if (x < 0 || y < 0 || x >= world.columns || y >= world.rows) return '.';
-    var type = world.tiles[y][x];
+    var type = tileOverrides[(x, y)] ?? world.tiles[y][x];
     for (final facility in world.facilities) {
       if (facility.tile == 'water' && facility.contains(x, y) && type == '~') {
         type = '.';
@@ -182,7 +184,18 @@ class ZooTerrainPainter extends CustomPainter {
             turns: edge.quarterTurns,
           );
         }
-        if (type == '^') {
+        if (type == '^' &&
+            !enclosures.values.any(
+              (pen) =>
+                  x >= pen.left &&
+                  x < pen.left + pen.width &&
+                  y >= pen.top &&
+                  y < pen.top + pen.height &&
+                  (x == pen.left ||
+                      x == pen.left + pen.width - 1 ||
+                      y == pen.top ||
+                      y == pen.top + pen.height - 1),
+            )) {
           paint.color = const Color(0xFF315C3A);
           canvas.drawRect(
             Rect.fromLTWH(x * tile + 4, y * tile + 3, 8, 7),
@@ -228,7 +241,6 @@ class ZooTerrainPainter extends CustomPainter {
               ZooExtraPart.fenceBottomLeft.sourceRect,
               rect,
               mirrorX: x == pen.width - 1,
-              mirrorY: y == 0,
             );
           } else if (sideX) {
             _imageSprite(
@@ -258,6 +270,7 @@ class ZooTerrainPainter extends CustomPainter {
       old.previewFacilityId != previewFacilityId ||
       old.previewEnclosureId != previewEnclosureId ||
       old.world != world ||
+      old.tileOverrides != tileOverrides ||
       old.animals != animals ||
       old.facilities != facilities ||
       old.image != image ||

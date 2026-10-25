@@ -12,6 +12,14 @@ class DemoFinale extends StatelessWidget {
     required this.onRestart,
     required this.onExplore,
   });
+  static const decorativeArches = [
+    Rect.fromLTWH(8, 0, 2, 2),
+    Rect.fromLTWH(8, 2.5, 2, 2),
+    Rect.fromLTWH(8, 5, 2, 2),
+  ];
+  static final plazaTiles = Map<(int, int), String>.unmodifiable({
+    for (var y = 0; y < 7; y++) (8, y): '#',
+  });
   final ZooController controller;
   final VoidCallback onRestart, onExplore;
   @override
@@ -53,7 +61,13 @@ class DemoFinale extends StatelessWidget {
                   minScale: 1,
                   maxScale: 4,
                   boundaryMargin: const EdgeInsets.all(120),
-                  child: SizedBox.expand(child: ZooMap(controller: controller)),
+                  child: SizedBox.expand(
+                    child: ZooMap(
+                      controller: controller,
+                      decorativeArches: decorativeArches,
+                      tileOverrides: plazaTiles,
+                    ),
+                  ),
                 ),
               ),
             ),
