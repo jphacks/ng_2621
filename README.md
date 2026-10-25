@@ -48,7 +48,7 @@ Androidの勉強モードでは、カメラで顔または教材・手元を確�
 
 判定対象となった時間を同じ日の利用分で合算し、2分につき1コイン、1日最大30コインを終了・保存時に確定します。日付は日本時間の0時で切り替わります。
 
-姿勢や映り方は学習状況を把握するための参考情報であり、理解度や集中度を測定・証明するものではありません。映像・写真・音声は学習記録として保存・送信しません。
+姿勢や映り方は学習状況を把握するための参考情報であり、理解度や集中度を測定・証明するものではありません。解析用の一時写真は端末内で処理後に削除し、学習記録として画像・音声を保存・送信しません。生徒が課題に添付して提出する画像・PDFは別の保存対象です。
 
 #### 4. 自分だけの動物園を育成
 
@@ -68,7 +68,7 @@ Androidの勉強モードでは、カメラで顔または教材・手元を確�
 
 進化後も元の動物は消費されないため、動物を集めながら新しい種類を増やしていけます。
 
-動物一覧・暫定価格と進化条件
+[動物一覧・暫定価格と進化条件](docs/animal_roster.md)
 
 研究所以外の建築物固有の効果や複雑な進化演出は今後の実装対象です。
 
@@ -76,7 +76,7 @@ Androidの勉強モードでは、カメラで顔または教材・手元を確�
 
 図鑑から目標となる動物を選択すると、ホーム画面に購入までに必要な残りコイン数を表示します。
 
-新しい報酬が確定すると、コインが財布へ向かうアニメーションや動物のリアクションによって獲得を通知します。同じ取引による演出の重複は防止します。
+新しい報酬が確定すると、短時間の通知や動物のリアクションによって獲得を知らせます。同じ取引による演出の重複は防止します。
 
 目標や演出履歴は生徒ごとの設定として保存されます。
 
@@ -88,7 +88,7 @@ Firebase AuthenticationとCloud Firestoreを利用し、生徒ごとにコイン
 
 Firebaseエミュレーターによる登録・購入・配置・再ログインなどの検証を実施していますが、本番プロジェクトへのデプロイや実機での総合検証は別途必要です。
 
-アカウント設定と起動手順
+[アカウント設定と起動手順](docs/accounts.md)
 
 #### 8. 先生向け学習アドバイス（試作）
 
@@ -144,6 +144,152 @@ UIと動物園にはドット絵素材を使用し、拡大時にもピクセル
 * カメラによる学習判定で映像や音声を学習記録として保存・送信しない設計。
 
 ## 開発技術
+
+### システムアーキテクチャと実装状況
+
+先生向けWeb画面と生徒向けAndroid画面は、別々のシステムではなく同じFlutter / Dartコードベースの役割別UIです。先生画面はAndroidでも利用します。起動時にデータ取得先を切り替え、Firebase接続・端末内保存・発表専用デモを分離しています。
+
+| 区分 | 確認できる実装・検証範囲 |
+| --- | --- |
+| 実装済み | 課題・添付提出、二段階報酬、購入・配置・研究、役割別UI。ローカルのロジック・Widgetテストを用意 |
+| Firebase連携 | Auth・Firestore・Storage・Callable Functionsの接続コードを実装。認証付き提出・購入・配置・権限制御にはエミュレーターでの検証記録あり。本番デプロイ・実機の端末間総合検証とは区別 |
+| Android学習判定 | ML Kit・YOLO・MediaPipeを使う端末内処理を実装。判定ロジックのテストと、カメラ・モデルを使う実機での精度検証は別 |
+| 試作 | Gemini APIによるアドバイス案生成。キー・モデル設定・Functions配備が必要で、実API接続と生成品質は未検証 |
+| デモ専用 | `ZOOSTUDY_PRESENTATION=true` はA・B各端末の独立したメモリ内データ。役割選択は認証の代替であり、課題・承認結果の表示も実通信ではない |
+
+次の図は実装上の接続経路です。Firebaseへの線はFirebaseモードでのみ使い、Geminiへの破線は接続コードがある試作経路を表します。
+
+```mermaid
+flowchart TB
+  subgraph CLIENT["Flutter / Dart クライアント"]
+    T["先生UI：Web / Android"]
+    S["生徒UI：Android"]
+    LOGIN["Firebaseモードのログイン<br/>メール・生徒コード / QR"]
+    R["FirebaseStudyRepository"]
+    L["端末内Repository<br/>DemoAssignmentStore / LocalClassStudyRepository"]
+    PA["発表用A：先生の独立メモリ"]
+    PB["発表用B：生徒の独立メモリ"]
+    GAME["GameSession / ZooController / 描画"]
+    CAM["Androidカメラ"]
+    ML["端末内判定<br/>ML Kit・YOLO・MediaPipe"]
+    REC["学習記録：時間・状態の集計"]
+    T --> LOGIN
+    S --> LOGIN
+    T -->|Firebaseモード| R
+    S -->|Firebaseモード| R
+    T -->|localモード| L
+    S -->|localモード| L
+    T -->|発表モード| PA
+    S -->|発表モード| PB
+    R --> GAME
+    L --> GAME
+    PB --> GAME
+    S --> CAM --> ML --> REC
+    REC --> R
+    REC --> L
+  end
+  AUTH["Firebase Authentication"]
+  CF["Cloud Functions：Callable API"]
+  DB["Cloud Firestore"]
+  FILES["Cloud Storage：課題の添付"]
+  DISK["SharedPreferences / 添付ファイル保存領域"]
+  AI["Gemini API：試作・実接続未検証"]
+  LOGIN -->|メール認証・Custom Tokenでログイン| AUTH
+  LOGIN -->|生徒コード検証| CF
+  R -->|IDトークン付き操作要求| CF
+  R -->|監視・サーバーから読取| DB
+  R -->|添付のアップロード・読取| FILES
+  CF -->|所属・役割検証とトランザクション| DB
+  CF -->|添付の実体検証| FILES
+  CF -.->|学習記録等の集計から案を生成| AI
+  L --> DISK
+```
+
+Firebaseモードでは、クライアントが残高・提出状態を直接確定せず、Functionsの結果をFirestoreから読み直します。例外は本人の目標・演出履歴を保存する `CloudGamePreferences` で、`gamePreferences` への制限付き書き込みを許可しています。端末内モードの名前空間による分離は、Firebaseの認証・Security Rulesによる権限制御の代替ではありません。
+
+### 課題管理と二段階報酬のデータフロー
+
+以下はFirebaseモードの処理です。発表用デモのA・B間にこの通信が発生するわけではありません。
+
+```mermaid
+flowchart TD
+  T["先生：課題を作成"] --> P["publishAssignment<br/>所属・先生権限を検証"]
+  P --> A["assignments：publishedで配布"]
+  A --> S["生徒：課題を確認・回答や添付を提出"]
+  S --> SUB["submitAssignment"]
+  SUB --> TX30["トランザクション<br/>初回のみ30コイン・提出をpending_reviewへ"]
+  TX30 --> REVIEW["先生：reviewSubmission<br/>提出versionを照合"]
+  REVIEW -->|再提出依頼| RETRY["needs_revision<br/>残高は維持"]
+  RETRY -->|修正して再提出・30コインの重複なし| SUB
+  REVIEW -->|承認| TX70["トランザクション<br/>初回承認のみ70コイン・approvedへ"]
+  TX70 --> SHOP["生徒：動物・施設・囲いを選ぶ"]
+  SHOP --> BUY["purchaseItem<br/>サーバー側の価格・条件・配置を検証"]
+  BUY --> SAVE["トランザクション<br/>残高減算・所持品や配置・取引履歴を確定"]
+  SAVE --> ZOO["zoosを再取得<br/>動物園の表示・行動範囲へ反映"]
+  TX30 --> HISTORY["zoos / rewardTransactions<br/>操作の再送結果はoperationRequests"]
+  TX70 --> HISTORY
+  SAVE --> PURCHASES["zoos / shopTransactions"]
+```
+
+- **報酬の一意性**：報酬履歴のIDを `${assignmentId}_${studentId}_submit` と `${assignmentId}_${studentId}_approve` に固定し、履歴の作成・残高加算・提出状態の更新を同一トランザクションで行います。再提出や別の要求IDによる再操作でも、同じ報酬を増やしません。
+- **操作の再送**：課題操作は `operationRequests/{uid_requestId}` に要求内容の `fingerprint` と結果を保存。同じ要求は結果を再利用し、同じIDで内容が異なる要求は拒否します。承認は `expectedVersion` も照合し、読み込み後に変更された提出を誤承認しないようにします。
+- **購入・配置の整合性**：`shopTransactions/{uid_requestId}` と動物園更新を一括確定。価格・進化条件・囲いの面積差額はサーバーが計算し、クライアントから送られた残高や価格を採用しません。
+- **実同期とデモの違い**：FirebaseはFirestoreの変更監視とサーバー再取得で他端末の更新を反映します。端末内モードは同じ端末のクラス・生徒データを読み直す方式です。発表用Bは配布済み課題を持ち、提出後の課題メニュー再訪で準備済みの承認結果・アドバイスを表示するだけで、Aの操作完了を検出しません。
+
+### データベース・保存設計
+
+Firestoreの主要コレクションと、実装されているフィールドの抜粋です。`organizationId`・`classId` による所属検証と、`classMemberships.role` による役割判定をFunctionsとSecurity Rulesで行います。
+
+| 保存先 | 主なフィールド・責務 |
+| --- | --- |
+| `users/{uid}` | `organizationId`, `classId`, `displayName`。利用者の所属・選択中クラス |
+| `classes/{classId}` / `classMemberships/{classId_uid}` | クラスの `organizationId`, `name` と、所属の `classId`, `userId`, `displayName`, `role`。先生は複数クラスを管理し、選択中クラスを切り替える |
+| `assignments/{assignmentId}` | `teacherId`, `title`, `description`, `subject`, `dueAt`, `status`, `submissionReward`, `approvalReward`。所属クラスへ配布 |
+| `submissions/{assignmentId_studentId}` | `assignmentId`, `studentId`, `answerText`, `attachments`, `status`, `version`, `revisionCount`, `feedback`, `reviewedBy`。状態は `pending_review` / `needs_revision` / `approved`。未提出は提出ドキュメントがない状態 |
+| `zoos/{uid}` | `studentId`, `coins`, `revision`, `ownedAnimalIds`, `ownedFacilityIds`, `layout`。`layout` は `enclosures`, `animalEnclosures`, `facilities` を持ち、囲いの座標・寸法、動物と囲いの対応、施設の座標を保存 |
+| `rewardTransactions/{transactionId}` | `assignmentId`, `studentId`, `kind`, `amount`, `confirmedAt`。課題報酬の履歴 |
+| `operationRequests/{uid_requestId}` / `shopTransactions/{uid_requestId}` | 前者は `fingerprint`, `result`, `createdAt`、後者は `studentId`, `itemId`, `fingerprint`, `receipt`。再送結果と購入・配置取引を管理 |
+| `studySessions/{uid_recordId}` / `studyDailyRewards/{uid_day}` | 記録の `record`, `fingerprint`, `rewardAmount`, `source` と、日別の `day`, `eligibleMs`, `coinsGranted`。同じ記録の重複保存や日次上限超過を防止 |
+| `studyAdviceDrafts/{adviceId}` / `studyAdvice/{adviceId}` | 先生用下書きの `summary`, `teacherNote`, `message`, `aggregate`, `status`。送信時は承認した `message` を生徒向けへコピーし、`summary`・`teacherNote` は空にする |
+| `gamePreferences/{uid}` | `goalId`, `seen`。本人の目標と表示済み演出の履歴。残高や所持品とは分離 |
+
+メール・パスワードの認証情報はFirebase Authenticationが担当します。生徒コードには `studentLoginCodes`・`studentCodeAccounts`、クラス接頭辞には `classLoginPrefixes`、試行制限には `studentCodeAttempts` を使用し、コードのハッシュを検証してCustom Tokenを発行します。招待による生徒参加には `classInvitations` を使用します。先生権限の自己登録は提供せず、管理者による事前の所属設定が必要です。
+
+| モード・対象 | 保存先と範囲 |
+| --- | --- |
+| Firebaseの正本 | 上記Firestore。`zoos` はUID別の個人データで、クライアントからの残高・所属・提出状態の直接更新は拒否 |
+| 課題の添付 | Cloud Storageの `submissionFiles/{organizationId}/{classId}/{assignmentId}/{studentId}/{fileName}`。JPEG・PNG・PDF、各10MiB・最大3件。Functionsで実体・所有者・形式・ハッシュを確認。本人と担当クラスの先生のみ読取可能 |
+| 通常の端末内モード | SharedPreferencesに `study-state` や下書きを保存。`StudentAccountStorage`・`ClassAccountStorage` で生徒・クラスごとのキーを分離。添付本体はAndroidのアプリ用ファイル領域、WebはIndexedDB |
+| Firebase利用時の端末側 | 未送信の下書きを利用者・クラス別に保存。サーバーで確定した残高の代わりにはしない |
+| 発表用デモ | A・B別々のメモリのみ。初期3,000コイン・無料の囲い・最後の完成景はデモ設定で、実アカウントへ保存しない |
+
+### ゲーム内部アーキテクチャ
+
+ゲームはFlutter標準のWidget・`CustomPainter`・`Ticker`で構成し、Flameは導入していません。課題管理から受け取る情報を `GameSnapshot` にまとめ、学習画面やFirebase SDKを動物の移動ロジックに持ち込まない構成です。
+
+| 層 | 役割と設計意図 |
+| --- | --- |
+| 定義データ | `assets/zoo/world.json` にタイルマップ・動物のID、速度、画像パス、移動エリア・施設を定義。`assets/zoo/shop_catalog.json` に価格、入手方式、進化元、必要施設などを定義し、種別ごとの条件をデータで追加できる |
+| 取得・取引 | `GameRepository`・`ShopRepository` のインターフェースでFirebase／モックを切り替える。`GameSession` は確定スナップショットを購読し、古い `revision` や別利用者のデータを採用しない |
+| ゲームロジック | `ZooController` が所持情報と配置を反映し、`AnimalWalker` が待機とランダム移動を繰り返す。`animalEnclosures` で割り当てた囲いから行動範囲を算出し、拡張・配置変更時も範囲内に収める |
+| 配置ルール | `layout_rules.dart`・`facility_placement.dart` がマップ外、通路、水辺、施設・囲いの重なりを判定。編集中はローカルの仮配置で、確定成功後に反映。Firebaseモードではサーバーでも再検証する |
+| 描画 | `ZooMap` がタイル背景・施設・動物を合成。背景側は `sceneryRevision` と `RepaintBoundary`、動物側は更新通知を使い分ける。移動時間の刻みを最大0.1秒に制限し、復帰時の大きな位置飛びを抑える |
+| 収集・研究 | 所持IDを図鑑のロック・表示へ反映。研究商品は進化元の所持・研究所の購入と配置などを検証し、進化元を消費せず新しい動物を追加する |
+
+サーバー側の正規価格・マップは `functions/catalog.json`・`functions/game_world.json` で管理します。クライアント定義と別ファイルのため、追加時は両方を更新する必要があり、バックエンドテストに内容の一致確認があります。JSONを追加するだけですべてのアカウント経路へ自動配信される仕組みではありません。
+
+### 技術的な工夫と現在の限界
+
+- **ゲームと学習の疎結合**：課題報酬や自主学習報酬を確定データとして取り込み、購入・配置・移動・描画を分離。取得先を差し替えたデモでも同じゲームロジックを使います。
+- **権限と整合性の二重検証**：Firebaseでは読取範囲をSecurity Rulesで制限し、書込操作はCallable FunctionsでもUID・塾・クラス・役割を検証。報酬・購入・配置はFirestoreトランザクションで確定し、学習報酬と購入が同時でも残高の上書きを防ぐ設計です。
+- **学習判定を端末内に留める**：ML Kitの顔検出、Kotlinの `StudyDetectorBridge` 経由の日本語OCR・MediaPipeの手検出、YOLOの物体検出を組み合わせます。映り方に応じて方式を選び、記録は時間・状態別集計などに限定。音声は無効化し、一時写真は解析の `finally` で削除します。モデルの初回準備には通信が必要な場合があります。
+- **観測と評価を区別**：自主学習報酬は日本時間の日別対象時間を合算し、2分1コイン・日最大30コイン。サーバーは記録の形式・重複・上限を確認しますが、端末の観測記録から理解度や学習実態を証明するものではありません。
+- **先生が確認するAI試作**：Functionsで直近7日とその前7日の利用時間・科目別時間・課題提出状況を集計してGeminiへ渡す構成です。氏名・画像・OCR本文・提出回答は送らず、先生が編集・承認した文章だけを生徒へ公開します。実API接続・生成品質の検証は残っています。
+- **ドット絵を保つ再利用**：スプライトシートを矩形で切り出し、`FilterQuality.none`・アンチエイリアス無効で描画。端末の画素倍率を考慮した拡大、タイルの90度回転、枠の分割描画で既存素材を再利用し、DotGothic16も同梱して外部フォント取得を不要にしています。
+- **拡張時の制約を明示**：現行Firestoreルールでクラウド保存できる `goalId` は `rabbit`・`fox`・`deer`・`evolved_fox`（および未設定）のみです。追加動物を含む全図鑑の目標保存への対応、研究所以外の施設固有効果、より複雑な進化演出は今後の対象です。
+
+根拠となる実装：[Firebase接続Repository](lib/features/study/data/firebase_study_repository.dart)、[課題・報酬処理](functions/service.js)、[購入・配置処理](functions/game_purchase.js)、[アドバイス試作](functions/study_advice.js)、[Firestoreルール](firestore.rules)、[添付のルール](storage.rules)、[バックエンド検証コード](functions/test/backend.test.js)。検証記録は[アカウント設定](docs/accounts.md)・[保存機能の手順](lib/features/study/STORAGE.md)を参照してください。これらのローカル・エミュレーターでの確認は、本番配備やAndroid実機・Webでの総合検証の完了を意味しません。
+
 ### 活用した技術
 #### API・データ
 * Firebase Authentication、Cloud Firestore、Cloud Functions、Cloud Storage。接続にはFirebase設定とバックエンドの準備が必要です。
