@@ -97,11 +97,123 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
     ),
   );
 
+  Widget _map() => ClipRect(
+    key: const ValueKey('facility-map-viewport'),
+    child: InteractiveViewer(
+      panEnabled: !_dragging,
+      scaleEnabled: !_dragging,
+      minScale: 1,
+      maxScale: 4,
+      boundaryMargin: EdgeInsets.zero,
+      child: SizedBox.expand(
+        child: ZooMap(
+          controller: widget.controller,
+          previewFacilityId: widget.definition.id,
+          previewOpacity: _dragging ? .6 : 1,
+          onDraggingChanged: (value) {
+            if (mounted) setState(() => _dragging = value);
+          },
+          onTileSelected: _saving ? null : _select,
+          draggableTileArea: Rect.fromLTWH(
+            _draft.left.toDouble(),
+            _draft.top.toDouble(),
+            widget.definition.width.toDouble(),
+            widget.definition.height.toDouble(),
+          ),
+          onTileDragged: _saving ? null : _select,
+          placementsOverride: {
+            ...widget.controller.placements,
+            _draft.facilityId: _draft,
+          },
+          overlay: _PlacementGrid(
+            world: widget.controller.world,
+            definition: widget.definition,
+            draft: _draft,
+            valid: widget.controller.placementIssue(_draft) == null,
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _controls(PlacementIssue? issue) => SingleChildScrollView(
+    key: const ValueKey('facility-placement-controls'),
+    physics: _dragging ? const NeverScrollableScrollPhysics() : null,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '枠をドラッグ／マップをタップして配置（${widget.definition.width}×${widget.definition.height}マス）',
+          style: const TextStyle(fontSize: 12),
+        ),
+        Text(
+          '位置：列 ${_draft.left + 1} ／ 行 ${_draft.top + 1}',
+          key: const ValueKey('placement-position'),
+          style: const TextStyle(fontSize: 14),
+        ),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            _arrow('左へ1マス', ZooUiPart.arrowLeft, -1, 0),
+            _arrow('上へ1マス', ZooUiPart.arrowLeft, 0, -1, turns: 1),
+            _arrow('下へ1マス', ZooUiPart.arrowRight, 0, 1, turns: 1),
+            _arrow('右へ1マス', ZooUiPart.arrowRight, 1, 0),
+          ],
+        ),
+        Semantics(
+          liveRegion: true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              _error ?? issue?.message ?? 'この場所に設置できます',
+              key: const ValueKey('placement-status'),
+              style: TextStyle(
+                fontSize: 13,
+                color: _error != null || issue != null
+                    ? const Color(0xFF8B2323)
+                    : const Color(0xFF263D2D),
+              ),
+            ),
+          ),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _saving ? null : () => Navigator.pop(context),
+                child: const Text('キャンセル', style: TextStyle(fontSize: 13)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TutorialHighlight(
+                active: widget.highlighted && issue == null && !_dragging,
+                child: FilledButton(
+                  key: const ValueKey('confirm-placement'),
+                  onPressed: _saving || _dragging || issue != null
+                      ? null
+                      : _save,
+                  child: Text(
+                    _saving ? '保存中…' : 'ここに設置',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => PixelUiTheme(
     child: AnimatedBuilder(
       animation: widget.controller.sceneryRevision,
-      builder: (context, child) {
+      builder: (context, _) {
         final issue = widget.controller.placementIssue(_draft);
         return PopScope(
           canPop: !_saving,
@@ -117,139 +229,36 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
             ),
             body: SafeArea(
               top: false,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
-                  // One scroll surface keeps the editor usable in landscape and large text.
-                  return SingleChildScrollView(
-                    physics: _dragging
-                        ? const NeverScrollableScrollPhysics()
-                        : null,
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth > constraints.maxHeight * 1.3) {
+                      return Row(
+                        children: [
+                          Expanded(flex: 3, child: _map()),
+                          const SizedBox(width: 12),
+                          Expanded(flex: 2, child: _controls(issue)),
+                        ],
+                      );
+                    }
+                    return Column(
                       children: [
-                        Text(
-                          '選択枠をドラッグするか、左上の位置をマップで選択してください（${widget.definition.width}×${widget.definition.height}マス）',
-                        ),
+                        Expanded(child: _map()),
                         const SizedBox(height: 8),
-                        SizedBox(
-                          height: constraints.maxHeight < 420
-                              ? 280
-                              : constraints.maxHeight * 0.52,
-                          child: ClipRect(
-                            child: InteractiveViewer(
-                              panEnabled: !_dragging,
-                              scaleEnabled: !_dragging,
-                              minScale: 1,
-                              maxScale: 4,
-                              boundaryMargin: const EdgeInsets.all(80),
-                              child: ZooMap(
-                                controller: widget.controller,
-                                previewFacilityId: widget.definition.id,
-                                previewOpacity: _dragging ? .6 : 1,
-                                onDraggingChanged: (value) {
-                                  if (mounted) {
-                                    setState(() => _dragging = value);
-                                  }
-                                },
-                                onTileSelected: _saving ? null : _select,
-                                draggableTileArea: Rect.fromLTWH(
-                                  _draft.left.toDouble(),
-                                  _draft.top.toDouble(),
-                                  widget.definition.width.toDouble(),
-                                  widget.definition.height.toDouble(),
-                                ),
-                                onTileDragged: _saving ? null : _select,
-                                placementsOverride: {
-                                  ...widget.controller.placements,
-                                  _draft.facilityId: _draft,
-                                },
-                                overlay: _PlacementGrid(
-                                  world: widget.controller.world,
-                                  definition: widget.definition,
-                                  draft: _draft,
-                                  valid: issue == null,
-                                ),
-                              ),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: (constraints.maxHeight - 80).clamp(
+                              0.0,
+                              260.0,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '位置：列 ${_draft.left + 1} ／ 行 ${_draft.top + 1}',
-                          key: const ValueKey('placement-position'),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _arrow('左へ1マス', ZooUiPart.arrowLeft, -1, 0),
-                            _arrow(
-                              '上へ1マス',
-                              ZooUiPart.arrowLeft,
-                              0,
-                              -1,
-                              turns: 1,
-                            ),
-                            _arrow(
-                              '下へ1マス',
-                              ZooUiPart.arrowRight,
-                              0,
-                              1,
-                              turns: 1,
-                            ),
-                            _arrow('右へ1マス', ZooUiPart.arrowRight, 1, 0),
-                          ],
-                        ),
-                        Semantics(
-                          liveRegion: true,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              _error ?? issue?.message ?? 'この場所に設置できます',
-                              key: const ValueKey('placement-status'),
-                              style: TextStyle(
-                                color: _error != null || issue != null
-                                    ? const Color(0xFF8B2323)
-                                    : const Color(0xFF263D2D),
-                                fontSize: scale > 1.5 ? 14 : 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Wrap(
-                          alignment: WrapAlignment.end,
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton(
-                              onPressed: _saving
-                                  ? null
-                                  : () => Navigator.pop(context),
-                              child: const Text('キャンセル'),
-                            ),
-                            TutorialHighlight(
-                              active:
-                                  widget.highlighted &&
-                                  issue == null &&
-                                  !_dragging,
-                              child: FilledButton(
-                                key: const ValueKey('confirm-placement'),
-                                onPressed: _saving || _dragging || issue != null
-                                    ? null
-                                    : _save,
-                                child: Text(_saving ? '保存中…' : 'ここに設置'),
-                              ),
-                            ),
-                          ],
+                          child: _controls(issue),
                         ),
                       ],
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),

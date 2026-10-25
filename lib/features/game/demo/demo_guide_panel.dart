@@ -1,5 +1,3 @@
-import 'presentation_scenario.dart';
-
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_ui.dart';
@@ -66,55 +64,6 @@ class DemoGuidePanel extends StatelessWidget {
           ],
         ),
       ),
-    ),
-  );
-}
-
-class DemoAnswerDialog extends StatefulWidget {
-  const DemoAnswerDialog({super.key});
-  @override
-  State<DemoAnswerDialog> createState() => _DemoAnswerDialogState();
-}
-
-class _DemoAnswerDialogState extends State<DemoAnswerDialog> {
-  final _answer = TextEditingController(text: PresentationScenario.answer);
-  @override
-  void dispose() {
-    _answer.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => PixelUiTheme(
-    child: SpriteAlertDialog(
-      title: const Text('課題に回答'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('今日わかったことを1つ書いて提出しましょう。用意した回答をそのまま使えます。'),
-          TextField(
-            key: const ValueKey('demo-answer'),
-            controller: _answer,
-            maxLines: 3,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('あとで'),
-        ),
-        ValueListenableBuilder<TextEditingValue>(
-          valueListenable: _answer,
-          builder: (context, value, _) => FilledButton(
-            key: const ValueKey('demo-submit'),
-            onPressed: value.text.trim().isEmpty
-                ? null
-                : () => Navigator.pop(context, value.text.trim()),
-            child: const Text('提出する ＋30'),
-          ),
-        ),
-      ],
     ),
   );
 }

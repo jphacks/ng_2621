@@ -1,3 +1,4 @@
+import '../../../core/storage/draft_storage.dart';
 import 'presentation_scenario.dart';
 
 import 'dart:async';
@@ -40,6 +41,7 @@ class PresentationRepository extends StudyRepository {
       worldLoader: _worldLoader,
     );
     _study.addListener(_projectStudy);
+    _study.publish(PresentationScenario.assignment());
     _subscription = _game.watchGameState().listen((_) {
       if (!_disposed) notifyListeners();
     });
@@ -191,14 +193,35 @@ class PresentationRepository extends StudyRepository {
       _study.submissionFor(id, studentId: studentId);
   @override
   List<DemoSubmission> submissionsFor(String id) => _study.submissionsFor(id);
+
+  /// B only reads the pre-distributed task. There is no teacher authority here.
   @override
   void publish(
     DemoAssignment assignment, {
     DemoStudyRole role = DemoStudyRole.teacher,
-  }) {
-    _study.publish(assignment, role: role);
+  }) => throw const StudyFailure('生徒デモでは課題を配布できません');
+
+  /// Replays an A-side response on a later inbox visit, never a B-side approval.
+  /// The presenter opens B's assignment menu again after A finishes its actions.
+  void openScriptedAssignmentInbox() {
+    final submission = _study.submissionFor(PresentationScenario.assignmentId);
+    if (submission == null ||
+        submission.status != AssignmentState.pendingReview) {
+      return;
+    }
+    _study.review(
+      PresentationScenario.assignmentId,
+      role: DemoStudyRole.teacher,
+      approve: true,
+      feedback: PresentationScenario.advice,
+      expectedVersion: submission.version,
+    );
     _projectStudy();
   }
+
+  final _answerDrafts = _StudentDemoDrafts();
+  @override
+  DraftStorage get drafts => _answerDrafts;
 
   @override
   int submit(
@@ -225,18 +248,7 @@ class PresentationRepository extends StudyRepository {
     String feedback = '',
     String? studentId,
     int? expectedVersion,
-  }) {
-    final amount = _study.review(
-      id,
-      role: role,
-      approve: approve,
-      feedback: feedback,
-      studentId: studentId,
-      expectedVersion: expectedVersion,
-    );
-    _projectStudy();
-    return amount;
-  }
+  }) => throw const StudyFailure('生徒デモでは承認操作はできません');
 
   @override
   Future<List<StudyRecord>> loadStudyRecords() => _study.loadStudyRecords();
@@ -257,14 +269,28 @@ class PresentationRepository extends StudyRepository {
   Future<Uint8List> readAttachment(StudyAttachment file) =>
       _study.readAttachment(file);
   @override
-  Future<List<StudyAdvice>> loadStudyAdvice({required bool teacher}) =>
-      _study.loadStudyAdvice(teacher: teacher);
+  Future<List<StudyAdvice>> loadStudyAdvice({required bool teacher}) async =>
+      _study.submissionFor(PresentationScenario.assignmentId)?.status ==
+          AssignmentState.approved
+      ? [
+          StudyAdvice(
+            id: 'presentation_advice',
+            studentId: snapshot.studentId,
+            createdAt: snapshot.confirmedAt,
+            publishedAt: snapshot.confirmedAt,
+            summary: '',
+            teacherNote: '',
+            message: PresentationScenario.advice,
+            source: 'template',
+          ),
+        ]
+      : [];
   @override
-  Future<StudyAdvice> generateStudyAdvice(String studentId) =>
-      _study.generateStudyAdvice(studentId);
+  Future<StudyAdvice> generateStudyAdvice(String studentId) async =>
+      throw const StudyFailure('生徒デモではアドバイスを作成できません');
   @override
-  Future<void> publishStudyAdvice(String id, String message) =>
-      _study.publishStudyAdvice(id, message);
+  Future<void> publishStudyAdvice(String id, String message) async =>
+      throw const StudyFailure('生徒デモではアドバイスを送信できません');
   @override
   void dispose() {
     _disposed = true;
@@ -273,5 +299,25 @@ class PresentationRepository extends StudyRepository {
     _study.dispose();
     unawaited(_game.dispose());
     super.dispose();
+  }
+}
+
+class _StudentDemoDrafts implements DraftStorage {
+  final _values = <String, Map<String, dynamic>>{
+    'answer-${PresentationScenario.assignmentId}-self': {
+      'answer': PresentationScenario.answer,
+    },
+  };
+  @override
+  Future<Map<String, dynamic>?> read(String key) async =>
+      _values[key] == null ? null : Map.of(_values[key]!);
+  @override
+  Future<void> write(String key, Map<String, dynamic> value) async {
+    _values[key] = Map.of(value);
+  }
+
+  @override
+  Future<void> remove(String key) async {
+    _values.remove(key);
   }
 }

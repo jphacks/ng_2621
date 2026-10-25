@@ -2,14 +2,12 @@ import 'presentation_scenario.dart';
 
 import 'package:flutter/foundation.dart';
 
-import '../../study/study_repository.dart';
 import '../domain/game_snapshot.dart';
 import 'presentation_repository.dart';
 
 enum DemoStep {
-  assign,
   submit,
-  approve,
+  waitForTeacher,
   buyRabbit,
   placeRabbit,
   pond,
@@ -37,12 +35,11 @@ class DemoTutorialController extends ChangeNotifier {
   DemoStep get step {
     if (repository.grownShown) return DemoStep.complete;
     final data = repository.snapshot;
-    if (!repository.assignments.any((a) => a.id == assignmentId)) {
-      return DemoStep.assign;
-    }
     final submitted = repository.submissionFor(assignmentId);
     if (submitted == null) return DemoStep.submit;
-    if (submitted.status != AssignmentState.approved) return DemoStep.approve;
+    if (submitted.status != AssignmentState.approved) {
+      return DemoStep.waitForTeacher;
+    }
     if (!data.ownedAnimalIds.contains('rabbit')) return DemoStep.buyRabbit;
     if (!data.layout.animalEnclosures.containsKey('rabbit')) {
       return DemoStep.placeRabbit;
@@ -57,13 +54,11 @@ class DemoTutorialController extends ChangeNotifier {
     return DemoStep.grown;
   }
 
-  bool get isDirectAction => const {
-    DemoStep.assign,
-    DemoStep.submit,
-    DemoStep.approve,
-    DemoStep.grown,
-    DemoStep.complete,
-  }.contains(step);
+  bool get isStudyStep =>
+      step == DemoStep.submit || step == DemoStep.waitForTeacher;
+
+  bool get isDirectAction =>
+      const {DemoStep.grown, DemoStep.complete}.contains(step);
   String? get shopTargetId => switch (step) {
     DemoStep.buyRabbit => 'rabbit',
     DemoStep.pond => hasPond ? null : 'pond',
@@ -92,9 +87,8 @@ class DemoTutorialController extends ChangeNotifier {
       step == DemoStep.collection;
 
   String get title => switch (step) {
-    DemoStep.assign => '先生からの課題を確認',
-    DemoStep.submit => '生徒役：回答を提出して＋30',
-    DemoStep.approve => '先生からの承認・アドバイスを確認',
+    DemoStep.submit => '課題メニューから回答を提出',
+    DemoStep.waitForTeacher => '先生からの承認・アドバイスを確認',
     DemoStep.buyRabbit => '100コインでウサギを迎える',
     DemoStep.placeRabbit => '無料の最初の囲いに配置',
     DemoStep.pond => hasPond ? '池をマップに配置' : '施設の購入を体験',
@@ -111,9 +105,8 @@ class DemoTutorialController extends ChangeNotifier {
     DemoStep.complete => '学びの先に、こんな動物園が待っている',
   };
   String get actionLabel => switch (step) {
-    DemoStep.assign => '配布された課題を見る',
     DemoStep.submit => '回答する',
-    DemoStep.approve => '承認結果を確認',
+    DemoStep.waitForTeacher => '承認結果を確認',
     DemoStep.buyRabbit => 'ショップへ',
     DemoStep.placeRabbit || DemoStep.placeEvolution => '配置する',
     DemoStep.pond => hasPond ? '配置する' : '池を見る',
@@ -129,10 +122,9 @@ class DemoTutorialController extends ChangeNotifier {
     DemoStep.complete => '全景を表示',
   };
   String get explanation => switch (step) {
-    DemoStep.assign => '先生の配布操作に合わせて課題を確認します。通信なしのデモです。初期資金3,000コインは受け取り済みです。',
-    DemoStep.submit => '用意した回答をそのまま使えます。初回提出で30コインが届きます。',
-    DemoStep.approve =>
-      '先生端末の承認・アドバイス送信が終わったら押してください。結果とアドバイスを確認すると追加70コインが届きます。',
+    DemoStep.submit => '下の「学習」→「課題提出」から課題を開いて提出します。初回提出で30コインが届きます。',
+    DemoStep.waitForTeacher =>
+      'Aの先生が承認・アドバイス送信を終えたら、Bで「学習」→「課題提出」を開き直してください。届いた結果を表示します。',
     DemoStep.buyRabbit => 'ウサギのアイコンを選び、詳細画面で購入を確認してください。',
     DemoStep.placeRabbit => '最初の囲いはデモ用に無料で用意済みです。区画を選ぶと動物園で動き始めます。',
     DemoStep.pond =>
@@ -149,16 +141,6 @@ class DemoTutorialController extends ChangeNotifier {
     DemoStep.grown => '図鑑を閉じて完成イメージへ。27種類の動物と施設を、デモ用の育った動物園として配置します。追加の動物・施設は将来の完成イメージで、課題報酬や通常の購入結果とは別です。',
     DemoStep.complete => '体験完了。ここはデモ用の完成イメージです。実際の課題報酬は提出30＋承認70コインでした。最初からやり直すことも、学習タブで任意の機能を試すこともできます。',
   };
-  void distribute() => repository.publish(PresentationScenario.assignment());
-  void submit(String answer) =>
-      repository.submit(assignmentId, answer, role: DemoStudyRole.student);
-  void approve() => repository.review(
-    assignmentId,
-    role: DemoStudyRole.teacher,
-    approve: true,
-    feedback: PresentationScenario.advice,
-    expectedVersion: repository.submissionFor(assignmentId)?.version,
-  );
   void seeCollection() {
     _collectionSeen = true;
     notifyListeners();

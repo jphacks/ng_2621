@@ -1,3 +1,7 @@
+import 'package:zoo_study/features/game/domain/game_snapshot.dart';
+import 'package:zoo_study/features/game/demo/teacher_demo_screen.dart';
+import 'package:zoo_study/features/game/demo/presentation_scenario.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -24,6 +28,47 @@ PresentationRepository create() => PresentationRepository(
 );
 
 void main() {
+  test('A and B have independent state; B only replays the prepared teacher response on inbox return', () async {
+    final teacherA = TeacherPresentationStore();
+    final studentB = create();
+    addTearDown(teacherA.dispose);
+    addTearDown(studentB.dispose);
+    const id = PresentationScenario.assignmentId;
+    teacherA.publish(PresentationScenario.assignment());
+    expect(studentB.submissionFor(id), isNull);
+    studentB.openScriptedAssignmentInbox();
+    expect(studentB.coins, 3000);
+    studentB.submit(
+      id,
+      PresentationScenario.answer,
+      role: DemoStudyRole.student,
+    );
+    expect(studentB.coins, 3030);
+    teacherA.review(
+      id,
+      role: DemoStudyRole.teacher,
+      approve: true,
+      expectedVersion: teacherA.submissionFor(id)!.version,
+    );
+    final draft = await teacherA.generateStudyAdvice(
+      teacherA.students.single.id,
+    );
+    await teacherA.publishStudyAdvice(draft.id, draft.message);
+    expect(studentB.submissionFor(id)!.status, AssignmentState.pendingReview);
+    expect(await studentB.loadStudyAdvice(teacher: false), isEmpty);
+    expect(studentB.coins, 3030);
+    studentB.openScriptedAssignmentInbox();
+    studentB.openScriptedAssignmentInbox();
+    expect(studentB.coins, 3100);
+    expect(studentB.submissionFor(id)!.status, AssignmentState.approved);
+    expect(
+      (await studentB.loadStudyAdvice(teacher: false)).single.message,
+      (await teacherA.loadStudyAdvice(teacher: false)).single.message,
+    );
+    expect(teacherA.coins, 100);
+    expect(studentB.snapshot.rewards.map((r) => r.amount), [30, 70]);
+  });
+
   test('whole tutorial reaches the grown zoo with actual reward, purchase and placement rules', () async {
     final repo = create();
     final tour = DemoTutorialController(repo);
@@ -33,16 +78,34 @@ void main() {
     });
     expect(repo.coins, 3000);
     expect(repo.snapshot.layout.enclosures, hasLength(1));
-    expect(tour.step, DemoStep.assign);
-    tour.distribute();
+    expect(
+      () => repo.publish(repo.assignments.single),
+      throwsA(isA<StudyFailure>()),
+    );
+    expect(
+      () => repo.review(
+        DemoTutorialController.assignmentId,
+        role: DemoStudyRole.teacher,
+        approve: true,
+      ),
+      throwsA(isA<StudyFailure>()),
+    );
     expect(tour.step, DemoStep.submit);
-    tour.submit('分数の計算を学びました。');
+    repo.submit(
+      DemoTutorialController.assignmentId,
+      '分数の計算を学びました。',
+      role: DemoStudyRole.student,
+    );
     expect(repo.coins, 3030);
-    tour.submit('分数の計算を学びました。');
+    repo.submit(
+      DemoTutorialController.assignmentId,
+      '分数の計算を学びました。',
+      role: DemoStudyRole.student,
+    );
     expect(repo.coins, 3030);
-    expect(tour.step, DemoStep.approve);
-    tour.approve();
-    tour.approve();
+    expect(tour.step, DemoStep.waitForTeacher);
+    repo.openScriptedAssignmentInbox();
+    repo.openScriptedAssignmentInbox();
     expect(repo.coins, 3100);
     expect(tour.step, DemoStep.buyRabbit);
     var sequence = 0;
@@ -138,16 +201,19 @@ void main() {
       final before = ordinary.snapshot.toJson();
       final repo = create();
       final tour = DemoTutorialController(repo);
-      tour.distribute();
-      tour.submit('回答');
-      tour.approve();
+      repo.submit(
+        DemoTutorialController.assignmentId,
+        '回答',
+        role: DemoStudyRole.student,
+      );
+      repo.openScriptedAssignmentInbox();
       expect(ordinary.snapshot.toJson(), before);
       expect(ordinary.assignments, isEmpty);
       tour.dispose();
       repo.dispose();
       final fresh = create();
       expect(fresh.coins, 3000);
-      expect(fresh.assignments, isEmpty);
+      expect(fresh.assignments, hasLength(1));
       expect(fresh.snapshot.ownedAnimalIds, isEmpty);
       fresh.dispose();
       ordinary.dispose();

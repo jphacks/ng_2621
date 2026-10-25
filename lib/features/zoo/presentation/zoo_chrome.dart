@@ -184,12 +184,13 @@ class ZooBottomBar extends StatelessWidget {
     super.key,
     required this.onHome,
     this.highlightHome = false,
+    this.highlightStudy = false,
     required this.onStudy,
     this.studyLabel = '学習',
     required this.onMore,
     this.selectedTab = ZooMainTab.home,
   });
-  final bool highlightHome;
+  final bool highlightHome, highlightStudy;
   final VoidCallback onHome, onStudy, onMore;
   final String studyLabel;
   final ZooMainTab selectedTab;
@@ -246,7 +247,9 @@ class ZooBottomBar extends StatelessWidget {
     child: Semantics(
       selected: selectedTab == tab,
       child: TutorialHighlight(
-        active: highlightHome && tab == ZooMainTab.home,
+        active:
+            (highlightHome && tab == ZooMainTab.home) ||
+            (highlightStudy && tab == ZooMainTab.study),
         child: TextButton(
           key: ValueKey('main-tab-${tab.name}'),
           style: PixelUiTheme.colorfulButtonStyle(

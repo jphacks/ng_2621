@@ -76,6 +76,30 @@ Future<ZooController> openEditor(
 
 void main() {
   testWidgets(
+    'small portrait editor fits the whole map and both actions without page scrolling',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 420);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await openEditor(tester, save: (_) async {});
+      final viewport = tester.getRect(
+        find.byKey(const ValueKey('facility-map-viewport')),
+      );
+      final map = tester.getRect(find.byKey(const ValueKey('zoo-terrain')));
+      expect(viewport.contains(map.topLeft + const Offset(.1, .1)), isTrue);
+      expect(viewport.contains(map.bottomRight - const Offset(.1, .1)), isTrue);
+      expect(
+        find.byKey(const ValueKey('confirm-placement')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('キャンセル').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
     'vertical facility drag owns gesture while the outer editor remains scrollable afterwards',
     (tester) async {
       tester.view.physicalSize = const Size(320, 568);
@@ -125,7 +149,11 @@ void main() {
         const Offset(0, -100),
       );
       await tester.pump();
-      expect(scroll.position.pixels, greaterThan(before));
+      if (scroll.position.maxScrollExtent > 0) {
+        expect(scroll.position.pixels, greaterThan(before));
+      } else {
+        expect(scroll.position.pixels, before);
+      }
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

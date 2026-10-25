@@ -40,6 +40,13 @@ Future<void> start(WidgetTester tester, Size size) async {
     await rootBundle.loadString('assets/zoo/shop_catalog.json');
     await tester.pumpWidget(const PresentationDemoApp());
   });
+  await tester.ensureVisible(find.text('生徒はこちら'));
+  await frames(tester);
+  await tester.tap(find.text('生徒はこちら'));
+  await frames(tester);
+  await tester.ensureVisible(find.text('確定'));
+  await tester.tap(find.text('確定'));
+  await frames(tester);
   expect(find.text('先生デモをはじめる'), findsNothing);
   await tap(tester, 'demo-start');
   await frames(tester);
@@ -48,25 +55,73 @@ Future<void> start(WidgetTester tester, Size size) async {
 DemoTutorialController tour(WidgetTester tester) =>
     tester.widget<ZooScreen>(find.byType(ZooScreen)).presentation!;
 
+Future<void> pressText(WidgetTester tester, String text) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await frames(tester);
+  final target = find.text(text).last;
+  if (find.text(text).evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      find.text(text),
+      140,
+      scrollable: find.byType(Scrollable).first,
+    );
+  }
+  await tester.ensureVisible(target);
+  await frames(tester);
+  await tester.tap(target);
+  await frames(tester);
+}
+
+Future<void> openTask(WidgetTester tester) async {
+  await tap(tester, 'main-tab-study');
+  await pressText(tester, '課題提出');
+  await pressText(tester, '詳細・回答する');
+}
+
+void expectNoTeacherActions() {
+  for (final label in [
+    '先生はこちら',
+    '課題を配布する',
+    '課題を作成',
+    '内容を確認して承認',
+    '承認する ＋70',
+    '先生デモをはじめる',
+  ]) {
+    expect(find.text(label), findsNothing);
+  }
+  expect(find.byKey(const ValueKey('demo-result-confirm')), findsNothing);
+  expect(find.byKey(const ValueKey('demo-receive-assignment')), findsNothing);
+}
+
 void main() {
   testWidgets(
     'visitor can finish every real operation and see the grown zoo, then restart',
     (tester) async {
       await start(tester, const Size(390, 844));
       expect(find.byKey(const ValueKey('demo-start-teacher')), findsNothing);
-      expect(tour(tester).step, DemoStep.assign);
+      expect(tour(tester).step, DemoStep.submit);
       expect(tour(tester).repository.coins, 3000);
       expect(find.text('最初の仲間を迎えよう'), findsNothing);
-      await tap(tester, 'demo-next');
-      await tap(tester, 'demo-receive-assignment');
-      expect(tour(tester).step, DemoStep.submit);
-      await tap(tester, 'demo-next');
-      await tap(tester, 'demo-submit');
+      await openTask(tester);
+      expectNoTeacherActions();
+      await pressText(tester, '課題を提出する');
       expect(tour(tester).repository.coins, 3030);
-      await tap(tester, 'demo-next');
-      expect(find.text('先生からのアドバイス'), findsOneWidget);
-      await tap(tester, 'demo-result-confirm');
+      expect(tour(tester).step, DemoStep.waitForTeacher);
+      expectNoTeacherActions();
+      await tester.tap(find.byType(BackButton).hitTestable().last);
+      await frames(tester);
+      await tester.tap(find.byType(BackButton).hitTestable().last);
+      await frames(tester);
+      // A completes its own approval/advice screen while B is on the menu.
+      await pressText(tester, '課題提出');
       expect(tour(tester).repository.coins, 3100);
+      await pressText(tester, '詳細・回答する');
+      expect(
+        find.text('先生から：よく頑張りました！分数の計算は、途中の式も書くと理解が深まります。次は文章題にも挑戦してみましょう。'),
+        findsOneWidget,
+      );
+      expectNoTeacherActions();
+      await tap(tester, 'main-tab-home');
       expect(find.byKey(const ValueKey('demo-next')), findsNothing);
       expect(
         tester
@@ -94,16 +149,7 @@ void main() {
         await tester.ensureVisible(find.text('動物一覧'));
         await tester.tap(find.text('動物一覧'));
         await frames(tester);
-        expect(
-          find.byKey(const ValueKey('encyclopedia-fire_fox')),
-          findsOneWidget,
-        );
-        if (id == 'rabbit') {
-          while (find.byKey(ValueKey('encyclopedia-$id')).evaluate().isEmpty) {
-            await tester.tap(find.byTooltip('前のページ'));
-            await frames(tester);
-          }
-        }
+        expect(find.byKey(ValueKey('encyclopedia-$id')), findsOneWidget);
         await tap(tester, 'encyclopedia-$id');
         await tester.tap(find.text('囲いに配置する'));
         await frames(tester);
@@ -166,7 +212,7 @@ void main() {
       await tap(tester, 'demo-restart');
       expect(find.byKey(const ValueKey('demo-start')), findsOneWidget);
       await tap(tester, 'demo-start');
-      expect(tour(tester).step, DemoStep.assign);
+      expect(tour(tester).step, DemoStep.submit);
       expect(tour(tester).repository.coins, 3000);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -174,27 +220,24 @@ void main() {
   );
 
   for (final scale in [1.0, 2.0]) {
-    testWidgets('compact phone supports cancellation at text scale $scale', (
-      tester,
-    ) async {
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await start(tester, const Size(320, 568));
-      expect(
-        find.byKey(const ValueKey('demo-next')).hitTestable(),
-        findsOneWidget,
-      );
-      await tap(tester, 'demo-next');
-      await tap(tester, 'demo-receive-assignment');
-      await tap(tester, 'demo-next');
-      await tester.tap(find.text('あとで'));
-      await frames(tester);
-      expect(tour(tester).step, DemoStep.submit);
-      await tap(tester, 'demo-next');
-      await tap(tester, 'demo-submit');
-      expect(tour(tester).repository.coins, 3030);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-    });
+    testWidgets(
+      'compact student task form at text scale $scale never offers teacher actions',
+      (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await start(tester, const Size(320, 568));
+        expect(find.byKey(const ValueKey('demo-next')), findsNothing);
+        await openTask(tester);
+        expectNoTeacherActions();
+        await pressText(tester, '課題を提出する');
+        expect(tour(tester).repository.coins, 3030);
+        expect(tour(tester).step, DemoStep.waitForTeacher);
+        expectNoTeacherActions();
+        await tap(tester, 'main-tab-home');
+        expect(tour(tester).repository.coins, 3030);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
   }
 }

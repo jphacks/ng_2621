@@ -7,17 +7,20 @@ class StudentLearningMenu extends StatelessWidget {
   const StudentLearningMenu({
     super.key,
     required this.onAssignments,
+    this.highlightAssignments = false,
     required this.onStudyMode,
     required this.onRecords,
   });
 
   final VoidCallback onAssignments, onStudyMode, onRecords;
+  final bool highlightAssignments;
 
   @override
   Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
       SpriteTile(
+        highlighted: highlightAssignments,
         panelStyle: SpritePanelStyle.cream,
         leading: const ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
         title: const Text('課題提出'),

@@ -1,3 +1,4 @@
+import '../../auth/presentation/saved_role_gate.dart';
 import 'teacher_demo_screen.dart';
 
 import 'package:flutter/material.dart';
@@ -18,7 +19,11 @@ class PresentationDemoApp extends StatelessWidget {
     theme: ThemeData(fontFamily: ZooFont.family),
     builder: (context, child) =>
         PixelUiTheme(child: child ?? const SizedBox.shrink()),
-    home: const DemoTutorialScreen(),
+    home: SavedRoleGate(
+      storageDescription: '発表用ログイン（認証・通信なし）。Aは先生、Bは生徒を選んでください。',
+      teacherPageBuilder: (_) => const TeacherDemoScreen(),
+      studentPageBuilder: (_) => const DemoTutorialScreen(),
+    ),
   );
 }
 
@@ -47,10 +52,7 @@ class _TutorialSession extends StatefulWidget {
 class _TutorialSessionState extends State<_TutorialSession> {
   late final _repository = PresentationRepository();
   late final _controller = DemoTutorialController(_repository);
-  bool _started =
-      const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') == 'teacher';
-  final bool _teacher =
-      const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') == 'teacher';
+  bool _started = false;
   @override
   void dispose() {
     _controller.dispose();
@@ -61,16 +63,14 @@ class _TutorialSessionState extends State<_TutorialSession> {
   @override
   Widget build(BuildContext context) => PixelUiTheme(
     child: _started
-        ? _teacher
-              ? const TeacherDemoScreen()
-              : ZooScreen(
-                  gameRepository: _repository,
-                  assignmentStore: _repository,
-                  presentation: _controller,
-                  onDemoRestart: widget.onRestart,
-                  accountName: 'デモ生徒',
-                  accountStorageDescription: _repository.storageExplanation,
-                )
+        ? ZooScreen(
+            gameRepository: _repository,
+            assignmentStore: _repository,
+            presentation: _controller,
+            onDemoRestart: widget.onRestart,
+            accountName: 'デモ生徒',
+            accountStorageDescription: _repository.storageExplanation,
+          )
         : Scaffold(
             backgroundColor: const Color(0xFFFAF9F0),
             body: SafeArea(

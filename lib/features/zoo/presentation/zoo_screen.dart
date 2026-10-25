@@ -525,10 +525,16 @@ class _ZooScreenState extends State<ZooScreen>
       return;
     }
     _showMenuPage('/study', '学習メニュー', [
-      StudentLearningMenu(
-        onStudyMode: () => _openLearningFeature(true),
-        onRecords: () => _openLearningFeature(false),
-        onAssignments: _showAssignments,
+      ListenableBuilder(
+        listenable: widget.presentation ?? _game,
+        builder: (context, _) => StudentLearningMenu(
+          onStudyMode: () => _openLearningFeature(true),
+          onRecords: () => _openLearningFeature(false),
+          onAssignments: _showAssignments,
+          highlightAssignments:
+              widget.presentation?.step == DemoStep.submit ||
+              widget.presentation?.step == DemoStep.waitForTeacher,
+        ),
       ),
     ]);
   }
@@ -559,6 +565,9 @@ class _ZooScreenState extends State<ZooScreen>
 
   void _showAssignments() {
     final store = widget.assignmentStore;
+    if (store is PresentationRepository && !widget.isTeacher) {
+      store.openScriptedAssignmentInbox();
+    }
     if (widget.isTeacher && store != null) {
       Navigator.of(_navContext).push(
         MaterialPageRoute<void>(
@@ -679,6 +688,9 @@ class _ZooScreenState extends State<ZooScreen>
   }
 
   void _showAnimals() {
+    final initialAnimal =
+        widget.presentation?.placementAnimalId ??
+        (widget.presentation?.step == DemoStep.collection ? 'fire_fox' : null);
     if (widget.presentation?.step == DemoStep.collection) {
       widget.presentation!.seeCollection();
     }
@@ -690,7 +702,7 @@ class _ZooScreenState extends State<ZooScreen>
       builder: (_) => AnimalEncyclopedia(
         animals: controller.world.animals,
         highlightAnimalId: _guidedAnimal,
-        initialAnimalId: widget.presentation == null ? null : 'fire_fox',
+        initialAnimalId: initialAnimal,
         ownedIds: controller.ownedAnimals,
         onChooseGoal: () {
           Navigator.pop(_navContext);
@@ -944,7 +956,7 @@ class _ZooScreenState extends State<ZooScreen>
   String? get _guidedFacility => widget.presentation?.placementFacilityId;
   String get _demoHint {
     final tour = widget.presentation!;
-    if (tour.isDirectAction) return tour.explanation;
+    if (tour.isStudyStep || tour.isDirectAction) return tour.explanation;
     if (tour.shopTargetId != null) {
       return _homeSection == 1 ? '光る商品・購入ボタンを順番にタップ' : '上の「ショップ」をタップしましょう';
     }
@@ -964,78 +976,9 @@ class _ZooScreenState extends State<ZooScreen>
       if (!await _leaveContent() || !mounted) return;
       _setHomeSection(0);
       switch (tour.step) {
-        case DemoStep.assign:
-          final received = await showDialog<bool>(
-            context: _navContext,
-            builder: (context) => SpriteAlertDialog(
-              title: const Text(PresentationScenario.title),
-              content: const SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(PresentationScenario.description),
-                    SizedBox(height: 12),
-                    Text('初回提出：30コイン ／ 承認：追加70コイン'),
-                    Text('先生端末の配布操作に合わせて受け取ります（通信なし）。'),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('あとで'),
-                ),
-                FilledButton(
-                  key: const ValueKey('demo-receive-assignment'),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('課題を確認する'),
-                ),
-              ],
-            ),
-          );
-          if (received == true && mounted) tour.distribute();
         case DemoStep.submit:
-          final result = await showDialog<String>(
-            context: _navContext,
-            builder: (_) => const DemoAnswerDialog(),
-          );
-          if (result != null && mounted) tour.submit(result);
-        case DemoStep.approve:
-          final approved = await showDialog<bool>(
-            context: _navContext,
-            builder: (context) => PixelUiTheme(
-              child: SpriteAlertDialog(
-                title: const Text('先生からの承認結果'),
-                content: const SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(PresentationScenario.title),
-                      SizedBox(height: 12),
-                      Text('状態：承認済み 追加70コイン'),
-                      SizedBox(height: 12),
-                      Text('先生からのアドバイス'),
-                      Text(PresentationScenario.advice),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('あとで'),
-                  ),
-                  FilledButton(
-                    key: const ValueKey('demo-result-confirm'),
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('確認して動物園へ ＋70'),
-                  ),
-                ],
-              ),
-            ),
-          );
-          if (approved == true && mounted) tour.approve();
+        case DemoStep.waitForTeacher:
+          return;
         case DemoStep.buyRabbit:
         case DemoStep.placeRabbit:
           return;
@@ -1543,9 +1486,13 @@ class _ZooScreenState extends State<ZooScreen>
                       ),
                     ),
                     ZooBottomBar(
+                      highlightStudy:
+                          widget.presentation?.step == DemoStep.submit ||
+                          widget.presentation?.step == DemoStep.waitForTeacher,
                       highlightHome:
                           widget.presentation != null &&
                           !widget.presentation!.isDirectAction &&
+                          !widget.presentation!.isStudyStep &&
                           _mainTab != ZooMainTab.home,
                       selectedTab: _mainTab,
                       onHome: () => _switchMain(ZooMainTab.home),
