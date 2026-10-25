@@ -43,13 +43,16 @@ void main() {
           await frame();
         }
 
+        await tap('課題配布を体験する');
         expect(find.byType(TeacherAssignmentsScreen), findsOneWidget);
         await tap('課題を作成');
         expect(find.text(PresentationScenario.title), findsOneWidget);
         expect(find.text(PresentationScenario.description), findsOneWidget);
         await tap('課題を配布する');
         expect(find.text('状態：確認待ち'), findsOneWidget);
-        await tap('提出内容を確認');
+        await tester.tap(find.byType(BackButton).hitTestable().last);
+        await frame();
+        await tap('提出を確認・承認する');
         expect(find.byType(AssignmentDetailScreen), findsOneWidget);
         if (find
             .widgetWithText(SelectableText, PresentationScenario.answer)
@@ -73,12 +76,7 @@ void main() {
         expect(store.coins, 100);
         await tester.tap(find.byType(BackButton).hitTestable().last);
         await frame();
-        tester
-            .state<ScrollableState>(find.byType(Scrollable).first)
-            .position
-            .jumpTo(0);
-        await frame();
-        await tap('生徒の学習記録');
+        await tap('学習記録とアドバイスを見る');
         expect(find.byType(StudyRecordsScreen), findsOneWidget);
         await tap('アドバイス案を作成');
         expect(find.text(PresentationScenario.advice), findsOneWidget);
@@ -86,6 +84,10 @@ void main() {
         final advice = await store.loadStudyAdvice(teacher: false);
         expect(advice.single.message, PresentationScenario.advice);
         expect(advice.single.published, isTrue);
+        expect((await store.loadStudyRecords()).single.studentName, 'デモ生徒');
+        await tester.tap(find.byType(BackButton).hitTestable().last);
+        await frame();
+        expect(find.text('最初から体験する'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       },

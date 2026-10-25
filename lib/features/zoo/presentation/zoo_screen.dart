@@ -9,6 +9,7 @@ import '../../game/demo/demo_finale.dart';
 import '../../game/demo/demo_tutorial_controller.dart';
 import '../../game/demo/demo_guide_panel.dart';
 import '../../game/demo/demo_tutorial_screen.dart';
+import '../../game/demo/teacher_demo_screen.dart';
 import '../../../core/storage/draft_storage.dart';
 import 'zoo_navigation.dart';
 import '../../auth/data/school_account_api.dart';
@@ -1118,6 +1119,16 @@ class _ZooScreenState extends State<ZooScreen>
           leading: const ZooUiSprite(part: ZooUiPart.smile, scale: 2),
           onTap: () => Navigator.of(context).push<void>(
             MaterialPageRoute(builder: (_) => const DemoTutorialScreen()),
+          ),
+        ),
+      if (widget.presentation == null)
+        SpriteTile(
+          panelStyle: SpritePanelStyle.cream,
+          title: const Text('先生の発表デモチュートリアル'),
+          subtitle: const Text('課題配布 → 提出の承認 → 学習記録・アドバイス'),
+          leading: const ZooUiSprite(part: ZooUiPart.encyclopediaRed, scale: 2),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(builder: (_) => const TeacherDemoScreen()),
           ),
         ),
       SpriteTile(
