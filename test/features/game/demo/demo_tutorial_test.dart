@@ -31,19 +31,19 @@ void main() {
       tour.dispose();
       repo.dispose();
     });
-    expect(repo.coins, 0);
+    expect(repo.coins, 3000);
     expect(repo.snapshot.layout.enclosures, hasLength(1));
     expect(tour.step, DemoStep.assign);
     tour.distribute();
     expect(tour.step, DemoStep.submit);
     tour.submit('分数の計算を学びました。');
-    expect(repo.coins, 30);
+    expect(repo.coins, 3030);
     tour.submit('分数の計算を学びました。');
-    expect(repo.coins, 30);
+    expect(repo.coins, 3030);
     expect(tour.step, DemoStep.approve);
     tour.approve();
     tour.approve();
-    expect(repo.coins, 100);
+    expect(repo.coins, 3100);
     expect(tour.step, DemoStep.buyRabbit);
     var sequence = 0;
     Future<void> buy(String id) async {
@@ -63,7 +63,7 @@ void main() {
     }
 
     await buy('rabbit');
-    expect(repo.coins, 0);
+    expect(repo.coins, 3000);
     expect(tour.step, DemoStep.placeRabbit);
     await edit(
       const LayoutEdit(
@@ -72,10 +72,6 @@ void main() {
         enclosureId: PresentationRepository.starterPen,
       ),
     );
-    expect(tour.step, DemoStep.expand);
-    repo.grantExplorationBudget();
-    repo.grantExplorationBudget();
-    expect(repo.coins, 1500);
     expect(repo.snapshot.rewards.map((r) => r.amount), [30, 70]);
     expect(tour.step, DemoStep.pond);
     await buy('pond');
@@ -100,7 +96,7 @@ void main() {
     );
     expect(tour.step, DemoStep.evolve);
     await buy('fire_fox');
-    expect(repo.coins, 150);
+    expect(repo.coins, 1650);
     expect(tour.step, DemoStep.placeEvolution);
     await edit(
       const LayoutEdit(
@@ -116,7 +112,7 @@ void main() {
     expect(tour.step, DemoStep.complete);
     expect(repo.snapshot.ownedAnimalIds, hasLength(27));
     expect(repo.snapshot.layout.enclosures, hasLength(4));
-    expect(repo.coins, 150);
+    expect(repo.coins, 1650);
     expect(repo.snapshot.rewards, hasLength(2));
     final revision = repo.snapshot.revision;
     await repo.showGrownZoo();
@@ -145,16 +141,14 @@ void main() {
       tour.distribute();
       tour.submit('回答');
       tour.approve();
-      repo.grantExplorationBudget();
       expect(ordinary.snapshot.toJson(), before);
       expect(ordinary.assignments, isEmpty);
       tour.dispose();
       repo.dispose();
       final fresh = create();
-      expect(fresh.coins, 0);
+      expect(fresh.coins, 3000);
       expect(fresh.assignments, isEmpty);
       expect(fresh.snapshot.ownedAnimalIds, isEmpty);
-      expect(fresh.budgetGranted, isFalse);
       fresh.dispose();
       ordinary.dispose();
     },

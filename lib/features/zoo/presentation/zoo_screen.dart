@@ -1,3 +1,5 @@
+import '../../game/domain/zoo_layout.dart';
+import '../../game/demo/presentation_scenario.dart';
 import '../../game/demo/presentation_repository.dart';
 
 import 'dart:async';
@@ -583,6 +585,99 @@ class _ZooScreenState extends State<ZooScreen>
     );
   }
 
+  void _showPenAnimals(Enclosure pen) {
+    final controller = _controller;
+    if (controller == null) return;
+    showZooSheet(
+      _navContext,
+      title: 'この囲いに動物を入れる',
+      children: [
+        Text('${pen.width}×${pen.height}マスの囲い。解放済みの動物を選んでください。'),
+        if (!controller.ownedAnimals.contains('rabbit'))
+          SpriteTile(
+            panelStyle: SpritePanelStyle.cream,
+            leading: const AnimalArt(animalId: 'rabbit'),
+            title: const Text('ウサギ'),
+            subtitle: const Text('ショップで迎えると、この囲いに入れられます'),
+            onTap: () {
+              Navigator.pop(_navContext);
+              _showShop(query: 'ウサギ');
+            },
+          ),
+        for (final animal in controller.world.animals.where(
+          (a) => controller.ownedAnimals.contains(a.id),
+        ))
+          SpriteTile(
+            key: ValueKey('pen-animal-${animal.id}'),
+            panelStyle: SpritePanelStyle.cream,
+            highlighted: _guidedAnimal == animal.id,
+            leading: AnimalArt(animalId: animal.id),
+            title: Text(animal.name),
+            subtitle: Text(
+              controller.layout.animalEnclosures[animal.id] == pen.id
+                  ? 'この囲いに配置済み'
+                  : 'この囲いに入れる',
+            ),
+            onTap: () {
+              Navigator.pop(_navContext);
+              _confirmPenAnimal(animal, pen);
+            },
+          ),
+      ],
+    );
+  }
+
+  Future<void> _confirmPenAnimal(AnimalDefinition animal, Enclosure pen) async {
+    final accepted = await showDialog<bool>(
+      context: _navContext,
+      builder: (context) => SpriteAlertDialog(
+        title: Text('${animal.name}を囲いに入れますか？'),
+        content: Text('${pen.width}×${pen.height}マスの中で自由に歩きます。配置は無料です。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            key: const ValueKey('confirm-pen-animal'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('この囲いに入れる'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    try {
+      final saved = await _layoutTransactions.submit(
+        LayoutEdit(
+          kind: LayoutEditKind.assignAnimal,
+          id: animal.id,
+          enclosureId: pen.id,
+        ),
+      );
+      if (!saved && mounted) {
+        showZooSheet(
+          _navContext,
+          title: '配置結果の確認',
+          children: [
+            LayoutFeedback(
+              transactions: _layoutTransactions,
+              onRecovered: () => Navigator.pop(_navContext),
+            ),
+          ],
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        showZooSheet(
+          _navContext,
+          title: '配置できませんでした',
+          children: [const Text('状態を確認して、もう一度お試しください。')],
+        );
+      }
+    }
+  }
+
   void _showAnimals() {
     if (widget.presentation?.step == DemoStep.collection) {
       widget.presentation!.seeCollection();
@@ -595,6 +690,7 @@ class _ZooScreenState extends State<ZooScreen>
       builder: (_) => AnimalEncyclopedia(
         animals: controller.world.animals,
         highlightAnimalId: _guidedAnimal,
+        initialAnimalId: widget.presentation == null ? null : 'fire_fox',
         ownedIds: controller.ownedAnimals,
         onChooseGoal: () {
           Navigator.pop(_navContext);
@@ -869,7 +965,36 @@ class _ZooScreenState extends State<ZooScreen>
       _setHomeSection(0);
       switch (tour.step) {
         case DemoStep.assign:
-          tour.distribute();
+          final received = await showDialog<bool>(
+            context: _navContext,
+            builder: (context) => SpriteAlertDialog(
+              title: const Text(PresentationScenario.title),
+              content: const SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(PresentationScenario.description),
+                    SizedBox(height: 12),
+                    Text('初回提出：30コイン ／ 承認：追加70コイン'),
+                    Text('先生端末の配布操作に合わせて受け取ります（通信なし）。'),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('あとで'),
+                ),
+                FilledButton(
+                  key: const ValueKey('demo-receive-assignment'),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('課題を確認する'),
+                ),
+              ],
+            ),
+          );
+          if (received == true && mounted) tour.distribute();
         case DemoStep.submit:
           final result = await showDialog<String>(
             context: _navContext,
@@ -881,12 +1006,20 @@ class _ZooScreenState extends State<ZooScreen>
             context: _navContext,
             builder: (context) => PixelUiTheme(
               child: SpriteAlertDialog(
-                title: const Text('先生役：提出された回答を確認'),
-                content: Text(
-                  tour.repository
-                          .submissionFor(DemoTutorialController.assignmentId)
-                          ?.answerText ??
-                      '',
+                title: const Text('先生からの承認結果'),
+                content: const SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(PresentationScenario.title),
+                      SizedBox(height: 12),
+                      Text('状態：承認済み 追加70コイン'),
+                      SizedBox(height: 12),
+                      Text('先生からのアドバイス'),
+                      Text(PresentationScenario.advice),
+                    ],
+                  ),
                 ),
                 actions: [
                   TextButton(
@@ -896,7 +1029,7 @@ class _ZooScreenState extends State<ZooScreen>
                   FilledButton(
                     key: const ValueKey('demo-approve'),
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text('承認する ＋70'),
+                    child: const Text('確認して動物園へ ＋70'),
                   ),
                 ],
               ),
@@ -906,30 +1039,6 @@ class _ZooScreenState extends State<ZooScreen>
         case DemoStep.buyRabbit:
         case DemoStep.placeRabbit:
           return;
-        case DemoStep.expand:
-          final accept = await showDialog<bool>(
-            context: _navContext,
-            builder: (context) => PixelUiTheme(
-              child: SpriteAlertDialog(
-                title: const Text('施設・進化も体験しよう'),
-                content: Text(tour.explanation),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('あとで'),
-                  ),
-                  FilledButton(
-                    key: const ValueKey('demo-budget'),
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('体験用1,500コインで続ける'),
-                  ),
-                ],
-              ),
-            ),
-          );
-          if (accept == true && mounted) {
-            tour.repository.grantExplorationBudget();
-          }
         case DemoStep.pond:
         case DemoStep.research:
         case DemoStep.evolve:
@@ -958,9 +1067,43 @@ class _ZooScreenState extends State<ZooScreen>
     }
   }
 
+  void _showPresentationResult() {
+    final repository = widget.presentation!.repository;
+    final submission = repository.submissionFor(
+      PresentationScenario.assignmentId,
+    );
+    _showMenuPage('/presentation-result', '課題・先生からのお知らせ', [
+      const Text(PresentationScenario.title, style: TextStyle(fontSize: 20)),
+      const Text(PresentationScenario.description),
+      const Text('報酬：初回提出30 ＋ 承認70コイン'),
+      if (submission == null)
+        const Text('課題を確認して回答を提出しましょう。')
+      else ...[
+        Text('回答：${submission.answerText}'),
+        Text(
+          submission.status == AssignmentState.approved ? '状態：承認済み' : '状態：確認待ち',
+        ),
+        if (submission.status == AssignmentState.approved) ...[
+          const Text(
+            '先生からのアドバイス',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const Text(PresentationScenario.advice),
+        ],
+      ],
+    ]);
+  }
+
   void _showMore() {
     _showMenuPage('/more', '設定・プロフィール', [
       if (widget.presentation != null) ...[
+        SpriteTile(
+          key: const ValueKey('demo-assignment-result'),
+          panelStyle: SpritePanelStyle.cream,
+          leading: const ZooArtSprite(part: ZooArtPart.bookAndPen, scale: 2),
+          title: const Text('課題・先生からのお知らせ'),
+          onTap: _showPresentationResult,
+        ),
         SpriteTile(
           key: const ValueKey('demo-restart'),
           panelStyle: SpritePanelStyle.cream,
@@ -1262,9 +1405,11 @@ class _ZooScreenState extends State<ZooScreen>
       key: _viewportKey,
       controller: controller,
       onAnimals: _showAnimals,
-      onShop: _showShop,
+      onShop: widget.presentation == null ? _showShop : null,
       reactionRevision: _reactionRevision,
       onAnimalSelected: _showAnimal,
+      onEnclosureSelected: _showPenAnimals,
+      onLaboratorySelected: _showResearch,
     );
   }
 

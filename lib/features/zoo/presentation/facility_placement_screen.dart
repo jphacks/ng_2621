@@ -49,7 +49,11 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
   }
 
   Future<void> _save() async {
-    if (_saving || widget.controller.placementIssue(_draft) != null) return;
+    if (_saving ||
+        _dragging ||
+        widget.controller.placementIssue(_draft) != null) {
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -118,6 +122,9 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
                   final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
                   // One scroll surface keeps the editor usable in landscape and large text.
                   return SingleChildScrollView(
+                    physics: _dragging
+                        ? const NeverScrollableScrollPhysics()
+                        : null,
                     padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -132,6 +139,8 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
                               : constraints.maxHeight * 0.52,
                           child: ClipRect(
                             child: InteractiveViewer(
+                              panEnabled: !_dragging,
+                              scaleEnabled: !_dragging,
                               minScale: 1,
                               maxScale: 4,
                               boundaryMargin: const EdgeInsets.all(80),
@@ -223,10 +232,13 @@ class _FacilityPlacementScreenState extends State<FacilityPlacementScreen> {
                               child: const Text('キャンセル'),
                             ),
                             TutorialHighlight(
-                              active: widget.highlighted && issue == null,
+                              active:
+                                  widget.highlighted &&
+                                  issue == null &&
+                                  !_dragging,
                               child: FilledButton(
                                 key: const ValueKey('confirm-placement'),
-                                onPressed: _saving || issue != null
+                                onPressed: _saving || _dragging || issue != null
                                     ? null
                                     : _save,
                                 child: Text(_saving ? '保存中…' : 'ここに設置'),

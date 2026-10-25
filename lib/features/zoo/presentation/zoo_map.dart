@@ -20,6 +20,8 @@ class ZooMap extends StatelessWidget {
     super.key,
     required this.controller,
     this.onAnimalSelected,
+    this.onEnclosureSelected,
+    this.onLaboratorySelected,
     this.decorativeArches = const [],
     this.decorations = const [],
     this.tileOverrides = const {},
@@ -37,6 +39,8 @@ class ZooMap extends StatelessWidget {
   });
 
   final ZooController controller;
+  final ValueChanged<Enclosure>? onEnclosureSelected;
+  final VoidCallback? onLaboratorySelected;
   final List<Rect> decorativeArches;
   final List<MapDecoration> decorations;
   final Map<(int, int), String> tileOverrides;
@@ -101,7 +105,11 @@ class ZooMap extends StatelessWidget {
                 child: Builder(
                   builder: (mapContext) => GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTapUp: onAnimalSelected == null && onTileSelected == null
+                    onTapUp:
+                        onAnimalSelected == null &&
+                            onTileSelected == null &&
+                            onEnclosureSelected == null &&
+                            onLaboratorySelected == null
                         ? null
                         : (details) {
                             if (onTileSelected != null) {
@@ -112,6 +120,47 @@ class ZooMap extends StatelessWidget {
                                     .floor(),
                               );
                               return;
+                            }
+                            final tilePoint =
+                                details.localPosition /
+                                world.tileSize.toDouble();
+                            if (onLaboratorySelected != null &&
+                                controller.ownedFacilities.contains(
+                                  'laboratory',
+                                )) {
+                              final lab = world.facilities
+                                  .where((f) => f.id == 'laboratory')
+                                  .firstOrNull;
+                              final position =
+                                  controller.placements['laboratory'];
+                              if (lab != null &&
+                                  position != null &&
+                                  Rect.fromLTWH(
+                                    position.left.toDouble(),
+                                    position.top.toDouble(),
+                                    lab.width.toDouble(),
+                                    lab.height.toDouble(),
+                                  ).contains(tilePoint)) {
+                                onLaboratorySelected!();
+                                return;
+                              }
+                            }
+                            Enclosure? tappedPen;
+                            for (final pen in _drawnEnclosures.values) {
+                              final rect = Rect.fromLTWH(
+                                pen.left.toDouble(),
+                                pen.top.toDouble(),
+                                pen.width.toDouble(),
+                                pen.height.toDouble(),
+                              );
+                              if (rect.inflate(.25).contains(tilePoint)) {
+                                tappedPen = pen;
+                                if (onEnclosureSelected != null &&
+                                    !rect.deflate(.65).contains(tilePoint)) {
+                                  onEnclosureSelected!(pen);
+                                  return;
+                                }
+                              }
                             }
                             final box =
                                 mapContext.findRenderObject()! as RenderBox;
@@ -131,7 +180,11 @@ class ZooMap extends StatelessWidget {
                                 nearest = animal.definition;
                               }
                             }
-                            if (nearest != null) onAnimalSelected!(nearest);
+                            if (nearest != null && onAnimalSelected != null) {
+                              onAnimalSelected!(nearest);
+                            } else if (tappedPen != null) {
+                              onEnclosureSelected?.call(tappedPen);
+                            }
                           },
                     child: ClipRect(
                       child: AnimatedBuilder(
@@ -466,6 +519,16 @@ class _MapDragTarget extends StatefulWidget {
 
 class _MapDragTargetState extends State<_MapDragTarget> {
   Offset? _grabOffset;
+  int? _pointer;
+  Offset? _down;
+  bool _moved = false;
+  void _finish(PointerEvent event) {
+    if (event.pointer != _pointer) return;
+    _pointer = null;
+    _grabOffset = null;
+    widget.onDraggingChanged?.call(false);
+  }
+
   @override
   Widget build(BuildContext context) => Positioned(
     left: widget.area.left * widget.tile,
@@ -474,43 +537,65 @@ class _MapDragTargetState extends State<_MapDragTarget> {
     height: widget.area.height * widget.tile,
     child: MouseRegion(
       cursor: SystemMouseCursors.grab,
-      child: GestureDetector(
-        key: const ValueKey('map-placement-drag'),
-        dragStartBehavior: DragStartBehavior.down,
-        behavior: HitTestBehavior.opaque,
-        onPanStart: (details) {
-          _grabOffset =
-              widget.toMap(details.globalPosition) -
-              Offset(
-                widget.area.left * widget.tile,
-                widget.area.top * widget.tile,
+      child: RawGestureDetector(
+        // A placement grab must win against both the page scroll and map camera.
+        gestures: <Type, GestureRecognizerFactory>{
+          EagerGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                EagerGestureRecognizer.new,
+                (_) {},
+              ),
+        },
+        child: Listener(
+          key: const ValueKey('map-placement-drag'),
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (event) {
+            if (_pointer != null) return;
+            _pointer = event.pointer;
+            _down = event.position;
+            _moved = false;
+            _grabOffset =
+                widget.toMap(event.position) -
+                Offset(
+                  widget.area.left * widget.tile,
+                  widget.area.top * widget.tile,
+                );
+            widget.onDraggingChanged?.call(true);
+          },
+          onPointerMove: (event) {
+            final grab = _grabOffset;
+            if (_pointer != event.pointer || grab == null) return;
+            if ((event.position - _down!).distance > 4) _moved = true;
+            final origin = (widget.toMap(event.position) - grab) / widget.tile;
+            widget.onMove(
+              origin.dx.round().clamp(
+                0,
+                math.max(0, widget.columns - widget.area.width.toInt()),
+              ),
+              origin.dy.round().clamp(
+                0,
+                math.max(0, widget.rows - widget.area.height.toInt()),
+              ),
+            );
+          },
+          onPointerUp: (event) {
+            if (_pointer == event.pointer && !_moved) {
+              final point = widget.toMap(event.position) / widget.tile;
+              widget.onMove(
+                point.dx.floor().clamp(
+                  0,
+                  math.max(0, widget.columns - widget.area.width.toInt()),
+                ),
+                point.dy.floor().clamp(
+                  0,
+                  math.max(0, widget.rows - widget.area.height.toInt()),
+                ),
               );
-          widget.onDraggingChanged?.call(true);
-        },
-        onPanUpdate: (details) {
-          final grab = _grabOffset;
-          if (grab == null) return;
-          final origin =
-              (widget.toMap(details.globalPosition) - grab) / widget.tile;
-          widget.onMove(
-            origin.dx.round().clamp(
-              0,
-              math.max(0, widget.columns - widget.area.width.toInt()),
-            ),
-            origin.dy.round().clamp(
-              0,
-              math.max(0, widget.rows - widget.area.height.toInt()),
-            ),
-          );
-        },
-        onPanEnd: (_) {
-          _grabOffset = null;
-          widget.onDraggingChanged?.call(false);
-        },
-        onPanCancel: () {
-          _grabOffset = null;
-          widget.onDraggingChanged?.call(false);
-        },
+            }
+            _finish(event);
+          },
+          onPointerCancel: _finish,
+        ),
       ),
     ),
   );

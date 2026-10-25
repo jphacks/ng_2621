@@ -1,3 +1,5 @@
+import 'presentation_scenario.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -24,6 +26,7 @@ class PresentationRepository extends StudyRepository {
   }) {
     _worldLoader = worldLoader ?? ZooRepository().load;
     final data = _study.snapshot.toJson();
+    data['coins'] = PresentationScenario.initialCoins;
     data['layout'] = {
       'enclosures': [
         {'id': starterPen, 'left': 0, 'top': 0, 'width': 4, 'height': 4},
@@ -42,7 +45,7 @@ class PresentationRepository extends StudyRepository {
     });
   }
   static const starterPen = 'presentation_pen';
-  static const explorationCoins = 1500;
+
   final _study = DemoAssignmentStore(
     studentId: 'presentation_student',
     studentName: 'デモ生徒',
@@ -53,9 +56,8 @@ class PresentationRepository extends StudyRepository {
   bool get grownShown => _grownShown;
   late final StreamSubscription<GameSnapshot> _subscription;
   int _studyCoins = 0, _studyRevision = 1;
-  bool _disposed = false, _budgetGranted = false;
+  bool _disposed = false;
   GameSnapshot get snapshot => _game.currentSnapshot;
-  bool get budgetGranted => _budgetGranted;
 
   void _projectStudy() {
     if (_disposed || _study.snapshot.revision <= _studyRevision) return;
@@ -76,16 +78,6 @@ class PresentationRepository extends StudyRepository {
     data['assignments'] = incoming.assignments.map((a) => a.toJson()).toList();
     data['rewards'] = rewards.values.map((r) => r.toJson()).toList();
     data['confirmedAt'] = incoming.confirmedAt.toIso8601String();
-    _game.receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
-  }
-
-  /// Explicitly labelled presentation funding, never an assignment reward.
-  void grantExplorationBudget() {
-    if (_budgetGranted || _disposed) return;
-    _budgetGranted = true;
-    final data = snapshot.toJson();
-    data['coins'] = snapshot.coins + explorationCoins;
-    data['revision'] = snapshot.revision + 1;
     _game.receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
   }
 

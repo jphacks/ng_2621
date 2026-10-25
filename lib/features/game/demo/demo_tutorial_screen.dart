@@ -1,3 +1,5 @@
+import 'teacher_demo_screen.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_font.dart';
@@ -12,6 +14,7 @@ class PresentationDemoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'ZooっとStudy 発表デモ',
+    debugShowCheckedModeBanner: false,
     theme: ThemeData(fontFamily: ZooFont.family),
     builder: (context, child) =>
         PixelUiTheme(child: child ?? const SizedBox.shrink()),
@@ -44,7 +47,10 @@ class _TutorialSession extends StatefulWidget {
 class _TutorialSessionState extends State<_TutorialSession> {
   late final _repository = PresentationRepository();
   late final _controller = DemoTutorialController(_repository);
-  bool _started = false;
+  bool _started =
+      const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') == 'teacher';
+  bool _teacher =
+      const String.fromEnvironment('ZOOSTUDY_PRESENTATION_ROLE') == 'teacher';
   @override
   void dispose() {
     _controller.dispose();
@@ -55,14 +61,16 @@ class _TutorialSessionState extends State<_TutorialSession> {
   @override
   Widget build(BuildContext context) => PixelUiTheme(
     child: _started
-        ? ZooScreen(
-            gameRepository: _repository,
-            assignmentStore: _repository,
-            presentation: _controller,
-            onDemoRestart: widget.onRestart,
-            accountName: 'デモ生徒',
-            accountStorageDescription: _repository.storageExplanation,
-          )
+        ? _teacher
+              ? const TeacherDemoScreen()
+              : ZooScreen(
+                  gameRepository: _repository,
+                  assignmentStore: _repository,
+                  presentation: _controller,
+                  onDemoRestart: widget.onRestart,
+                  accountName: 'デモ生徒',
+                  accountStorageDescription: _repository.storageExplanation,
+                )
         : Scaffold(
             backgroundColor: const Color(0xFFFAF9F0),
             body: SafeArea(
@@ -96,7 +104,7 @@ class _TutorialSessionState extends State<_TutorialSession> {
                             ),
                             const SizedBox(height: 16),
                             const Text(
-                              '先生役と生徒役を交代しながら、課題・ごほうび・動物園の成長を順番に体験できます。',
+                              '先生用・生徒用をそれぞれの端末で選んでください。課題・ごほうび・動物園の成長を、タイミングを合わせて体験できます。',
                             ),
                             const SizedBox(height: 12),
                             const Text(
@@ -104,14 +112,26 @@ class _TutorialSessionState extends State<_TutorialSession> {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              '通信・ログイン不要の発表デモです。最初の囲いを無料で用意しています。後半は明示した体験用コインを使います。実アカウントや保存済みデータには反映しません。',
+                              '通信・ログイン不要の発表デモです。最初の囲いを無料で用意しています。生徒は初期資金3,000コインで開始します。実アカウントや保存済みデータには反映しません。',
                               style: TextStyle(fontSize: 12),
                             ),
                             const SizedBox(height: 16),
                             FilledButton(
                               key: const ValueKey('demo-start'),
-                              onPressed: () => setState(() => _started = true),
-                              child: const Text('体験をはじめる'),
+                              onPressed: () => setState(() {
+                                _teacher = false;
+                                _started = true;
+                              }),
+                              child: const Text('生徒デモをはじめる'),
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              key: const ValueKey('demo-start-teacher'),
+                              onPressed: () => setState(() {
+                                _teacher = true;
+                                _started = true;
+                              }),
+                              child: const Text('先生デモをはじめる'),
                             ),
                             if (Navigator.of(context).canPop())
                               TextButton(

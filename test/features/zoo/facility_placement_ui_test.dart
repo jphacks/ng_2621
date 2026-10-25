@@ -76,6 +76,61 @@ Future<ZooController> openEditor(
 
 void main() {
   testWidgets(
+    'vertical facility drag owns gesture while the outer editor remains scrollable afterwards',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = await openEditor(tester, save: (_) async {});
+      final scroll = tester.state<ScrollableState>(
+        find.byType(Scrollable).last,
+      );
+      final before = scroll.position.pixels;
+      final terrain = tester.renderObject<RenderBox>(
+        find.byKey(const ValueKey('zoo-terrain')),
+      );
+      final camera = tester.widget<InteractiveViewer>(
+        find.byType(InteractiveViewer),
+      );
+      final origin = tester.getTopLeft(find.byType(ZooMap));
+      final gesture = await tester.startGesture(
+        terrain.localToGlobal(const Offset(24, 24)),
+      );
+      await tester.pump();
+      expect(
+        tester
+            .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+            .panEnabled,
+        isFalse,
+      );
+      for (var dy = 8; dy <= 32; dy += 8) {
+        await gesture.moveTo(terrain.localToGlobal(Offset(24, 24.0 + dy)));
+        await tester.pump();
+        expect(scroll.position.pixels, before);
+        expect(tester.getTopLeft(find.byType(ZooMap)), origin);
+      }
+      expect(find.text('位置：列 2 ／ 行 4'), findsOneWidget);
+      await gesture.up();
+      await tester.pump();
+      expect(
+        tester
+            .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+            .panEnabled,
+        camera.panEnabled,
+      );
+      expect(controller.placements, isEmpty);
+      await tester.drag(
+        find.byKey(const ValueKey('placement-position')),
+        const Offset(0, -100),
+      );
+      await tester.pump();
+      expect(scroll.position.pixels, greaterThan(before));
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
     'dragging preserves the grab offset and saves only after confirmation',
     (tester) async {
       final feedback = <String>[];
@@ -110,6 +165,7 @@ void main() {
       await gesture.moveTo(terrain.localToGlobal(const Offset(88, 40)));
       await tester.pump();
       await gesture.up();
+      await tester.pump();
       expect(find.text('位置：列 6 ／ 行 3'), findsOneWidget);
       expect(controller.placements, isEmpty);
       expect(saves, isEmpty);

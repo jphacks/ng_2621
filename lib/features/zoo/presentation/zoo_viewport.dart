@@ -1,3 +1,5 @@
+import '../../game/domain/zoo_layout.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_ui.dart';
@@ -12,10 +14,14 @@ class ZooViewport extends StatefulWidget {
     required this.controller,
     required this.onAnimals,
     this.onAnimalSelected,
+    this.onEnclosureSelected,
+    this.onLaboratorySelected,
     this.onShop,
     this.reactionRevision = 0,
   });
 
+  final ValueChanged<Enclosure>? onEnclosureSelected;
+  final VoidCallback? onLaboratorySelected;
   final int reactionRevision;
   final ZooController controller;
   final VoidCallback onAnimals;
@@ -81,6 +87,8 @@ class ZooViewportState extends State<ZooViewport> {
                         controller: widget.controller,
                         reactionRevision: widget.reactionRevision,
                         onAnimalSelected: widget.onAnimalSelected,
+                        onEnclosureSelected: widget.onEnclosureSelected,
+                        onLaboratorySelected: widget.onLaboratorySelected,
                       ),
                     ),
                   ),

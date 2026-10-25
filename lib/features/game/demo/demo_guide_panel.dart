@@ -1,3 +1,5 @@
+import 'presentation_scenario.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/zoo_ui.dart';
@@ -29,7 +31,7 @@ class DemoGuidePanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '発表デモ ${controller.step == DemoStep.complete ? "完成イメージ" : "${controller.step.index + 1}/12"}',
+              '発表デモ ${controller.step == DemoStep.complete ? "完成イメージ" : "${controller.step.index + 1}/${DemoStep.complete.index}"}',
               style: const TextStyle(fontSize: 10),
             ),
             Text(
@@ -75,7 +77,7 @@ class DemoAnswerDialog extends StatefulWidget {
 }
 
 class _DemoAnswerDialogState extends State<DemoAnswerDialog> {
-  final _answer = TextEditingController(text: '今日は分数の計算を学びました。');
+  final _answer = TextEditingController(text: PresentationScenario.answer);
   @override
   void dispose() {
     _answer.dispose();

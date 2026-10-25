@@ -15,8 +15,10 @@ class AnimalEncyclopedia extends StatefulWidget {
     required this.onSelect,
     this.onChooseGoal,
     this.highlightAnimalId,
+    this.initialAnimalId,
   });
   final String? highlightAnimalId;
+  final String? initialAnimalId;
   final VoidCallback? onChooseGoal;
   final List<AnimalDefinition> animals;
   final Set<String> ownedIds;
@@ -28,6 +30,7 @@ class AnimalEncyclopedia extends StatefulWidget {
 
 class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
   int _page = 0;
+  bool _initialPageSelected = false;
 
   @override
   Widget build(BuildContext context) => PixelUiTheme(
@@ -108,6 +111,13 @@ class _AnimalEncyclopediaState extends State<AnimalEncyclopedia> {
                         1,
                         (widget.animals.length / perPage).ceil(),
                       );
+                      if (!_initialPageSelected) {
+                        final index = widget.animals.indexWhere(
+                          (a) => a.id == widget.initialAnimalId,
+                        );
+                        if (index >= 0) _page = index ~/ perPage;
+                        _initialPageSelected = true;
+                      }
                       final page = math.min(_page, pages - 1);
                       final start = page * perPage;
                       return Column(

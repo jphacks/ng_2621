@@ -53,14 +53,18 @@ void main() {
     (tester) async {
       await start(tester, const Size(390, 844));
       expect(tour(tester).step, DemoStep.assign);
+      expect(tour(tester).repository.coins, 3000);
+      expect(find.text('最初の仲間を迎えよう'), findsNothing);
       await tap(tester, 'demo-next');
+      await tap(tester, 'demo-receive-assignment');
       expect(tour(tester).step, DemoStep.submit);
       await tap(tester, 'demo-next');
       await tap(tester, 'demo-submit');
-      expect(tour(tester).repository.coins, 30);
+      expect(tour(tester).repository.coins, 3030);
       await tap(tester, 'demo-next');
+      expect(find.text('先生からのアドバイス'), findsOneWidget);
       await tap(tester, 'demo-approve');
-      expect(tour(tester).repository.coins, 100);
+      expect(tour(tester).repository.coins, 3100);
       expect(find.byKey(const ValueKey('demo-next')), findsNothing);
       expect(
         tester
@@ -88,14 +92,15 @@ void main() {
         await tester.ensureVisible(find.text('動物一覧'));
         await tester.tap(find.text('動物一覧'));
         await frames(tester);
-        for (
-          var page = 0;
-          page < 5 &&
-              find.byKey(ValueKey('encyclopedia-$id')).evaluate().isEmpty;
-          page++
-        ) {
-          await tester.tap(find.byTooltip('次のページ'));
-          await frames(tester);
+        expect(
+          find.byKey(const ValueKey('encyclopedia-fire_fox')),
+          findsOneWidget,
+        );
+        if (id == 'rabbit') {
+          while (find.byKey(ValueKey('encyclopedia-$id')).evaluate().isEmpty) {
+            await tester.tap(find.byTooltip('前のページ'));
+            await frames(tester);
+          }
         }
         await tap(tester, 'encyclopedia-$id');
         await tester.tap(find.text('囲いに配置する'));
@@ -114,9 +119,7 @@ void main() {
       }
 
       await placeAnimal('rabbit');
-      expect(tour(tester).step, DemoStep.expand);
-      await tap(tester, 'demo-next');
-      await tap(tester, 'demo-budget');
+      expect(tour(tester).step, DemoStep.pond);
       await tap(tester, 'home-section-1');
       await tap(tester, 'shop-filter-施設');
       await buy(tester, 'pond');
@@ -162,7 +165,7 @@ void main() {
       expect(find.byKey(const ValueKey('demo-start')), findsOneWidget);
       await tap(tester, 'demo-start');
       expect(tour(tester).step, DemoStep.assign);
-      expect(tour(tester).repository.coins, 0);
+      expect(tour(tester).repository.coins, 3000);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -180,13 +183,14 @@ void main() {
         findsOneWidget,
       );
       await tap(tester, 'demo-next');
+      await tap(tester, 'demo-receive-assignment');
       await tap(tester, 'demo-next');
       await tester.tap(find.text('あとで'));
       await frames(tester);
       expect(tour(tester).step, DemoStep.submit);
       await tap(tester, 'demo-next');
       await tap(tester, 'demo-submit');
-      expect(tour(tester).repository.coins, 30);
+      expect(tour(tester).repository.coins, 3030);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     });
