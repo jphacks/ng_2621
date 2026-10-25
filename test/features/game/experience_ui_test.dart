@@ -150,51 +150,56 @@ void main() {
     expect(repository.currentSnapshot.ownedAnimalIds, isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());
   });
-  testWidgets(
-    'phase 5: placed research laboratory buys evolution through normal confirmation and retains original animal',
-    (tester) async {
-      await loadZoo(tester);
-      final repository =
-          tester.widget<ZooStudyApp>(find.byType(ZooStudyApp)).gameRepository!
-              as MockGameRepository;
-      final data = repository.currentSnapshot.toJson();
-      data['ownedAnimalIds'] = ['fox'];
-      data['ownedFacilityIds'] = ['laboratory'];
-      data['coins'] = 1000;
-      data['revision'] = repository.currentSnapshot.revision + 1;
-      data['layout'] = {
-        'schemaVersion': 1,
-        'enclosures': [],
-        'animalEnclosures': <String, String>{},
-        'facilities': [
-          {'facilityId': 'laboratory', 'left': 11, 'top': 0},
-        ],
-      };
-      repository.receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
-      await frames(tester);
-      await tester.tap(find.byKey(const ValueKey('home-section-2')));
-      await frames(tester);
-      await tester.ensureVisible(find.text('研究所'));
-      await tester.tap(find.text('研究所'));
-      await frames(tester);
-      await tester.tap(find.text('進化キツネ'));
-      await frames(tester);
-      await tester.ensureVisible(find.text('購入する'));
-      await tester.tap(find.text('購入する'));
-      await frames(tester);
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('confirm-purchase')),
-      );
-      await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
-      await frames(tester);
-      expect(
-        repository.currentSnapshot.ownedAnimalIds,
-        containsAll(['fox', 'evolved_fox']),
-      );
-      expect(repository.currentSnapshot.coins, 200);
-      await closeSheet(tester);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-    },
-  );
+  for (final (targetId, name, cost) in [
+    ('evolved_fox', '進化キツネ', 800),
+    ('fire_fox', '炎狐', 500),
+  ]) {
+    testWidgets(
+      'placed laboratory unlocks $name and retains the original fox',
+      (tester) async {
+        await loadZoo(tester);
+        final repository =
+            tester.widget<ZooStudyApp>(find.byType(ZooStudyApp)).gameRepository!
+                as MockGameRepository;
+        final data = repository.currentSnapshot.toJson();
+        data['ownedAnimalIds'] = ['fox'];
+        data['ownedFacilityIds'] = ['laboratory'];
+        data['coins'] = 1000;
+        data['revision'] = repository.currentSnapshot.revision + 1;
+        data['layout'] = {
+          'schemaVersion': 1,
+          'enclosures': [],
+          'animalEnclosures': <String, String>{},
+          'facilities': [
+            {'facilityId': 'laboratory', 'left': 11, 'top': 0},
+          ],
+        };
+        repository.receiveConfirmedSnapshot(GameSnapshot.fromJson(data));
+        await frames(tester);
+        await tester.tap(find.byKey(const ValueKey('home-section-2')));
+        await frames(tester);
+        await tester.ensureVisible(find.text('研究所'));
+        await tester.tap(find.text('研究所'));
+        await frames(tester);
+        await tester.tap(find.text(name));
+        await frames(tester);
+        await tester.ensureVisible(find.text('進化する'));
+        await tester.tap(find.text('進化する'));
+        await frames(tester);
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('confirm-purchase')),
+        );
+        await tester.tap(find.byKey(const ValueKey('confirm-purchase')));
+        await frames(tester);
+        expect(
+          repository.currentSnapshot.ownedAnimalIds,
+          containsAll(['fox', targetId]),
+        );
+        expect(repository.currentSnapshot.coins, 1000 - cost);
+        await closeSheet(tester);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
 }

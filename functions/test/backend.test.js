@@ -363,3 +363,36 @@ test('enrollment respects the same 100-student class limit as assignment publish
   await assert.rejects(service.joinClass(request('over_capacity', {displayName: '上限テスト', invitationCode: '0123456789abcdef0123456789abcdef'})), error => error.code === 'resource-exhausted');
   assert.equal((await db.doc('users/over_capacity').get()).exists, false);
 });
+
+test('expanded roster purchases and research enforce sources, placed laboratory and replay safety', async () => {
+  const starting = 50000;
+  await db.doc('zoos/student_a').set({organizationId: 'org_a', classId: 'class_a', studentId: 'student_a', revision: 1, coins: starting, ownedAnimalIds: [], ownedFacilityIds: []});
+  const buy = (itemId, requestId = `roster-${itemId}`) => service.purchaseItem(request('student_a', {requestId, itemId}));
+  const items = require('../catalog.json').items;
+  const research = items.filter(i => i.acquisition === 'research');
+  const normal = items.filter(i => i.kind === 'animal' && i.acquisition !== 'research');
+  assert.equal(normal.length, 19);
+  assert.equal(research.length, 8);
+  for (const item of normal) await buy(item.id);
+  await assert.rejects(buy('fire_fox'), denied); // Laboratory not owned.
+  await buy('laboratory');
+  await assert.rejects(buy('fire_fox'), denied); // Owned, not placed.
+  await service.purchaseItem(request('student_a', {requestId: 'roster-place-lab', itemId: 'zoo_layout', layoutEdit: {kind: 'facility', id: 'laboratory', left: 11, top: 0}}));
+  await assert.rejects(buy('ice_fox'), denied); // Snow fox missing.
+  await assert.rejects(buy('legendary_fox'), denied);
+  for (const item of research) {
+    const receipts = await Promise.all([buy(item.id), buy(item.id)]);
+    assert.deepEqual(receipts[0], receipts[1]);
+    assert.equal(receipts[0].price, item.price);
+    await assert.rejects(buy(item.id, `roster-again-${item.id}`), denied);
+  }
+  const zoo = (await db.doc('zoos/student_a').get()).data();
+  assert.equal(zoo.coins, starting - 400 - [...normal, ...research].reduce((sum, i) => sum + i.price, 0));
+  assert.equal(zoo.ownedAnimalIds.length, 27);
+  assert(zoo.ownedAnimalIds.includes('fox') && zoo.ownedAnimalIds.includes('penguin'));
+  await assert.rejects(buy('kiwi'), error => error.code === 'not-found');
+  await assert.rejects(buy('teacher_male'), error => error.code === 'not-found');
+  await service.purchaseItem(request('student_a', {requestId: 'roster-pen', itemId: 'zoo_layout', layoutEdit: {kind: 'enclosure', id: 'roster_pen', left: 0, top: 0, width: 4, height: 4}}));
+  await service.purchaseItem(request('student_a', {requestId: 'roster-assign', itemId: 'zoo_layout', layoutEdit: {kind: 'assignAnimal', id: 'legendary_fox', enclosureId: 'roster_pen'}}));
+  assert.equal((await db.doc('zoos/student_a').get()).data().layout.animalEnclosures.legendary_fox, 'roster_pen');
+});

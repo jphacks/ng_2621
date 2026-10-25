@@ -32,19 +32,28 @@ class AnimalArt extends StatelessWidget {
     'bird6': ZooArtPart.bird6,
   };
 
-  static bool hasArt(String id) => _parts.containsKey(id);
+  static final _characters = <String, ZooCharacterPart>{
+    for (final part in ZooCharacterPart.values)
+      if (!part.isPerson) part.id: part,
+  };
+
+  static bool hasArt(String id) =>
+      _parts.containsKey(id) || _characters.containsKey(id);
 
   @override
   Widget build(BuildContext context) {
     final part = _parts[animalId];
+    final character = _characters[animalId];
+    final Widget? art = part != null
+        ? ZooArtSprite(part: part, scale: 1)
+        : character != null
+        ? ZooCharacterSprite(part: character, scale: 1)
+        : null;
     return SizedBox.square(
       dimension: size,
-      child: part == null
+      child: art == null
           ? fallback ?? const Icon(Icons.pets)
-          : FittedBox(
-              fit: BoxFit.contain,
-              child: ZooArtSprite(part: part, scale: 1),
-            ),
+          : FittedBox(fit: BoxFit.contain, child: art),
     );
   }
 }

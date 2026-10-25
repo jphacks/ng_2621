@@ -23,3 +23,6 @@ export 'widgets/sprite_panel.dart';
 export 'widgets/color_button_panel.dart';
 
 export 'widgets/pixel_text_outline.dart';
+
+export 'sprites/zoo_character_part.dart';
+export 'sprites/zoo_character_sprite.dart';

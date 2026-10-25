@@ -98,9 +98,14 @@ void main() {
     await tester.tap(find.text('ショップへ'));
     await frames(tester);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('shop-item-evolved_fox')),
+      find.byKey(const ValueKey('shop-item-bird6')),
       200,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find
+          .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+          )
+          .hitTestable()
+          .last,
     );
     await tester.pump();
     expect(

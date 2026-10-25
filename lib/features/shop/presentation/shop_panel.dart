@@ -79,7 +79,7 @@ class _ShopPanelState extends State<ShopPanel> {
       context: context,
       builder: (context) => PixelUiTheme(
         child: SpriteAlertDialog(
-          title: Text('${item.name}を購入しますか？'),
+          title: Text('${item.name}を${item.isResearch ? '進化で解放' : '購入'}しますか？'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +106,7 @@ class _ShopPanelState extends State<ShopPanel> {
             FilledButton(
               key: const ValueKey('confirm-purchase'),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('購入を確定'),
+              child: Text(item.isResearch ? '進化を確定' : '購入を確定'),
             ),
           ],
         ),
@@ -227,6 +227,9 @@ class _ShopPanelState extends State<ShopPanel> {
       final enough = snapshot != null && snapshot.coins >= item.minimumPrice;
       final names = {for (final i in widget.catalog.items) i.targetId: i.name};
       final requirements = [
+        ...item.requiredFacilityIds.map(
+          (id) => '${names[id] ?? id}を${item.isResearch ? "購入・配置" : "購入"}',
+        ),
         ...item.requiredAnimalIds.map((id) => '${names[id] ?? id}を解放'),
         if (item.minimumAnimalSpecies > 0)
           '動物${item.minimumAnimalSpecies}種類を解放',
@@ -294,6 +297,8 @@ class _ShopPanelState extends State<ShopPanel> {
                           ? '未解放'
                           : !enough
                           ? 'コイン不足'
+                          : item.isResearch
+                          ? '進化する'
                           : '購入する',
                     ),
                   ),

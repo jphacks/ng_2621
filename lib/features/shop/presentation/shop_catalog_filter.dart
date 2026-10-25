@@ -21,7 +21,9 @@ class ShopCatalogFilter {
     final term = query.trim().toLowerCase();
     return catalog.items
         .where((item) {
-          if (item.kind != kind || !item.name.toLowerCase().contains(term)) {
+          if (item.isResearch ||
+              item.kind != kind ||
+              !item.name.toLowerCase().contains(term)) {
             return false;
           }
           final owned = snapshot != null && item.isOwned(snapshot);

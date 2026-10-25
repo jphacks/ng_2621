@@ -366,9 +366,6 @@ class _ZooScreenState extends State<ZooScreen>
       _showGoalPicker();
       return;
     }
-    final targets = controller.world.animals
-        .expand((animal) => animal.evolutionIds)
-        .toSet();
     showZooSheet(
       _navContext,
       title: '研究所',
@@ -404,10 +401,9 @@ class _ZooScreenState extends State<ZooScreen>
             }
             return Column(
               children: [
-                for (final item in catalog.items.where(
-                  (i) => targets.contains(i.targetId),
-                ))
+                for (final item in catalog.items.where((i) => i.isResearch))
                   SpriteTile(
+                    panelStyle: SpritePanelStyle.cream,
                     leading: AnimalArt(animalId: item.targetId),
                     title: Text(item.name),
                     subtitle: Text(
@@ -433,7 +429,7 @@ class _ZooScreenState extends State<ZooScreen>
                             );
                           },
                   ),
-                if (!catalog.items.any((i) => targets.contains(i.targetId)))
+                if (!catalog.items.any((i) => i.isResearch))
                   const Text('研究対象はまだ登録されていません'),
               ],
             );
@@ -1059,8 +1055,9 @@ class _ZooScreenState extends State<ZooScreen>
                                         catalog: _experienceCatalog!,
                                         state: _game.snapshot!,
                                         onChange: _showGoalPicker,
-                                        onShop: () =>
-                                            _showShop(query: item.name),
+                                        onShop: () => item.isResearch
+                                            ? _showResearch()
+                                            : _showShop(query: item.name),
                                       ),
                                     ),
                             ],

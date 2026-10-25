@@ -102,7 +102,9 @@ class ShopPurchaseController extends ChangeNotifier {
       receipt = result;
       _pending = null;
       status = PurchaseStatus.success;
-      message = '${item!.name}を購入しました';
+      message = item!.isResearch
+          ? '${item!.name}を進化で解放しました'
+          : '${item!.name}を購入しました';
     } on PurchaseFailure catch (error) {
       if (_disposed) return;
       _pending = null;

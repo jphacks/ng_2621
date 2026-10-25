@@ -84,6 +84,10 @@ function createGamePurchase(db, {session, wallet, stamp, contextFields, uidOf, i
         const field = item.kind === 'animal' ? 'ownedAnimalIds' : 'ownedFacilityIds';
         if (current[field].includes(item.targetId)) fail('already-exists', 'すでに購入済みです');
         if (!(item.requiredAnimalIds || []).every(a => current.ownedAnimalIds.includes(a)) || current.ownedAnimalIds.length < (item.minimumAnimalSpecies || 0)) fail('failed-precondition', '解放条件を満たしていません');
+        if (!(item.requiredFacilityIds || []).every(f => current.ownedFacilityIds.includes(f)) ||
+            (item.acquisition === 'research' && !(item.requiredFacilityIds || []).every(f => (current.layout?.facilities || []).some(p => p.facilityId === f)))) {
+          fail('failed-precondition', '研究に必要な施設を購入・配置してください');
+        }
         price = item.price; updates = {[field]: [...current[field], item.targetId]};
       }
       if (current.coins < price) fail('resource-exhausted', 'コインが足りません');

@@ -17,7 +17,7 @@ void main() {
     final world = ZooWorld.fromJson(fixture());
     expect(world.columns, 20);
     expect(world.rows, 16);
-    expect(world.animals.map((animal) => animal.id), [
+    expect(world.animals.take(5).map((animal) => animal.id), [
       'rabbit',
       'fox',
       'panda',

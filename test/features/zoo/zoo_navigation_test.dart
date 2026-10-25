@@ -85,7 +85,7 @@ void main() {
             .text,
         'キツネ',
       );
-      expect(find.text('2件'), findsOneWidget);
+      expect(find.text('1件'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },

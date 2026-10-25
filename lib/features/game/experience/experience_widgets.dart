@@ -18,6 +18,8 @@ String unlockDescription(
       catalog.items.where((i) => i.targetId == id).firstOrNull?.name ?? id,
   ];
   final parts = <String>[
+    for (final id in item.requiredFacilityIds)
+      '${catalog.items.where((i) => i.targetId == id).firstOrNull?.name ?? id}を${item.isResearch ? "購入・配置" : "購入"}',
     if (names.isNotEmpty) '${names.join('・')}を所持',
     if (item.minimumAnimalSpecies > 0) '動物${item.minimumAnimalSpecies}種類を所持',
   ];

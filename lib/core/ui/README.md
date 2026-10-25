@@ -117,3 +117,15 @@ const SpritePanel(
 出典とライセンスは [フォントの説明](../../../assets/fonts/README.md) を参照してください。
 
 修正版の元UIシートでは、−は `(20,46,7,7)`、＋は `(20,54,7,7)` です。＋を拡大・増加、−を縮小・減少に使用します。
+
+### 新しい動物・人物シート
+
+`ZooCharacterPart` / `ZooCharacterSprite` がパンダ・狐の派生・人物などの16種類を扱います。
+
+```dart
+const ZooCharacterSprite(part: ZooCharacterPart.fireFox, scale: 2)
+const ZooCharacterSprite(part: ZooCharacterPart.teacherFemale, scale: 2)
+```
+
+順番と表示用IDは `docs/character_sprites.md` を参照してください。
+画像登録は販売・解放・進化のルールと分離しています。

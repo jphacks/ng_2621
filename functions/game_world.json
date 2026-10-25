@@ -50,7 +50,10 @@
       },
       "placeholderColor": "FFDB8B48",
       "evolutionIds": [
-        "evolved_fox"
+        "evolved_fox",
+        "fire_fox",
+        "snow_fox",
+        "spirit_fox"
       ]
     },
     {
@@ -93,6 +96,328 @@
         "bottom": 6
       },
       "placeholderColor": "FFE9D8F2",
+      "evolutionIds": []
+    },
+    {
+      "id": "cat",
+      "name": "猫",
+      "imagePath": null,
+      "speed": 1.0,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "sheep",
+      "name": "羊",
+      "imagePath": null,
+      "speed": 0.7,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "frog",
+      "name": "カエル",
+      "imagePath": null,
+      "speed": 0.8,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "axolotl",
+      "name": "ウーパールーパー",
+      "imagePath": null,
+      "speed": 0.5,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "penguin",
+      "name": "ペンギン",
+      "imagePath": null,
+      "speed": 0.7,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": [
+        "ice_emperor_penguin"
+      ]
+    },
+    {
+      "id": "monkey",
+      "name": "サル",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "rhino",
+      "name": "サイ",
+      "imagePath": null,
+      "speed": 0.6,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "giraffe",
+      "name": "キリン",
+      "imagePath": null,
+      "speed": 0.7,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "elephant",
+      "name": "ゾウ",
+      "imagePath": null,
+      "speed": 0.5,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "bird1",
+      "name": "小鳥（1）",
+      "imagePath": null,
+      "speed": 1.05,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "bird2",
+      "name": "小鳥（2）",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "bird3",
+      "name": "小鳥（3）",
+      "imagePath": null,
+      "speed": 1.15,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "bird4",
+      "name": "小鳥（4）",
+      "imagePath": null,
+      "speed": 1.2,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "bird5",
+      "name": "小鳥（5）",
+      "imagePath": null,
+      "speed": 1.25,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "bird6",
+      "name": "小鳥（6）",
+      "imagePath": null,
+      "speed": 1.3,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "fire_fox",
+      "name": "炎狐",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": [
+        "lightning_fox",
+        "legendary_fox"
+      ]
+    },
+    {
+      "id": "snow_fox",
+      "name": "雪狐",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": [
+        "ice_fox",
+        "legendary_fox"
+      ]
+    },
+    {
+      "id": "ice_fox",
+      "name": "氷狐",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": [
+        "legendary_fox"
+      ]
+    },
+    {
+      "id": "lightning_fox",
+      "name": "雷狐",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": [
+        "legendary_fox"
+      ]
+    },
+    {
+      "id": "spirit_fox",
+      "name": "霊狐",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": [
+        "legendary_fox"
+      ]
+    },
+    {
+      "id": "legendary_fox",
+      "name": "伝説の狐",
+      "imagePath": null,
+      "speed": 1.1,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
+      "evolutionIds": []
+    },
+    {
+      "id": "ice_emperor_penguin",
+      "name": "氷帝ペンギン",
+      "imagePath": null,
+      "speed": 0.8,
+      "movementArea": {
+        "left": 2,
+        "top": 2,
+        "right": 7,
+        "bottom": 6
+      },
+      "placeholderColor": "FFDFE8ED",
       "evolutionIds": []
     }
   ],

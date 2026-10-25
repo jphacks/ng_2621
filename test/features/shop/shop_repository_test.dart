@@ -1,4 +1,8 @@
+import 'package:zoo_study/features/animals/presentation/animal_art.dart';
+
 import '../../support/layout_fixtures.dart';
+
+import 'package:zoo_study/features/game/domain/zoo_layout.dart';
 
 import 'dart:convert';
 import 'dart:io';
@@ -25,6 +29,7 @@ Future<(MockGameRepository, GameSession)> setup(int coins) async {
   final repository = MockGameRepository(
     scenario: DemoScenario.approved,
     catalogLoader: () async => catalog(),
+    worldLoader: () async => world(),
   );
   // Explicit test fixture funding; not an application API to grant coins.
   final data = MockGameRepository.snapshotFor(
@@ -79,7 +84,25 @@ void main() {
     () {
       final data = catalog();
       expect(
-        {for (final item in data.items) item.id: item.price},
+        {
+          for (final item in data.items.where(
+            (i) => const {
+              'rabbit',
+              'fox',
+              'deer',
+              'pond',
+              'forest',
+              'evolved_fox',
+              'enclosure',
+              'laboratory',
+              'bench',
+              'topiary',
+              'fountain',
+              'flowerArch',
+            }.contains(i.id),
+          ))
+            item.id: item.price,
+        },
         {
           'rabbit': 100,
           'fox': 250,
@@ -107,6 +130,27 @@ void main() {
       }
     },
   );
+
+  test('all normal sprites are sold, special creatures are research-only, and kiwi stays reserved', () {
+    final data = catalog();
+    final animals = data.items
+        .where((i) => i.kind == ShopItemKind.animal)
+        .toList();
+    expect(animals.where((i) => !i.isResearch), hasLength(19));
+    expect(animals.where((i) => i.isResearch), hasLength(8));
+    expect(world().animals, hasLength(27));
+    for (final item in animals) {
+      expect(AnimalArt.hasArt(item.targetId), isTrue, reason: item.id);
+      if (item.isResearch) {
+        expect(item.requiredAnimalIds, isNotEmpty);
+        expect(item.requiredFacilityIds, contains('laboratory'));
+      }
+    }
+    for (final id in ['kiwi', 'teacher_male', 'teacher_female', 'child']) {
+      expect(animals.any((i) => i.targetId == id), isFalse);
+      expect(world().animals.any((a) => a.id == id), isFalse);
+    }
+  });
 
   test(
     'confirmed 100 coins buys rabbit and publishes zero balance with ownership',
@@ -221,9 +265,42 @@ void main() {
   test(
     'evolution unlock adds a new species without consuming original fox',
     () async {
-      final (repository, session) = await setup(1100);
+      final (repository, session) = await setup(1500);
       await repository.purchase(
         const PurchaseRequest(requestId: 'fox', itemId: 'fox'),
+      );
+      await expectLater(
+        repository.purchase(
+          const PurchaseRequest(
+            requestId: 'locked-evolve',
+            itemId: 'evolved_fox',
+          ),
+        ),
+        throwsA(failure(PurchaseFailureCode.locked)),
+      );
+      await repository.purchase(
+        const PurchaseRequest(requestId: 'lab', itemId: 'laboratory'),
+      );
+      await expectLater(
+        repository.purchase(
+          const PurchaseRequest(
+            requestId: 'unplaced-evolve',
+            itemId: 'evolved_fox',
+          ),
+        ),
+        throwsA(failure(PurchaseFailureCode.locked)),
+      );
+      await repository.purchase(
+        const PurchaseRequest(
+          requestId: 'place-lab',
+          itemId: 'zoo_layout',
+          layoutEdit: LayoutEdit(
+            kind: LayoutEditKind.facility,
+            id: 'laboratory',
+            left: 11,
+            top: 0,
+          ),
+        ),
       );
       await repository.purchase(
         const PurchaseRequest(requestId: 'evolve', itemId: 'evolved_fox'),

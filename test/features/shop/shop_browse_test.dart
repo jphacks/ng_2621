@@ -30,7 +30,7 @@ void main() {
               .toList();
       expect(
         ids(const ShopCatalogFilter(kind: ShopItemKind.animal, query: ' キツネ ')),
-        ['fox', 'evolved_fox'],
+        ['fox'],
       );
       expect(
         ids(
@@ -39,13 +39,20 @@ void main() {
             purchasableOnly: true,
           ),
         ),
-        ['fox'],
+        [
+          'fox',
+          'cat',
+          'sheep',
+          'frog',
+          'axolotl',
+          for (var i = 1; i <= 6; i++) 'bird$i',
+        ],
       );
       expect(
         ids(
           const ShopCatalogFilter(kind: ShopItemKind.animal, hideOwned: true),
         ),
-        ['fox', 'deer', 'evolved_fox'],
+        containsAll(['fox', 'deer', 'panda', 'giraffe', 'elephant']),
       );
       expect(
         ids(
@@ -101,14 +108,14 @@ void main() {
       await tester.enterText(find.byKey(const ValueKey('shop-search')), 'キツネ');
       await tester.pump();
       tester.testTextInput.hide();
-      expect(find.text('2件'), findsOneWidget);
+      expect(find.text('1件'), findsOneWidget);
       await openShopItem(tester, 'fox');
       expect(find.text('解放条件'), findsOneWidget);
       await tester.tap(find.byTooltip('商品一覧へ戻る'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
-      expect(find.text('2件'), findsOneWidget);
+      expect(find.text('1件'), findsOneWidget);
       expect(
         tester
             .widget<TextField>(find.byKey(const ValueKey('shop-search')))

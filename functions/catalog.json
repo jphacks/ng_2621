@@ -48,6 +48,10 @@
       "price": 800,
       "requiredAnimalIds": [
         "fox"
+      ],
+      "acquisition": "research",
+      "requiredFacilityIds": [
+        "laboratory"
       ]
     },
     {
@@ -92,6 +96,220 @@
       "kind": "facility",
       "targetId": "flowerArch",
       "price": 250
+    },
+    {
+      "id": "panda",
+      "name": "パンダ",
+      "kind": "animal",
+      "targetId": "panda",
+      "price": 600
+    },
+    {
+      "id": "cat",
+      "name": "猫",
+      "kind": "animal",
+      "targetId": "cat",
+      "price": 150
+    },
+    {
+      "id": "sheep",
+      "name": "羊",
+      "kind": "animal",
+      "targetId": "sheep",
+      "price": 200
+    },
+    {
+      "id": "frog",
+      "name": "カエル",
+      "kind": "animal",
+      "targetId": "frog",
+      "price": 120
+    },
+    {
+      "id": "axolotl",
+      "name": "ウーパールーパー",
+      "kind": "animal",
+      "targetId": "axolotl",
+      "price": 300
+    },
+    {
+      "id": "penguin",
+      "name": "ペンギン",
+      "kind": "animal",
+      "targetId": "penguin",
+      "price": 350
+    },
+    {
+      "id": "monkey",
+      "name": "サル",
+      "kind": "animal",
+      "targetId": "monkey",
+      "price": 450
+    },
+    {
+      "id": "rhino",
+      "name": "サイ",
+      "kind": "animal",
+      "targetId": "rhino",
+      "price": 700
+    },
+    {
+      "id": "giraffe",
+      "name": "キリン",
+      "kind": "animal",
+      "targetId": "giraffe",
+      "price": 800
+    },
+    {
+      "id": "elephant",
+      "name": "ゾウ",
+      "kind": "animal",
+      "targetId": "elephant",
+      "price": 900
+    },
+    {
+      "id": "bird1",
+      "name": "小鳥（1）",
+      "kind": "animal",
+      "targetId": "bird1",
+      "price": 60
+    },
+    {
+      "id": "bird2",
+      "name": "小鳥（2）",
+      "kind": "animal",
+      "targetId": "bird2",
+      "price": 80
+    },
+    {
+      "id": "bird3",
+      "name": "小鳥（3）",
+      "kind": "animal",
+      "targetId": "bird3",
+      "price": 100
+    },
+    {
+      "id": "bird4",
+      "name": "小鳥（4）",
+      "kind": "animal",
+      "targetId": "bird4",
+      "price": 120
+    },
+    {
+      "id": "bird5",
+      "name": "小鳥（5）",
+      "kind": "animal",
+      "targetId": "bird5",
+      "price": 140
+    },
+    {
+      "id": "bird6",
+      "name": "小鳥（6）",
+      "kind": "animal",
+      "targetId": "bird6",
+      "price": 160
+    },
+    {
+      "id": "fire_fox",
+      "name": "炎狐",
+      "kind": "animal",
+      "targetId": "fire_fox",
+      "price": 500,
+      "acquisition": "research",
+      "requiredAnimalIds": [
+        "fox"
+      ],
+      "requiredFacilityIds": [
+        "laboratory"
+      ]
+    },
+    {
+      "id": "snow_fox",
+      "name": "雪狐",
+      "kind": "animal",
+      "targetId": "snow_fox",
+      "price": 500,
+      "acquisition": "research",
+      "requiredAnimalIds": [
+        "fox"
+      ],
+      "requiredFacilityIds": [
+        "laboratory"
+      ]
+    },
+    {
+      "id": "ice_fox",
+      "name": "氷狐",
+      "kind": "animal",
+      "targetId": "ice_fox",
+      "price": 900,
+      "acquisition": "research",
+      "requiredAnimalIds": [
+        "snow_fox"
+      ],
+      "requiredFacilityIds": [
+        "laboratory"
+      ]
+    },
+    {
+      "id": "lightning_fox",
+      "name": "雷狐",
+      "kind": "animal",
+      "targetId": "lightning_fox",
+      "price": 900,
+      "acquisition": "research",
+      "requiredAnimalIds": [
+        "fire_fox"
+      ],
+      "requiredFacilityIds": [
+        "laboratory"
+      ]
+    },
+    {
+      "id": "spirit_fox",
+      "name": "霊狐",
+      "kind": "animal",
+      "targetId": "spirit_fox",
+      "price": 1000,
+      "acquisition": "research",
+      "requiredAnimalIds": [
+        "fox"
+      ],
+      "requiredFacilityIds": [
+        "laboratory"
+      ]
+    },
+    {
+      "id": "legendary_fox",
+      "name": "伝説の狐",
+      "kind": "animal",
+      "targetId": "legendary_fox",
+      "price": 2500,
+      "acquisition": "research",
+      "requiredAnimalIds": [
+        "fire_fox",
+        "snow_fox",
+        "ice_fox",
+        "lightning_fox",
+        "spirit_fox"
+      ],
+      "requiredFacilityIds": [
+        "laboratory"
+      ]
+    },
+    {
+      "id": "ice_emperor_penguin",
+      "name": "氷帝ペンギン",
+      "kind": "animal",
+      "targetId": "ice_emperor_penguin",
+      "price": 900,
+      "acquisition": "research",
+      "requiredAnimalIds": [
+        "penguin"
+      ],
+      "requiredFacilityIds": [
+        "laboratory"
+      ]
     }
   ]
 }
