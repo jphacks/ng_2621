@@ -396,3 +396,79 @@ test('enrollment respects the same 100-student class limit as assignment publish
   assert.equal((await db.doc('users/over_capacity').get()).exists, false);
 });
 
+
+
+test('teacher creates classes and email-free students; custom token restores the same UID after reissue', async () => {
+  const classroom = await service.createManagedClass(request('teacher_a',{name:'ひまわり組',requestId:'room-one'}));
+  assert.match(classroom.prefix,/^[2-9A-HJ-NP-Z]{6}$/);
+  assert.deepEqual(await service.createManagedClass(request('teacher_a',{name:'ひまわり組',requestId:'room-one'})),classroom);
+  const roster = await service.listManagedClasses(request('teacher_a'));
+  assert.ok(roster.classes.some(c=>c.id===classroom.classId));
+  const data = {classId:classroom.classId,name:'はなこ',requestId:'student-one'};
+  const issued = await service.createManagedStudent(request('teacher_a',data));
+  assert.match(issued.loginCode,/^[2-9A-HJ-NP-Z]{6}(-[2-9A-HJ-NP-Z]{4}){4}$/);
+  assert.ok(issued.loginCode.startsWith(classroom.prefix+'-'));
+  const retry = await service.createManagedStudent(request('teacher_a',data));
+  assert.equal(retry.studentId,issued.studentId); assert.equal(retry.loginCode,null);
+  assert.equal((await db.collection('classMemberships').where('classId','==',classroom.classId).where('role','==','student').get()).size,1);
+  const login = code => service.loginWithStudentCode({data:{code},rawRequest:{ip:'127.0.0.11'}});
+  const loginResponse=await fetch('http://127.0.0.1:5001/'+projectId+'/asia-northeast1/loginWithStudentCode',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:{code:issued.loginCode.toLowerCase()}})});
+  const loginBody=await loginResponse.json(); assert.equal(loginResponse.status,200,JSON.stringify(loginBody));
+  const {token}=loginBody.result;
+  const signIn=await fetch('http://'+process.env.FIREBASE_AUTH_EMULATOR_HOST+'/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=demo-key',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,returnSecureToken:true})});
+  assert.equal(signIn.status,200,JSON.stringify(await signIn.clone().json()));
+  const auth=await signIn.json();
+  const verified=await require('firebase-admin/auth').getAuth().verifyIdToken(auth.idToken);
+  assert.equal(verified.uid,issued.studentId);
+  assert.equal((await service.sessionInfo(request(verified.uid))).role,'student');
+  await service.saveStudySession(request(issued.studentId,{record:rewardedRecord('code-study',120)}));
+  assert.equal((await db.doc('zoos/'+issued.studentId).get()).data().coins,1);
+  const replacement=await service.reissueStudentCode(request('teacher_a',{classId:classroom.classId,studentId:issued.studentId,requestId:'replace-one'}));
+  assert.notEqual(replacement.loginCode,issued.loginCode);
+  await assert.rejects(login(issued.loginCode),denied);
+  await login(replacement.loginCode);
+  assert.equal((await db.doc('zoos/'+issued.studentId).get()).data().coins,1);
+  assert.equal((await db.collection('studySessions').where('studentId','==',issued.studentId).get()).size,1);
+  const student=env.authenticatedContext(issued.studentId).firestore();
+  const teacher=env.authenticatedContext('teacher_a').firestore();
+  const privateDoc=(await db.doc('studentCodeAccounts/'+issued.studentId).get()).data();
+  assert.ok(!JSON.stringify(privateDoc).includes(replacement.loginCode));
+  await assertFails(getDoc(doc(student,'studentCodeAccounts',issued.studentId)));
+  await assertFails(getDoc(doc(teacher,'studentLoginCodes',privateDoc.codeHash)));
+  await assertFails(setDoc(doc(student,'studentLoginCodes','forged'),{studentId:'teacher_a'}));
+  await service.selectManagedClass(request('teacher_a',{classId:classroom.classId}));
+  const teacherContext=await service.sessionInfo(request('teacher_a'));
+  assert.equal(teacherContext.classId,classroom.classId);
+  assert.ok(teacherContext.students.some(s=>s.id===issued.studentId));
+});
+
+test('student code administration rejects student privileges, other classes and teacher targets', async () => {
+  await assert.rejects(service.createManagedClass(request('student_a',{name:'勝手なクラス',requestId:'bad'})),denied);
+  await assert.rejects(service.listManagedClasses(request(null)),denied);
+  await assert.rejects(service.selectManagedClass(request('teacher_a',{classId:'class_other'})),denied);
+  await assert.rejects(service.createManagedStudent(request('teacher_other',{classId:'class_a',name:'生徒',requestId:'bad-student'})),denied);
+  await assert.rejects(service.listManagedStudents(request('teacher_other',{classId:'class_a'})),denied);
+  await assert.rejects(service.reissueStudentCode(request('teacher_a',{classId:'class_a',studentId:'teacher_a',requestId:'teacher-code'})),denied);
+  await assert.rejects(service.reissueStudentCode(request('student_a',{classId:'class_a',studentId:'student_a',requestId:'self-code'})),denied);
+  await assert.rejects(service.loginWithStudentCode({data:{code:'bad'},rawRequest:{ip:'127.0.0.12'}}),denied);
+  const roster = await service.listManagedStudents(request('teacher_a',{classId:'class_a'}));
+  assert.equal(roster.students.length,2); assert.ok(!JSON.stringify(roster).includes('codeHash'));
+});
+
+test('code creation respects the class limit; concurrent retries cannot duplicate accounts', async () => {
+  const batch=db.batch();
+  for(let i=0;i<97;i++) batch.set(db.doc('classMemberships/class_a_code_filled_'+i),{organizationId:'org_a',classId:'class_a',userId:'code_filled_'+i,role:'student'});
+  await batch.commit();
+  const data={classId:'class_a',name:'最後の一人',requestId:'last-code-student'};
+  const results=await Promise.all(Array.from({length:4},()=>service.createManagedStudent(request('teacher_a',data))));
+  assert.equal(new Set(results.map(r=>r.studentId)).size,1);
+  assert.equal(results.filter(r=>r.loginCode).length,1);
+  await assert.rejects(service.createManagedStudent(request('teacher_a',{...data,name:'上限超え',requestId:'too-many-code'})),denied);
+  const previous=await db.doc('studentCodeAccounts/'+results[0].studentId).get();
+  await Promise.all(Array.from({length:3},()=>service.reissueStudentCode(request('teacher_a',{classId:'class_a',studentId:results[0].studentId,requestId:'rotate-once'}))));
+  const latest=(await db.doc('studentCodeAccounts/'+results[0].studentId).get()).data();
+  assert.notEqual(latest.codeHash,previous.data().codeHash);
+  assert.equal((await db.doc('studentLoginCodes/'+previous.data().codeHash).get()).exists,false);
+});

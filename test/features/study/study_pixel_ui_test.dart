@@ -67,6 +67,7 @@ void main() {
           ),
           findsOneWidget,
         );
+        await tester.scrollUntilVisible(find.text('学習記録はまだありません'), 180);
         expect(
           Theme.of(tester.element(find.text('学習記録はまだありません')))
               .textTheme

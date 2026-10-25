@@ -1,3 +1,7 @@
+import 'school_management_screen.dart';
+import 'student_code_form.dart';
+import 'student_qr_scanner.dart';
+import '../data/school_account_api.dart';
 import 'account_form.dart';
 import '../data/cloud_game_preferences.dart';
 
@@ -30,11 +34,13 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
   FirebaseStudyRepository? _repository;
   StreamSubscription<User?>? _authSubscription;
   bool _busy = false;
+  bool _emailLogin = false;
   bool _restoringAuth = true;
   String? _error;
   @override
   void initState() {
     super.initState();
+    _emailLogin = widget.isTeacher;
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (_restoringAuth) {
         if (!mounted) return;
@@ -100,6 +106,46 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _loginCode(String code) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final result =
+          await FirebaseFunctions.instanceFor(region: 'asia-northeast1')
+              .httpsCallable('loginWithStudentCode')
+              .call<dynamic>({'code': code})
+              .timeout(const Duration(seconds: 25));
+      await FirebaseAuth.instance.signInWithCustomToken(
+        result.data['token'] as String,
+      );
+      if (mounted) await _open();
+    } on FirebaseFunctionsException catch (e) {
+      if (mounted) setState(() => _error = e.message ?? 'コードをかくにんしてね');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'ログインできませんでした。通信をかくにんして、もういちどためしてね。');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _manageAccounts() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SchoolManagementScreen(api: FirebaseSchoolAccountApi()),
+      ),
+    );
+    if (!mounted) return;
+    final previous = _repository;
+    setState(() => _repository = null);
+    previous?.dispose();
+    await _open();
   }
 
   Future<void> _register(
@@ -217,9 +263,11 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
           organizationId: repository.organizationId,
         ),
         accountName: repository.identity['displayName'] as String?,
+        accountClassName: repository.identity['className'] as String?,
         accountEmail: FirebaseAuth.instance.currentUser?.email,
         assignmentStore: repository,
         isTeacher: repository.isTeacher,
+        onManageAccounts: repository.isTeacher ? _manageAccounts : null,
         onSignOut: () async {
           await FirebaseAuth.instance.signOut();
         },
@@ -266,28 +314,62 @@ class _FirebaseLoginScreenState extends State<FirebaseLoginScreen> {
                   onPressed: _busy ? null : () => _open(),
                   child: const Text('登録済みのアカウントで続ける'),
                 ),
-              const Text('先生のアカウントは管理者が用意します。役割は登録済みの権限から判定します。'),
-              AccountForm(
-                isTeacher: widget.isTeacher,
-                busy: _busy,
-                signedInEmail: FirebaseAuth.instance.currentUser == null
-                    ? null
-                    : FirebaseAuth.instance.currentUser!.email ?? 'アカウント',
-                onSignIn: (email, password) =>
-                    _open(email: email, password: password),
-                onRegister: _register,
-                onJoin: _join,
-                onReset: _resetPassword,
-                onSignOut: () async {
-                  await FirebaseAuth.instance.signOut();
-                  if (mounted) {
-                    setState(() {
-                      _error = null;
-                      _message = null;
-                    });
-                  }
-                },
-              ),
+              if (FirebaseAuth.instance.currentUser == null) ...[
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('生徒（コード）')),
+                    ButtonSegment(value: true, label: Text('先生・メール')),
+                  ],
+                  selected: {_emailLogin},
+                  onSelectionChanged: _busy
+                      ? null
+                      : (value) => setState(() {
+                          _emailLogin = value.single;
+                          _error = null;
+                        }),
+                ),
+                const SizedBox(height: 20),
+              ],
+              if (FirebaseAuth.instance.currentUser == null && !_emailLogin)
+                StudentCodeForm(
+                  busy: _busy,
+                  onLogin: _loginCode,
+                  onScan: supportsStudentQrScanner
+                      ? () => Navigator.of(context).push<String>(
+                          MaterialPageRoute(
+                            builder: (_) => const StudentQrScanner(),
+                          ),
+                        )
+                      : null,
+                ),
+              if (_emailLogin || FirebaseAuth.instance.currentUser != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('先生のアカウントは管理者が用意します。役割は登録済みの権限から判定します。'),
+                    AccountForm(
+                      isTeacher: widget.isTeacher,
+                      busy: _busy,
+                      signedInEmail: FirebaseAuth.instance.currentUser == null
+                          ? null
+                          : FirebaseAuth.instance.currentUser!.email ?? 'アカウント',
+                      onSignIn: (email, password) =>
+                          _open(email: email, password: password),
+                      onRegister: _register,
+                      onJoin: _join,
+                      onReset: _resetPassword,
+                      onSignOut: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (mounted) {
+                          setState(() {
+                            _error = null;
+                            _message = null;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

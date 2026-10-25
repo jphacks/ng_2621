@@ -35,7 +35,11 @@ class _AppBootstrapState extends State<AppBootstrap> {
         storage,
         attachmentVault: await openAttachmentVault(),
       );
-      return ZooStudyApp(studyRepository: repository, roleStorage: storage);
+      return ZooStudyApp(
+        studyRepository: repository,
+        roleStorage: storage,
+        enableStudentCodes: true,
+      );
     }
     if (!['firebase', 'emulator'].contains(studyStorageMode)) {
       throw StateError('保存モードが無効です');
